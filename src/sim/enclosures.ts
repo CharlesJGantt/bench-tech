@@ -84,39 +84,6 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
     ],
   },
-  dualpulse: {
-    color: '#e8e8ec',
-    items: [
-      screw('s1', 'Back screw (left grip)', [8, 56], 6, 6),
-      screw('s2', 'Back screw (right grip)', [102, 56], 6, 6),
-      screw('s3', 'Back screw (top left)', [30, 6], 6, 6),
-      screw('s4', 'Back screw (top right)', [96, 6], 4, 4, [], ['VCC', 'GND']),
-      { id: 'back', kind: 'clips', label: 'Back shell', at: [55, 32], size: [110, 64], needs: ['s1', 's2', 's3', 's4'], covers: true },
-      { id: 'bat', kind: 'cable', label: 'Battery plug', at: [14, 34], module: 'BT1', needs: ['back'] },
-      { id: 'tp', kind: 'cable', label: 'Touchpad ribbon', at: [56, 12], module: 'TPAD1', latch: true, needs: ['back'] },
-    ],
-  },
-  'sbox-pad': {
-    color: '#2a2b2d',
-    items: [
-      { id: 'cover', kind: 'clips', label: 'Battery door', at: [30, 30], size: [56, 34] },
-      { ...screw('s1', 'Security screw (under the label)', [55, 6], 8, 8), security: true },
-      screw('s2', 'Grip screw (left)', [8, 56], 8, 8),
-      screw('s3', 'Grip screw (right)', [102, 56], 8, 8),
-      { id: 'back', kind: 'clips', label: 'Back shell', at: [55, 32], size: [110, 64], needs: ['cover', 's1', 's2', 's3'], covers: true },
-    ],
-  },
-  'button-grip': {
-    color: '#2e86c9',
-    items: [
-      { ...screw('s1', 'Tri-wing screw 1', [6, 6], 4, 4), security: true },
-      { ...screw('s2', 'Tri-wing screw 2', [104, 6], 4, 4), security: true },
-      { ...screw('s3', 'Tri-wing screw 3', [6, 58], 4, 4, [], ['VCC', 'GND']), security: true },
-      { ...screw('s4', 'Tri-wing screw 4', [104, 58], 4, 4), security: true },
-      { id: 'back', kind: 'shell', label: 'Back shell', at: [55, 32], size: [110, 64], needs: ['s1', 's2', 's3', 's4'], covers: true },
-      { id: 'bat', kind: 'adhesive', label: 'Glued-in battery', at: [24, 46], size: [34, 20], needs: ['back'] },
-    ],
-  },
   ...Object.fromEntries(
     (['game-clock', 'critter-mini'] as const).map((id) => [
       id,

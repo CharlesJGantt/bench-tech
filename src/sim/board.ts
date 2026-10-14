@@ -105,6 +105,14 @@ export interface FaceSpec {
   /** Openings the analog sticks poke through. */
   sticks?: [number, number][];
   grille?: [number, number];
+  /** Small round buttons (home / PS / capture). */
+  smallButtons?: [number, number][];
+  /** Flat panels set into the shell (a touchpad): centre, size, colour. */
+  panels?: { at: [number, number]; size: [number, number]; color: string }[];
+  /** Strips that glow while an LED on the board is lit (a light bar). */
+  glows?: { ref: string; at: [number, number]; size: [number, number]; color: string }[];
+  /** Shell regions beyond the board (controller grips): x0, y0, x1, y1 in board mm. */
+  grips?: [number, number, number, number][];
   /** Height of the front shell above the board (mm). */
   height?: number;
 }

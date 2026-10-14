@@ -480,7 +480,7 @@ export const PARTS: Record<string, PartSpec> = {
     label: 'Controller MCU',
     marking: 'PADCTL',
     cost: 0,
-    pins: ['VDD', 'HOME', 'BA', 'BB', 'TRIG', 'TPD', 'BTEN', 'LED', 'TEN', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15', 'GND'],
+    pins: ['VDD', 'HOME', 'BA', 'BB', 'TRIG', 'TPD', 'BTEN', 'LED', 'TEN', 'DP', 'BX', 'NC12', 'NC13', 'NC14', 'NC15', 'GND'],
     description: 'The controller brain: reads the buttons, sticks and touchpad, and runs the wireless chip. Factory-programmed — donor boards only.',
   },
   'U-BT': {

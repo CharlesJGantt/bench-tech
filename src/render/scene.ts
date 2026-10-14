@@ -309,7 +309,7 @@ export class BenchScene {
       g.addChild(e);
     };
     // Top surface: a grid cut along every opening edge; skip cells inside an opening
-    const holes = [...f.windows.map(([cx, cy, w, h]) => [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2]), ...(f.sticks ?? []).map(([x, y]) => [x - 9, y - 9, x + 9, y + 9])];
+    const holes = [...f.windows.map(([cx, cy, w, h]) => [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2]), ...(f.sticks ?? []).map(([x, y]) => [x - 7, y - 7, x + 7, y + 7])];
     const xs = [...new Set([0, dev.width, ...holes.flatMap((h) => [h[0], h[2]])])].sort((a, b) => a - b);
     const ys = [...new Set([0, dev.height, ...holes.flatMap((h) => [h[1], h[3]])])].sort((a, b) => a - b);
     for (let i = 0; i + 1 < xs.length; i++)
@@ -330,6 +330,39 @@ export class BenchScene {
       e.setLocalPosition(W(x), H, Z(y));
       g.addChild(e);
     };
+    // Grips hanging off the board (controllers): a solid block of shell each
+    for (const [x0, y0, x1, y1] of f.grips ?? []) slab(x0, y0, x1, y1, H, H + BOARD_T + 6);
+    for (const p of f.panels ?? []) {
+      const m = new pc.StandardMaterial();
+      m.diffuse = new pc.Color().fromString(p.color);
+      m.gloss = 0.7;
+      m.update();
+      const e = this.clone('enc_slab');
+      e.setLocalScale(p.size[0] / 10, 0.4, p.size[1] / 10);
+      e.setLocalPosition(W(p.at[0]), H, Z(p.at[1]));
+      this.paint(e, m);
+      g.addChild(e);
+    }
+    this.faceGlows = [];
+    for (const gl of f.glows ?? []) {
+      const m = new pc.StandardMaterial();
+      m.diffuse = new pc.Color(0.15, 0.15, 0.17);
+      m.emissive = new pc.Color().fromString(gl.color);
+      m.emissiveIntensity = 0;
+      m.update();
+      const e = this.clone('enc_slab');
+      e.setLocalScale(gl.size[0] / 10, 0.3, gl.size[1] / 10);
+      e.setLocalPosition(W(gl.at[0]), H, Z(gl.at[1]));
+      this.paint(e, m);
+      g.addChild(e);
+      this.faceGlows.push({ ref: gl.ref, mat: m });
+    }
+    for (const [x, y] of f.smallButtons ?? []) {
+      const e = this.clone('enc_btn');
+      e.setLocalScale(0.6, 0.7, 0.6);
+      e.setLocalPosition(W(x), H, Z(y));
+      g.addChild(e);
+    }
     if (f.dpad) cap('enc_dpad', f.dpad[0], f.dpad[1]);
     for (const [x, y] of f.buttons ?? []) cap('enc_btn', x, y);
     for (const [x, y] of f.pills ?? []) cap('enc_pill', x, y);
@@ -338,6 +371,8 @@ export class BenchScene {
   }
 
   private screenTex: pc.Texture | null = null;
+  /** Light-bar strips on a controller's shell, lit from their LED. */
+  private faceGlows: { ref: string; mat: pc.StandardMaterial }[] = [];
 
   /** A little procedural "game" picture for lit handheld screens. */
   private gameScreen(): pc.Texture {
@@ -798,7 +833,9 @@ export class BenchScene {
       const e = this.clone(tpl);
       let rot = c.def.rot + (c.reversed ? 180 : 0);
       if (c.marks.includes('crooked')) rot += 9;
-      e.setLocalPosition(this.toWorld(c.def.x, c.def.y, 0.03));
+      // Analog sticks under a front shell stand proud of it, like the real thing
+      const lift = c.part.pkg === 'STICK' && this.session.board.device.face ? Math.max(0, (this.session.board.device.face.height ?? 9) - 8) : 0;
+      e.setLocalPosition(this.toWorld(c.def.x, c.def.y, 0.03 + lift));
       e.setLocalEulerAngles(c.marks.includes('loose') ? 4 : 0, -rot, 0);
       if (c.marks.includes('bulged')) e.setLocalScale(1, 1.12, 1);
       this.boardGroup.addChild(e);
@@ -854,7 +891,7 @@ export class BenchScene {
 
   /** Printed part marking on the top of a package (laser-etched light grey text). */
   private addMarking(e: pc.Entity, p: PartSpec): void {
-    if (!p.marking || p.pkg.startsWith('SCREEN') || ['CAP_EL', 'CAP_EL10', 'BARREL', 'TACT6', 'LED0805', 'COB', 'TP', 'USBC', 'MUSB', 'HDMI', 'PWR2', 'JST2', 'FPC2', 'LEDBAR'].includes(p.pkg)) return;
+    if (!p.marking || p.pkg.startsWith('SCREEN') || p.pkg === 'STICK' || ['CAP_EL', 'CAP_EL10', 'BARREL', 'TACT6', 'LED0805', 'COB', 'TP', 'USBC', 'MUSB', 'HDMI', 'PWR2', 'JST2', 'FPC2', 'LEDBAR'].includes(p.pkg)) return;
     let tex = this.markingTex.get(p.marking);
     if (!tex) {
       const cv = document.createElement('canvas');
@@ -1055,6 +1092,11 @@ export class BenchScene {
 
     // LEDs + lamp
     const op = s.op;
+    for (const gl of this.faceGlows) {
+      const i = op ? Math.max(0, op.current(gl.ref)) : 0;
+      gl.mat.emissiveIntensity = Math.min(1.5, i / 0.003) * 3;
+      gl.mat.update();
+    }
     for (const [ref, v] of this.comps) {
       if (!v.lenses.length) continue;
       // Handheld screen modules: lit with a game picture while they get power and picture data
