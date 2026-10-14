@@ -21,7 +21,9 @@ export type CompFault =
   /** Plastic body melted by too much heat. */
   | { type: 'melted' }
   /** Capacitor dried out: capacitance and DC readings look fine, but its ESR is high (Ω). */
-  | { type: 'esr'; esr: number };
+  | { type: 'esr'; esr: number }
+  /** Big chip: one supply rail shorted to ground inside the package (Ω). */
+  | { type: 'rail-short'; pin: string; r: number };
 
 export interface Joint {
   /** Extra series resistance (Ω). 0 = good, Infinity = open. */
@@ -451,8 +453,17 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
       const running = b.device.firmware?.ref === ref && b.mcu.running;
       add(E.resistor(vdd, gnd, running ? 275 : 200e3, ref));
       add(E.diode(gnd, vdd, ESD, ref));
+      // Extra supply rails: a load per rail (heavy while running), and a possible internal short.
+      const railPins = new Set((p.rails ?? []).map((r) => r.pin));
+      for (const r of p.rails ?? []) {
+        const n = pinNode(r.pin);
+        const amps = running ? r.amps : (r.standbyAmps ?? r.amps * 0.002);
+        add(E.resistor(n, gnd, r.nominal / Math.max(amps, 1e-6), ref));
+        add(E.diode(gnd, n, ESD, ref));
+        if (f?.type === 'rail-short' && f.pin === r.pin) add(E.resistor(n, gnd, f.r, ref));
+      }
       for (const io of pins) {
-        if (io === 'VDD' || io === 'GND' || io.startsWith('NC')) continue;
+        if (io === 'VDD' || io === 'GND' || io.startsWith('NC') || railPins.has(io)) continue;
         const n = pinNode(io);
         add(E.diode(gnd, n, ESD, ref));
         add(E.diode(n, vdd, ESD, ref));
@@ -658,12 +669,14 @@ export function operatingPoint(b: BoardState, power: PowerConfig): OperatingPoin
     let running = false;
     const inputs: Record<string, boolean> = {};
     // Only the correct, programmed controller runs the firmware.
-    if (fw && u?.part && u.part.partNo === u.def.partNo && !u.fault) {
+    if (fw && u?.part && u.part.partNo === u.def.partNo && (!u.fault || u.fault.type === 'rail-short')) {
       const gnd = op.at({ ref: u.ref, pin: 'GND' });
       const vdd = op.at({ ref: u.ref, pin: 'VDD' }) - gnd;
       const lo = m.running ? fw.vmin - 0.2 : fw.vmin;
       const reset = fw.reset ? op.at({ ref: u.ref, pin: fw.reset }) - gnd > 0.6 * vdd : true;
-      running = vdd >= lo && vdd <= fw.vmax && reset;
+      // Every extra rail must be above its UVLO too (a rail short drags one below it).
+      const railsOk = (u.part.rails ?? []).every((r) => op.at({ ref: u.ref, pin: r.pin }) - gnd >= (m.running ? r.uvlo * 0.95 : r.uvlo));
+      running = vdd >= lo && vdd <= fw.vmax && reset && railsOk;
       for (const pin of fw.inputs) inputs[pin] = op.at({ ref: u.ref, pin }) - gnd > 0.5 * vdd;
     }
     const before = JSON.stringify([m.running, m.outputs]);

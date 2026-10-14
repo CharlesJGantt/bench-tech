@@ -83,6 +83,19 @@ export interface PartSpec {
   heatLimit?: number;
   /** Swapped by hand (plugged in), not soldered: batteries, screens, speakers, LED strips. */
   plugIn?: boolean;
+  /**
+   * Extra supply rails of a big chip (processor, SoC). The chip only boots when every rail is
+   * above its UVLO; each rail draws `amps` while the chip runs and `standbyAmps` otherwise.
+   */
+  rails?: ChipRail[];
+}
+
+export interface ChipRail {
+  pin: string;
+  nominal: number;
+  uvlo: number;
+  amps: number;
+  standbyAmps?: number;
 }
 
 const r = (partNo: string, value: number, label: string, marking: string, pkg: Pkg = '0603'): PartSpec => ({
