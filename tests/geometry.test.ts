@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildGeometry, type Segment } from '../src/render/boardArt';
-import { DL12 } from '../src/sim/devices';
+import { DEVICE_LIST, DL12 } from '../src/sim/devices';
 
 /**
  * The PCB artwork must be a faithful drawing of the netlist the simulator solves:
@@ -97,4 +97,39 @@ describe('board routing', () => {
       for (const s of t.segments) expect(s.layer).toBe('top');
     }
   });
+});
+
+describe('design rules on every board', () => {
+  /** Smallest gap (mm) between a trace edge and a pad of a different net. */
+  const minGap = (d: (typeof DEVICE_LIST)[number], powerOnly: boolean) => {
+    const g = buildGeometry(d);
+    const segs = [...g.segments, ...g.traces.flatMap((t) => t.segments)];
+    let worst = Infinity;
+    for (const p of g.pads) {
+      if (p.module) continue;
+      for (const s of segs) {
+        if (s.net === p.net || (s.layer === 'bottom' && !p.round)) continue;
+        // "big" = connector / through-hole pads, which get the wider gap
+        if (powerOnly && !(p.round || Math.min(p.w, p.h) >= 1.5)) continue;
+        if (d.traces.some((t) => (t.a === s.net && t.b === p.net) || (t.b === s.net && t.a === p.net))) continue;
+        let best = Infinity;
+        for (let k = 0; k <= 50; k++) {
+          const t = k / 50;
+          const x = s.x1 + t * (s.x2 - s.x1);
+          const y = s.y1 + t * (s.y2 - s.y1);
+          best = Math.min(best, Math.hypot(Math.max(0, Math.abs(x - p.x) - p.w / 2), Math.max(0, Math.abs(y - p.y) - p.h / 2)));
+        }
+        worst = Math.min(worst, best - s.width / 2);
+      }
+    }
+    return worst;
+  };
+
+  for (const d of DEVICE_LIST) {
+    it(`${d.name}: traces keep clear of other nets' pads`, () => {
+      expect(minGap(d, false)).toBeGreaterThanOrEqual(0.2);
+      // Connector / through-hole pads (e.g. the ground pin next to 12 V on a power header) keep a wider gap.
+      expect(minGap(d, true)).toBeGreaterThanOrEqual(0.4);
+    });
+  }
 });

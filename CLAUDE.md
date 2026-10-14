@@ -10,7 +10,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 
 ## Architecture
 - `src/sim/` — **no PlayCanvas imports**. Pure, unit-tested.
-  - `solver.ts` nonlinear DC nodal solver (Newton + line search, pseudo-transient fallback). Elements only implement `eval()` (currents into terminals).
+  - `solver.ts` nonlinear DC nodal solver (Newton + line search, pseudo-transient fallback). Elements only implement `eval()` (currents into terminals). Boards with ≥64 nodes are reordered (reverse Cuthill–McKee) and factored with banded LU; Newton also stops when KCL holds to ~1 pA; the fallback has an iteration budget (some faulty boards have no steady state). `tests/perf.test.ts` holds the speed budget (a 313-part synthetic board).
   - `elements.ts` behavioral models (diode, MOSFET, limited source, buck w/ foldback, LDO).
   - `parts.ts` catalog, `board.ts` DeviceDef types, `devices/*.ts` one file per device (layout, firmware, externals, functional test, fault variants; registry in `devices/index.ts`), `footprints.ts` pad geometry.
   - `circuit.ts` board state → netlist, operating point + MCU firmware loop, multimeter, thermal/stress damage, functional (customer) test.

@@ -105,6 +105,8 @@ export interface QueuedJob {
   hold?: { reason: 'parts' | 'donor'; until: number; note: string };
   /** Extra charges the customer agreed to (next-day shipping), already in `quote`. */
   extraFee?: number;
+  /** The walkthrough's scripted job. */
+  tutorial?: boolean;
   job: SavedJob;
 }
 

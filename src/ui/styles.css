@@ -1020,3 +1020,56 @@ button:disabled {
 .speed-pick { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .speed-pick button { font-size: 12px; padding: 4px 8px; }
 .speed-pick button.on { outline: 2px solid #f2c14e; }
+
+/* Tutorial walkthrough */
+#tut-card {
+  position: fixed;
+  z-index: 60;
+  width: min(440px, calc(100vw - 32px));
+  background: var(--panel-solid);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  padding: 14px 16px 12px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+}
+#tut-card.tut-bottom { left: 50%; bottom: 78px; transform: translateX(-50%); }
+#tut-card.tut-top { left: 50%; top: 58px; transform: translateX(-50%); }
+#tut-card.tut-side { left: 16px; bottom: 16px; width: min(330px, calc(100vw - 32px)); font-size: 12.5px; padding: 10px 12px; }
+#tut-card.tut-min h3 { margin-bottom: 0; }
+#tut-card.tut-min .tut-body, #tut-card.tut-min .tut-foot { display: none; }
+#tut-card h3 { margin: 6px 0 6px; font-size: 17px; color: var(--accent); text-transform: none; letter-spacing: 0; }
+#tut-card p { margin: 0 0 8px; }
+#tut-card ol, #tut-card ul { margin: 0 0 8px; padding-left: 20px; }
+#tut-card li { margin-bottom: 3px; }
+.tut-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.tut-step { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.tut-skip { font-size: 12px; padding: 3px 8px; }
+.tut-foot { display: flex; justify-content: flex-end; align-items: center; margin-top: 4px; min-height: 28px; }
+#tut-ring {
+  position: fixed;
+  z-index: 59;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px rgba(242, 184, 28, 0.25), 0 0 18px rgba(242, 184, 28, 0.6);
+  animation: tut-pulse 1.2s ease-in-out infinite;
+}
+.tut-mark {
+  position: fixed;
+  z-index: 35;
+  pointer-events: none;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 3px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(242, 184, 28, 0.9);
+  animation: tut-pulse 1s ease-in-out infinite;
+}
+@keyframes tut-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(1.08); }
+}

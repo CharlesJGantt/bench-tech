@@ -834,6 +834,20 @@ export class BenchScene {
     this.thermalTex?.setSource(cv);
   }
 
+  /** Screen position (CSS px) of a pad, or of a part's centre; null when the board is flipped or off screen. */
+  screenOf(ref: string, pin?: string): { x: number; y: number } | null {
+    if (this.flipped) return null;
+    const pad = pin ? this.geo.pads.find((q) => q.ref === ref && q.pin === pin) : null;
+    const def = this.session.board.comps[ref]?.def;
+    if (!pad && !def) return null;
+    const w = pad ? this.toWorld(pad.x, pad.y, 0.3) : this.toWorld(def!.x, def!.y, 1);
+    const cam = this.camera.camera!;
+    const sp = cam.worldToScreen(w);
+    if (sp.z < 0) return null;
+    const r = this.canvas.getBoundingClientRect();
+    return { x: r.left + sp.x, y: r.top + sp.y };
+  }
+
   /** Where the power cable plugs in: the mouth of the device's input connector. */
   private inputMouth(): pc.Vec3 {
     const dev = this.session.board.device;

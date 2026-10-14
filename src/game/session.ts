@@ -14,7 +14,7 @@ import {
   type PointRef,
   type PowerConfig,
 } from '../sim/circuit';
-import type { Job } from '../sim/faults';
+import { generateJob, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
@@ -264,6 +264,26 @@ export class Session {
     } else this.save();
     this.emit();
     return res;
+  }
+
+  /** Add the tutorial's scripted customer (a lamp with a blown fuse) to the front of the queue. */
+  addTutorialJob(): number {
+    // Reuse one that is still waiting (replaying the tutorial should not stack up lamps).
+    const waiting = this.shop.queue.find((q) => q.tutorial);
+    if (waiting) return waiting.id;
+    const job = generateJob(DL12, 7, { variant: 'fuse-blown' });
+    job.customer = 'Robin T.';
+    job.complaint = 'It was working last night. This morning it is completely dead — no lights at all.';
+    job.previousRepair = 'No';
+    job.quote = 35;
+    const id = this.shop.nextId++;
+    this.shop.queue.unshift({ id, kind: 'customer', customer: job.customer, complaint: job.complaint, quote: job.quote, arrived: this.shop.day, tutorial: true, job: saveJob(job) });
+    // Make sure there is a spare fuse to fit.
+    const f = (this.shop.stock['F-1A'] ??= { new: 0, used: 0 });
+    if (f.new + f.used === 0) f.new = 1;
+    this.save();
+    this.emit();
+    return id;
   }
 
   /** The hold (agreed wait) on the customer job on the bench, if any. */

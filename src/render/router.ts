@@ -171,12 +171,19 @@ function routeOnce(device: DeviceDef, widthOf: (net: string) => number, first: s
       for (let ix = Math.max(0, Math.ceil(x0 / G)); ix <= Math.min(nx - 1, Math.floor(x1 / G)); ix++) occ[layer * n + iy * nx + ix] = id;
   };
   const padCells = new Map<PadWorld, number[]>();
+  // Big connector / through-hole pads get extra clearance (like real boards); fine-pitch IC pins don't.
+  const bigPad = new Uint8Array(2 * n);
   for (const p of pads) {
     const id = idOf(p.net);
     const layers = p.round ? [0, 1] : [0];
     const cells: number[] = [];
     for (const L of layers) {
-      fillRect(L, p.x - p.w / 2, p.y - p.h / 2, p.x + p.w / 2, p.y + p.h / 2, id);
+      // Snap pad edges to the nearest grid line (not inward), so quantisation eats at most G/2 of clearance.
+      const snap = (v: number) => Math.round(v / G) * G;
+      fillRect(L, snap(p.x - p.w / 2), snap(p.y - p.h / 2), snap(p.x + p.w / 2), snap(p.y + p.h / 2), id);
+      if (p.round || Math.min(p.w, p.h) >= 1.5)
+        for (let iy = Math.max(0, Math.floor((p.y - p.h / 2) / G)); iy <= Math.min(ny - 1, Math.ceil((p.y + p.h / 2) / G)); iy++)
+          for (let ix = Math.max(0, Math.floor((p.x - p.w / 2) / G)); ix <= Math.min(nx - 1, Math.ceil((p.x + p.w / 2) / G)); ix++) bigPad[L * n + iy * nx + ix] = 1;
       for (let iy = Math.ceil((p.y - p.h / 2) / G); iy <= Math.floor((p.y + p.h / 2) / G); iy++)
         for (let ix = Math.ceil((p.x - p.w / 2) / G); ix <= Math.floor((p.x + p.w / 2) / G); ix++) cells.push(L * n + iy * nx + ix);
     }
@@ -192,10 +199,17 @@ function routeOnce(device: DeviceDef, widthOf: (net: string) => number, first: s
 
   /** Cells blocked for a net: foreign copper dilated by half-width + clearance. */
   const blocked = new Uint8Array(2 * n);
+  /** Soft zone around other nets' connector / through-hole pads: allowed, but routes prefer to keep away. */
+  const near = new Uint8Array(2 * n);
   const buildBlocked = (allowed: Set<number>, halfW: number) => {
     blocked.fill(0);
-    const r = Math.ceil((halfW + CLEAR) / G);
-    const r2 = ((halfW + CLEAR) / G) ** 2 + 0.5;
+    near.fill(0);
+    const rFor = (extra: number) => Math.ceil((halfW + CLEAR + extra) / G);
+    const r2For = (extra: number) => ((halfW + CLEAR + extra) / G) ** 2 + 0.5;
+    const rN = rFor(0);
+    const r2N = r2For(0);
+    const rB = rFor(0.3);
+    const r2B = r2For(0.3);
     for (let L = 0; L < 2; L++)
       for (let iy = 0; iy < ny; iy++)
         for (let ix = 0; ix < nx; ix++) {
@@ -204,6 +218,20 @@ function routeOnce(device: DeviceDef, widthOf: (net: string) => number, first: s
           if (o === EDGE) {
             blocked[L * n + iy * nx + ix] = 1;
             continue;
+          }
+          const big = bigPad[L * n + iy * nx + ix] === 1;
+          const r = big ? rB : rN;
+          const r2 = big ? r2B : r2N;
+          if (big) {
+            const rs = rB + 4; // about 1 mm beyond the hard clearance
+            for (let dy = -rs; dy <= rs; dy++) {
+              const yy = iy + dy;
+              if (yy < 0 || yy >= ny) continue;
+              for (let dx = -rs; dx <= rs; dx++) {
+                const xx = ix + dx;
+                if (xx >= 0 && xx < nx && dx * dx + dy * dy <= rs * rs) near[L * n + yy * nx + xx] = 1;
+              }
+            }
           }
           for (let dy = -r; dy <= r; dy++) {
             const yy = iy + dy;
@@ -279,6 +307,7 @@ function routeOnce(device: DeviceDef, widthOf: (net: string) => number, first: s
         }
         if (L === 1) cost *= 1.25;
         else if (bodyCost[yy * nx + xx]) cost += 1.5;
+        if (near[t]) cost += 1.5;
         const g2 = gs + cost;
         if (g2 < gScore[t]) {
           gScore[t] = g2;

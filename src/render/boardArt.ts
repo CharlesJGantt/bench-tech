@@ -131,14 +131,6 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
   const allTraceSegs = [...geo.segments, ...geo.traces.flatMap((t) => t.segments)];
   const topSegs = allTraceSegs.filter((s) => s.layer !== 'bottom');
 
-  // Clearance gap (bare board) around everything on top that is not ground
-  strokeSegs(ctx, topSegs, COL.mask, 0.7);
-  ctx.fillStyle = COL.mask;
-  for (const p of pads) {
-    if (p.net === 'GND') continue;
-    padPath(ctx, p, 0.7);
-    ctx.fill();
-  }
   // Ground pads: clearance ring with four thermal spokes joining them to the ground fill
   for (const p of pads) {
     if (p.net !== 'GND') continue;
@@ -159,6 +151,16 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
       ctx.lineTo((p.x + dx * (p.w / 2 + 0.9)) * PX, (p.y + dy * (p.h / 2 + 0.9)) * PX);
       ctx.stroke();
     }
+  }
+
+  // Clearance gap (bare board) around everything on top that is not ground. Cut *after* the spokes:
+  // like a real pour, the ground fill and its spokes never reach another net's copper.
+  strokeSegs(ctx, topSegs.filter((sg) => sg.net !== 'GND'), COL.mask, 0.7);
+  ctx.fillStyle = COL.mask;
+  for (const p of pads) {
+    if (p.net === 'GND') continue;
+    padPath(ctx, p, 0.7);
+    ctx.fill();
   }
 
   // Top copper traces (bottom-layer copper is only visible when the board is flipped)

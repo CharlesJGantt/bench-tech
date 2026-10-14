@@ -147,7 +147,7 @@ function work(s: Session): string {
             ? `⏳ ${esc(j.hold.note)} · will wait until day ${j.hold.until}${j.hold.until <= st.day ? ' <span class="bad">— collects it tonight!</span>' : ''}`
             : `${waited === 0 ? 'today' : `waiting ${waited} day${waited === 1 ? '' : 's'}`}${waited >= 3 && j.kind === 'customer' ? ' <span class="bad">— leaves tonight!</span>' : ''}`
         }${j.extraFee ? ` · +$${j.extraFee} next-day fee agreed` : ''}</td>
-        <td>${isActive ? '<span class="pill">on bench</span>' : `<button data-act="start-work" data-kind="${j.kind}" data-id="${j.id}">Start</button>`}</td></tr>`;
+        <td>${isActive ? '<span class="pill">on bench</span>' : `<button data-act="start-work" data-kind="${j.kind}" data-id="${j.id}"${j.tutorial ? ' data-tutorial="1"' : ''}>Start</button>`}</td></tr>`;
     })
     .join('');
   const proj = st.projects

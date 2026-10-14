@@ -29,5 +29,8 @@ Office screen with P&L, consumables that drain in the microscope, parts stock (n
 - Expedited jobs, quotes the player sets, customer negotiation
 - More tools that unlock capabilities (thermal camera, scope); reviews, specialization
 
+## Next: v2 content push
+Full plan in `docs/implementation-plan.md` (engine headroom → bench chemistry/microscope → disassembly → failure modes & instruments → BGA reballing → mains PSUs → ~30 new boards). Research in `docs/repair-scenarios.md`.
+
 ## Research input
 Fault patterns gathered from repair videos/streams go in `docs/fault-notes.md` (template inside). Summarise the pattern in your own words — don't paste transcripts into the game.

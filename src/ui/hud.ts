@@ -6,6 +6,7 @@ import type { BenchScene, BoardHit } from '../render/scene';
 import { beep, pop, sizzle } from './audio';
 import { schematicHtml } from './schematic';
 import { ReworkStation } from './rework';
+import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
@@ -44,6 +45,7 @@ export class Hud {
   private pending = false;
   private toastTimer = 0;
   private soldering = false;
+  private tutorial!: Tutorial;
   private officeTab: OfficeTab = 'work';
   private cart: Cart = {};
   private speed: DeliveryId = 'standard';
@@ -66,13 +68,15 @@ export class Hud {
       }
     });
     this.render();
-    let seen = false;
-    try {
-      seen = !!localStorage.getItem('benchtech.seenHelp');
-    } catch {
-      /* ignore */
-    }
-    if (!seen) this.showHelp();
+    this.tutorial = new Tutorial(this.s, {
+      isSoldering: () => this.soldering,
+      openOffice: () => this.openOffice('work'),
+      screenOf: (ref, pin) => this.scene.screenOf(ref, pin),
+      focusOn: (x, y, d) => this.scene.focusOn(x, y, d),
+    });
+    const pending = Tutorial.pending();
+    if (pending === 'new') this.tutorial.start();
+    else if (pending) this.tutorial.resume(pending);
     else if (this.s.idle) this.openOffice('work');
   }
 
@@ -520,6 +524,11 @@ export class Hud {
       case 'help':
         this.showHelp();
         break;
+      case 'tutorial':
+        this.closeModal();
+        if (s.shop.active) s.pauseWork();
+        this.tutorial.start();
+        break;
       case 'close':
         this.closeModal();
         if (s.idle && !this.soldering) this.openOffice('work');
@@ -539,6 +548,7 @@ export class Hud {
         if (confirm('Start a brand-new shop? Your current save will be lost.')) {
           s.newGame();
           this.openOffice('work');
+          this.tutorial.start();
         }
         break;
     }
@@ -680,7 +690,7 @@ export class Hud {
     </ol>
     <p class="muted">Camera: right-drag to orbit, Shift+right-drag or middle-drag to pan, mouse wheel to zoom, <kbd>F</kbd> to reset. Guided mode explains every reading in plain words.</p>
     <p>Between jobs you run the business from the <b>🏪 Office</b>: pick customers, reorder supplies and parts, advertise, buy broken devices to fix and sell (watch for 🔥 demand spikes), and keep donor boards in the store-room for expensive parts.</p>
-    <div class="row"><button class="big" data-act="office">Open the shop</button></div>`);
+    <div class="row"><button class="big" data-act="office">Open the shop</button><button class="big" data-act="tutorial">▶ Play the tutorial</button></div>`);
   }
 
   /** Phone the customer: next-day parts, waiting, or buying the dead device as spares. */

@@ -610,8 +610,9 @@ function analyse(b: BoardState, power: PowerConfig, meter?: Parameters<typeof co
   let warm = warmStarts.get(b);
   if (!warm) warmStarts.set(b, (warm = new Map()));
   const key = `${power.kind}|${meter ? 'meter' : ''}|${b.attached.join(',')}`;
-  const init = warm.get(key);
-  const sol = solveDC(cp.nodeCount, cp.elements, { initial: init?.length === cp.nodeCount ? init : undefined });
+  let init = warm.get(key);
+  if (init?.length !== cp.nodeCount) init = undefined;
+  const sol = solveDC(cp.nodeCount, cp.elements, { initial: init });
   if (sol.converged) warm.set(key, sol.v);
   const v = sol.v;
   const pw: Record<string, number> = {};
