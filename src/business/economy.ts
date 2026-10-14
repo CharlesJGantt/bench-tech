@@ -14,6 +14,7 @@ export type SupplyId =
   | 'corrosion-cleaner'
   | 'thermal-paste'
   | 'spare-screws'
+  | 'liquid-metal'
   | 'wipes'
   | 'brushes';
 
@@ -81,6 +82,15 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     low: 0.6,
     blurb: 'A pea of fresh paste every time a heatsink comes off — putting it back on the old, broken paste cooks the chip.',
   },
+  'liquid-metal': {
+    id: 'liquid-metal',
+    name: 'Liquid metal compound',
+    unit: 'g',
+    pack: { qty: 1, cost: 16, label: '1 g syringe + swabs' },
+    start: 0,
+    low: 0,
+    blurb: 'Gallium alloy some consoles use instead of paste: far better cooling, but it conducts — keep it off everything except the chip, and never tilt a board with it wet.',
+  },
   'spare-screws': {
     id: 'spare-screws',
     name: 'Assorted case screws',
@@ -118,6 +128,8 @@ export const USAGE = {
   ipaFlood: 25,
   /** Thermal paste per heatsink (g). */
   pastePerChip: 0.3,
+  /** Liquid metal per chip (g). */
+  lmPerChip: 0.1,
   /** Dissolved flux one wipe can soak up before it is spent. */
   wipeCapacity: 1.6,
   /** Brush wear per mm of scrubbing. */

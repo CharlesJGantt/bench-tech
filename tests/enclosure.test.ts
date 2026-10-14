@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cloneBoard, createBoard, functionalTest } from '../src/sim/circuit';
+import { cloneBoard, createBoard, functionalTest, operatingPoint, steadyTemps } from '../src/sim/circuit';
 import { BUTTON, DEVICE_LIST, FS5, SBOX } from '../src/sim/devices';
 import {
   applyPaste,
@@ -7,6 +7,8 @@ import {
   boardReachable,
   canRemove,
   closeForMe,
+  coolingFor,
+  spillLiquidMetal,
   drillOut,
   enclosureIssues,
   installItem,
@@ -118,7 +120,7 @@ describe('enclosures', () => {
       installItem(def, lazy, job.board, it.id, it.screw?.length);
     }
     expect(enclosureIssues(def, lazy).hidden.join()).toMatch(/old paste/);
-    expect(applyPaste(def, st, 'hs').ok).toBe(true);
+    expect(applyPaste(def, st, 'hs', 'lm').ok).toBe(true);
     closeForMe(def, st, job.board);
     expect(enclosureIssues(def, st).hidden).toEqual([]);
   });
@@ -191,5 +193,53 @@ describe('enclosures', () => {
     installItem(def, st, b, 's1', st.matFrom!.s1);
     expect(st.damage).toEqual([]);
     expect(st.matFrom!.s1).toBeUndefined();
+  });
+
+  it('the APU heatsink keeps it cool; old paste runs hot; no heatsink means thermal shutdown territory', () => {
+    const def = FS5.enclosure!;
+    const temp = (cooling: Record<string, number> | undefined) => {
+      const b = createBoard(FS5);
+      b.cooling = cooling;
+      const op = operatingPoint(b, { kind: 'adapter' });
+      expect(b.mcu.running).toBe(true);
+      return steadyTemps(b, op).U3;
+    };
+    const st = newEnclosure(def);
+    const fresh = temp(coolingFor(def, st));
+    expect(fresh).toBeGreaterThan(55);
+    expect(fresh).toBeLessThan(80);
+    expect(temp(undefined)).toBeCloseTo(fresh, 5); // factory default = fresh
+    const b = createBoard(FS5);
+    openForMe(def, st, b);
+    // Fan unplugged (to get the shield off): hotter, even with the heatsink on
+    expect(coolingFor(def, st)!.U3).toBeCloseTo(0.325, 5);
+    removeItem(def, st, b, 'hs', 'fingers');
+    const lifted = coolingFor(def, st)!;
+    expect(lifted.U3).toBe(1);
+    expect(temp(lifted)).toBeGreaterThan(95);
+    // Back on the old compound, with the fan running
+    st.lmExposed = [];
+    closeForMe(def, st, b);
+    st.paste.hs = false;
+    const old = temp(coolingFor(def, st));
+    expect(old).toBeGreaterThan(fresh + 10);
+    expect(old).toBeLessThan(95);
+  });
+
+  it('flipping the board with liquid metal wet on the APU shorts the parts around it', () => {
+    const def = FS5.enclosure!;
+    const b = createBoard(FS5);
+    const st = newEnclosure(def);
+    openForMe(def, st, b);
+    expect(removeItem(def, st, b, 'hs', 'fingers').text).toMatch(/Liquid metal/);
+    expect(st.lmExposed).toEqual(['hs']);
+    const text = spillLiquidMetal(def, st, b);
+    expect(text).toMatch(/shorted/);
+    expect(b.jumpers.filter((j) => j.bridge).length).toBe(2);
+    expect(spillLiquidMetal(def, st, b)).toBeNull();
+    // Re-done with ordinary paste: works, but is a comeback
+    applyPaste(def, st, 'hs', 'paste');
+    closeForMe(def, st, b);
+    expect(enclosureIssues(def, st).hidden.join()).toMatch(/liquid metal belongs/);
   });
 });

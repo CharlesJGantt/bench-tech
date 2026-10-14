@@ -79,7 +79,7 @@ export class TeardownStation {
         this.setMode('install');
       }
       const p = t.closest<HTMLElement>('[data-td-paste]');
-      if (p) this.say([s.encPaste(p.dataset.tdPaste!).text]);
+      if (p) this.say([s.encPaste(p.dataset.tdPaste!, p.dataset.tdLm ? 'lm' : 'paste').text]);
       const d = t.closest<HTMLElement>('[data-td-drill]');
       if (d) this.say([s.encDrill(d.dataset.tdDrill!).text]);
     });
@@ -206,7 +206,11 @@ export class TeardownStation {
       extra.push(`<button data-td-len="-1" class="${this.pick === -1 && this.mode === 'install' ? 'on primary' : ''}" title="A new screw of the right length">📦 Spare screw from the box (${Math.floor(s.shop.supplies['spare-screws'])} left)</button>`);
     for (const it of def.items)
       if (it.kind === 'heatsink' && st.removed.includes(it.id))
-        extra.push(st.paste[it.id] ? `<p class="small">✓ Fresh paste on ${esc(it.chip ?? 'the chip')}.</p>` : `<button data-td-paste="${it.id}">Fresh thermal paste on ${esc(it.chip ?? 'the chip')} (${s.shop.supplies['thermal-paste'].toFixed(1)} g left)</button>`);
+        extra.push(
+          st.paste[it.id]
+            ? `<p class="small">✓ Fresh ${st.wrongTim?.includes(it.id) ? 'paste (instead of liquid metal)' : it.lm ? 'liquid metal' : 'paste'} on ${esc(it.chip ?? 'the chip')}.</p>`
+            : `${it.lm ? `${st.lmExposed?.includes(it.id) ? '<p class="note small">⚠ Liquid metal is wet on the chip — do not flip the board.</p>' : ''}<button data-td-paste="${it.id}" data-td-lm="1">Clean + fresh liquid metal on ${esc(it.chip ?? 'the chip')} (${s.shop.supplies['liquid-metal'].toFixed(1)} g left)</button>` : ''}<button data-td-paste="${it.id}">${it.lm ? 'Clean off, use ordinary paste instead' : 'Fresh thermal paste'} on ${esc(it.chip ?? 'the chip')} (${s.shop.supplies['thermal-paste'].toFixed(1)} g left)</button>`,
+        );
     for (const d of s.board.pcbDamage.filter((x) => x.screw))
       extra.push(
         st.removed.includes(d.screw!)

@@ -95,6 +95,8 @@ export interface McuState {
   prev: Record<string, boolean>;
   /** Pin drive: true = high, false = low, absent = high-impedance. */
   outputs: Record<string, boolean>;
+  /** Thermal protection tripped: the chip shut itself down until power is cycled. */
+  tripped?: boolean;
 }
 
 export interface BoardState {
@@ -110,6 +112,11 @@ export interface BoardState {
   /** External equipment hooked up to the device (e.g. a TV on the HDMI port). */
   attached: string[];
   nextJumperId: number;
+  /**
+   * Cooling of chips under heatsinks: multiplier on the package's thermal resistance (set on
+   * the bench from the case; absent = as the factory built it).
+   */
+  cooling?: Record<string, number>;
   /**
    * Damage to the PCB itself (carbonised fibreglass between two nets). It is not a part,
    * so no amount of part swapping fixes it — the board is scrap.
@@ -696,7 +703,7 @@ export function operatingPoint(b: BoardState, power: PowerConfig): OperatingPoin
       const reset = fw.reset ? op.at({ ref: u.ref, pin: fw.reset }) - gnd > 0.6 * vdd : true;
       // Every extra rail must be above its UVLO too (a rail short drags one below it).
       const railsOk = (u.part.rails ?? []).every((r) => op.at({ ref: u.ref, pin: r.pin }) - gnd >= (m.running ? r.uvlo * 0.95 : r.uvlo));
-      running = vdd >= lo && vdd <= fw.vmax && reset && railsOk;
+      running = vdd >= lo && vdd <= fw.vmax && reset && railsOk && !m.tripped;
       for (const pin of fw.inputs) inputs[pin] = op.at({ ref: u.ref, pin }) - gnd > 0.5 * vdd;
     }
     const before = JSON.stringify([m.running, m.outputs]);
@@ -853,8 +860,12 @@ export const AMBIENT = 25;
 export function steadyTemps(b: BoardState, op: OperatingPoint): Record<string, number> {
   const t: Record<string, number> = {};
   for (const c of Object.values(b.comps)) {
-    const p = c.part ? Math.max(0, op.power[c.ref] ?? 0) : 0;
-    t[c.ref] = AMBIENT + p * (THETA[c.part?.pkg ?? 'TP'] ?? 100);
+    let p = c.part ? Math.max(0, op.power[c.ref] ?? 0) : 0;
+    // A big chip running its firmware makes real heat (its cooler normally takes it away)
+    const hot = c.part?.heatW && b.device.firmware?.ref === c.ref && b.mcu.running;
+    if (hot) p += c.part!.heatW!;
+    const k = b.cooling?.[c.ref] ?? (c.part?.heatW ? 0.25 : 1);
+    t[c.ref] = AMBIENT + p * (THETA[c.part?.pkg ?? 'TP'] ?? 100) * k;
   }
   return t;
 }

@@ -93,7 +93,7 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       screw('s5', 'Heatsink screw (long)', [94, 30], 15, 15, ['side']),
       screw('s6', 'Heatsink screw (long)', [118, 30], 15, 15, ['side']),
       { id: 'shield', kind: 'shield', label: 'Metal shield', at: [70, 43], size: [134, 80], needs: ['fan', 's1', 's2', 's3', 's4', 's5', 's6'], covers: true },
-      { id: 'hs', kind: 'heatsink', label: 'APU heatsink', at: [106, 18], size: [30, 24], chip: 'U3', needs: ['shield'] },
+      { id: 'hs', kind: 'heatsink', label: 'APU heatsink', at: [106, 18], size: [30, 24], chip: 'U3', lm: true, needs: ['shield'] },
     ],
   },
 };

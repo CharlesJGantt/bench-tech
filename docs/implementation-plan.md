@@ -94,7 +94,12 @@ Small systems that make *every* existing board better right away.
 
 **Step 1 — ✅ done:** `src/sim/enclosure.ts` (model) + `src/sim/enclosures.ts` (all six devices) + `src/ui/teardown.ts` (top-down teardown station: tools 1–4, Put back 5, screw mat, paste, drill-out; guided "Open it for me / Close it up for me" and warnings before mistakes). Jobs arrive closed (`Job.enclosure`); probing/soldering/flipping need the case open; the closed case shows as a smoked shell in 3D. Mistakes: snapped clips, cracked cold-pried panels, torn ribbons/wires (module fault), broken latches, long screws punching inner layers (`pcbDamage.screw`, fixed by drilling the via out with the micro drill), heatsinks back on old paste. Torn warranty stickers on intake are a clue. The tutorial lamp arrives open.
 **Also done:** stripped screws from previous repairers (screw extractor, $14; the screw is ruined), spare screw box supply, magnetic screw mat ($12: each screw returns to its own hole).
-**Still to do:** Blender models for shells/screws/shields/heatsinks/fans and a 3D teardown; battery-connected sparks; liquid metal; thermal paste affecting temperatures in the sim (today it is a comeback).
+**Step 2 — ✅ done:**
+- Thermal: big chips have `heatW` (FS5 APU 3.6 W); cooling multiplier per chip from the case (`coolingFor`: fresh 0.25, LM-chip on paste 0.32, old paste 0.38, no heatsink 1, fan off x1.3). Above 95 °C the chip trips thermal protection (`McuState.tripped`) until power is cycled. Customer test assumes factory cooling, so bad paste stays a comeback.
+- Liquid metal (FS5 APU): lifting the heatsink leaves it wet; flipping the board spills it across the two nearest parts (real bridges); re-do with liquid metal (supply) or ordinary paste (comeback: runs hot).
+- Battery live: soldering / microscope with the battery plugged in warns (guided) and can spark (35 %): blows a small part or scorches.
+- Blender `enc_*` models (shell, screw, shield, heatsink, fan, JST plug, ribbon, rubber pad, sticker), placed per device in 3D and hidden as they come off; the shell is a tinted translucent case.
+**Later (optional):** clicking case parts directly in 3D (the 2D station does the interaction today).
 
 ### Model
 - Each device gets an **enclosure graph**: parts (shells, screws, clips, adhesive panels, shields, heatsink, fan, battery, ribbon cables, daughterboards, thermal compound) with **prerequisites**. For example: shield needs its 6 screws out → heatsink needs the shield off → board lifts once the cables are unplugged.

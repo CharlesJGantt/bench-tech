@@ -29,6 +29,8 @@ export interface EncItem {
   latch?: boolean;
   /** Heatsink: the chip under it (thermal paste). */
   chip?: string;
+  /** Heatsink: the factory used liquid metal, not paste. */
+  lm?: boolean;
   /** The board cannot be reached until this is off. */
   covers?: boolean;
   /** Board nets a long screw in this hole punches into (internal layers). */
@@ -64,6 +66,10 @@ export interface EnclosureState {
   stripped?: string[];
   /** Which hole each screw on the mat came out of (a magnetic screw mat keeps them in place). */
   matFrom?: Record<string, number>;
+  /** Lifted liquid-metal heatsinks: the metal is still wet on the chip (tilt the board and it runs). */
+  lmExposed?: string[];
+  /** Liquid-metal chips re-done with ordinary paste (they run hot). */
+  wrongTim?: string[];
 }
 
 export interface EncOptions {
@@ -241,6 +247,10 @@ export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState,
     case 'heatsink':
       if (tool === 'heat') return { ok: false, text: 'No need to heat it — just lift it off.' };
       st.paste[id] = false;
+      if (it.lm) {
+        (st.lmExposed ??= []).push(id);
+        return off(`${it.label} lifted off. Liquid metal glistens on ${it.chip ?? 'the chip'} — do not tilt or flip the board until it is cleaned up and redone.`);
+      }
       return off(`${it.label} lifted off. The old thermal paste is broken now — it needs fresh paste before it goes back.`);
     default:
       if (tool === 'heat') return { ok: false, text: 'No need to heat it.' };
@@ -303,12 +313,71 @@ export function installItem(def: EnclosureDef, st: EnclosureState, b: BoardState
   }
 }
 
-/** Fresh thermal paste on the chip under a lifted heatsink. */
-export function applyPaste(def: EnclosureDef, st: EnclosureState, id: string): EncResult {
+/** Fresh thermal compound on the chip under a lifted heatsink (the old one is cleaned off first). */
+export function applyPaste(def: EnclosureDef, st: EnclosureState, id: string, compound: 'paste' | 'lm' = 'paste'): EncResult {
   const it = item(def, id);
   if (it.kind !== 'heatsink' || !st.removed.includes(id)) return { ok: false, text: 'Lift the heatsink off first.' };
   st.paste[id] = true;
+  st.lmExposed = (st.lmExposed ?? []).filter((x) => x !== id);
+  st.wrongTim = (st.wrongTim ?? []).filter((x) => x !== id);
+  if (compound === 'lm') return { ok: true, text: `Old metal cleaned off ${it.chip ?? 'the chip'} with IPA swabs; a thin, even film of fresh liquid metal brushed on.` };
+  if (it.lm) {
+    st.wrongTim.push(id);
+    return { ok: true, text: `Liquid metal cleaned off; ordinary paste applied on ${it.chip ?? 'the chip'} instead. It works, but it will run hotter than the factory liquid metal.` };
+  }
   return { ok: true, text: `Old paste wiped off ${it.chip ?? 'the chip'}; a fresh pea of paste applied.` };
+}
+
+/**
+ * The board was tilted or flipped with liquid metal still wet on a chip: it runs off and
+ * bridges the pins of nearby parts (real shorts to wick away).
+ */
+export function spillLiquidMetal(def: EnclosureDef, st: EnclosureState, b: BoardState): string | null {
+  if (!st.lmExposed?.length) return null;
+  const hit: string[] = [];
+  for (const id of st.lmExposed) {
+    const chip = item(def, id).chip;
+    const c = chip ? b.comps[chip] : null;
+    if (!c) continue;
+    // The two nearest small parts with two pins on different nets
+    const near = Object.values(b.comps)
+      .filter((o) => o !== c && o.part && !o.def.mates && Object.keys(o.def.pins).length >= 2)
+      .filter((o) => {
+        const [p1, p2] = Object.keys(o.def.pins);
+        return o.def.pins[p1] !== o.def.pins[p2];
+      })
+      .sort((a, z) => Math.hypot(a.def.x - c.def.x, a.def.y - c.def.y) - Math.hypot(z.def.x - c.def.x, z.def.y - c.def.y))
+      .slice(0, 2);
+    for (const o of near) {
+      const [p1, p2] = Object.keys(o.def.pins);
+      b.jumpers.push({ id: b.nextJumperId++, a: { ref: o.ref, pin: p1 }, b: { ref: o.ref, pin: p2 }, cold: false, bridge: true });
+      hit.push(o.ref);
+    }
+  }
+  st.lmExposed = [];
+  return hit.length ? `The liquid metal ran off the chip and across ${hit.join(' and ')} — their pins are shorted now. Wick it off under the microscope.` : null;
+}
+
+/**
+ * How well each chip under a heatsink is cooled, as a multiplier on its package's thermal
+ * resistance: fresh compound 0.25, ordinary paste where liquid metal belongs 0.32, old broken
+ * paste 0.38, no heatsink 1. A missing or unplugged fan makes it 1.3x worse.
+ */
+export function coolingFor(def: EnclosureDef | undefined, st: EnclosureState | undefined): Record<string, number> | undefined {
+  if (!def || !st) return undefined;
+  const out: Record<string, number> = {};
+  const hasFan = def.items.some((f) => f.kind === 'fan');
+  const fanOff = hasFan && def.items.some((i) => (i.kind === 'fan' || (i.kind === 'cable' && !i.module)) && st.removed.includes(i.id));
+  for (const it of def.items) {
+    if (it.kind !== 'heatsink' || !it.chip) continue;
+    if (st.removed.includes(it.id)) {
+      out[it.chip] = 1;
+      continue;
+    }
+    const k = !st.paste[it.id] ? 0.38 : st.wrongTim?.includes(it.id) ? 0.32 : 0.25;
+    out[it.chip] = k * (fanOff ? 1.3 : 1);
+  }
+  return out;
 }
 
 /**
@@ -352,7 +421,7 @@ export function openForMe(def: EnclosureDef, st: EnclosureState, b: BoardState, 
 export function closeForMe(def: EnclosureDef, st: EnclosureState, b: BoardState, spares = 0): string[] & { sparesUsed?: number } {
   const log: string[] & { sparesUsed?: number } = [];
   log.sparesUsed = 0;
-  for (const it of def.items) if (it.kind === 'heatsink' && st.removed.includes(it.id) && !st.paste[it.id]) log.push(applyPaste(def, st, it.id).text);
+  for (const it of def.items) if (it.kind === 'heatsink' && st.removed.includes(it.id) && !st.paste[it.id]) log.push(applyPaste(def, st, it.id, it.lm ? 'lm' : 'paste').text);
   for (let guard = 0; guard < 200 && st.removed.length; guard++) {
     const it = def.items.find((x) => canInstall(def, st, x.id));
     if (!it) break;
@@ -384,6 +453,7 @@ export function enclosureIssues(def: EnclosureDef | undefined, st: EnclosureStat
   if (lost > 0) notes.push(lost === 1 ? `A screw is missing (${empty[0].label.toLowerCase()}).` : `${lost} case screws are missing.`);
   for (const it of def.items) {
     if (it.kind === 'heatsink' && !st.removed.includes(it.id) && !st.paste[it.id]) hidden.push(`${it.label} went back on the old paste — the chip will overheat.`);
+    if (it.kind === 'heatsink' && !st.removed.includes(it.id) && st.wrongTim?.includes(it.id)) hidden.push(`Ordinary paste on ${it.chip ?? 'the chip'} where liquid metal belongs — it runs hot and throttles.`);
   }
   for (const d of st.damage) {
     if (d.kind === 'clip') notes.push('Snapped case clips — the case creaks.');

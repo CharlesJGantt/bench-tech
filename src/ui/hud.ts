@@ -187,8 +187,13 @@ export class Hud {
       s.selected = null;
       s.jumperStart = null;
     }
+    if (!this.scene.flipped && s.enc?.lmExposed?.length && s.guided && !confirm('Liquid metal is still wet on the chip — turn the board over and it will run off onto the parts around it. Flip it anyway?')) return;
     this.scene.toggleFlip();
     s.addLog('action', this.scene.flipped ? 'Flipped the board over to look at the underside.' : 'Turned the board back component-side up.');
+    if (this.scene.flipped) {
+      const spill = s.onFlip();
+      if (spill) this.toast(spill, 'bad');
+    }
     s.emit();
   }
 
@@ -292,6 +297,7 @@ export class Hud {
           const a = s.jumperStart;
           s.jumperStart = null;
           if (a.ref === point.ref && a.pin === point.pin) break;
+          if (!this.liveBoardCheck(a.ref)) break;
           void this.solder(`Solder jumper ${pointLabel(s, a)} → ${pointLabel(s, point)}`, null).then((q) => q && this.toast(s.doJumper(a, point, q)));
         }
         break;
@@ -582,12 +588,26 @@ export class Hud {
 
   // ------------------------------------------------------------------ rework station
 
+  /** Soldering with the battery still plugged in: warn (guided), then maybe spark. False = cancelled. */
+  private liveBoardCheck(ref: string | null): boolean {
+    const s = this.s;
+    if (!s.batteryLive) return true;
+    if (s.guided && !confirm('The battery is still plugged in, so the board is live even with the bench power off. Soldering now can spark and blow parts — unplug the battery first (Case → battery plug).\n\nSolder anyway?')) return false;
+    const spark = s.batterySpark(ref);
+    if (spark) {
+      this.toast(spark, 'bad');
+      sizzle();
+    }
+    return true;
+  }
+
   private openRework(ref: string): void {
     const s = this.s;
     if (!s.reachable) {
       this.toast('Open the case first (🔧 Case on the ticket) — you cannot get a microscope on a board inside its case.');
       return;
     }
+    if (!this.liveBoardCheck(ref)) return;
     const m = $('#modal');
     m.className = 'show rework';
     this.soldering = true;

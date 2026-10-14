@@ -613,6 +613,113 @@ psu()
 bench()
 
 # ---------------------------------------------------------------------------
+# Enclosure items (src/sim/enclosures.ts). Panels are modelled at a nominal size
+# and scaled per device at runtime: shell 100x100 mm, shield/heatsink/pad 10x10 mm,
+# fan 30 mm. Screws, plugs, ribbons and stickers are real size.
+# ---------------------------------------------------------------------------
+
+M["shell"] = mat("case_plastic", srgb("f0f0ee"), 0.0, 0.35)
+M["shieldsteel"] = mat("shield_tinplate", srgb("c9ced3"), 0.55, 0.32)
+M["recess"] = mat("screw_recess", srgb("26282b"), 0.2, 0.6)
+M["sticker"] = mat("sticker_foil", srgb("dde3e8"), 0.6, 0.25)
+
+
+def enc_shell():
+    n = "enc_shell"
+    e = item(n)
+    m = M["shell"]
+    box(f"{n}_top", e, m, 0, 0, 14, 100, 100, 2, bevel=0.8)
+    for sx in (-1, 1):
+        box(f"{n}_wx{sx}", e, m, sx * 49, 0, 0, 2, 100, 14)
+        box(f"{n}_wy{sx}", e, m, 0, sx * 49, 0, 100, 2, 14)
+
+
+def enc_screw():
+    n = "enc_screw"
+    e = item(n)
+    cyl(f"{n}_head", e, M["steel"], 0, 0, 0, 1.4, 0.45, n=24)
+    cyl(f"{n}_dome", e, M["steel"], 0, 0, 0.45, 1.25, 0.3, n=24, r2=0.9)
+    box(f"{n}_x", e, M["recess"], 0, 0, 0.6, 1.3, 0.28, 0.2)
+    box(f"{n}_y", e, M["recess"], 0, 0, 0.6, 0.28, 1.3, 0.2)
+
+
+def enc_shield():
+    n = "enc_shield"
+    e = item(n)
+    m = M["shieldsteel"]
+    box(f"{n}_plate", e, m, 0, 0, 0, 10, 10, 0.25)
+    for sx in (-1, 1):
+        box(f"{n}_sx{sx}", e, m, sx * 4.95, 0, -1.6, 0.1, 10, 1.6)
+        box(f"{n}_sy{sx}", e, m, 0, sx * 4.95, -1.6, 10, 0.1, 1.6)
+    # a raised stamped panel (scales cleanly with the shield)
+    box(f"{n}_emboss", e, m, 0, 0, 0.25, 8.6, 8.6, 0.12, bevel=0.05)
+
+
+def enc_heatsink():
+    n = "enc_heatsink"
+    e = item(n)
+    m = M["alu"]
+    box(f"{n}_base", e, m, 0, 0, 0, 10, 10, 1.2, bevel=0.1)
+    for i in range(7):
+        box(f"{n}_fin{i}", e, m, -4.5 + i * 1.5, 0, 1.2, 0.5, 10, 6)
+
+
+def enc_fan():
+    n = "enc_fan"
+    e = item(n)
+    k = M["blackplastic"]
+    for sx in (-1, 1):
+        box(f"{n}_fx{sx}", e, k, sx * 13.75, 0, 0, 2.5, 30, 8)
+        box(f"{n}_fy{sx}", e, k, 0, sx * 13.75, 0, 30, 2.5, 8)
+    cyl(f"{n}_ring", e, k, 0, 0, 0, 13.6, 0.8, n=40)
+    cyl(f"{n}_hub", e, k, 0, 0, 0.8, 5.5, 7, n=32)
+    cyl(f"{n}_label", e, M["sticker"], 0, 0, 7.8, 4, 0.05, n=32)
+    for i in range(7):
+        b = box(f"{n}_blade{i}", e, k, 0, 0, 2.5, 7.5, 2.4, 0.5)
+        # blades: rotate each about the hub and tilt it
+        b.data.transform(__import__("mathutils").Matrix.Translation((9, 0, 0)))
+        b.rotation_euler = (0.35, 0, 2 * math.pi * i / 7)
+
+
+def enc_plug():
+    n = "enc_jst"
+    e = item(n)
+    box(f"{n}_body", e, M["nylon"], 0, 0, 0, 6, 4.2, 3.2, bevel=0.2)
+    for i, w in enumerate((M["wire_red"], M["wire_black"])):
+        cyl(f"{n}_w{i}", e, w, -1.2 + i * 2.4, 2.1, 1.6, 0.55, 12, n=12, axis="y")
+
+
+def enc_ribbon():
+    n = "enc_ribbon"
+    e = item(n)
+    box(f"{n}_flex", e, M["fpc"], 0, 3, 0.3, 8, 12, 0.12)
+    box(f"{n}_stiff", e, M["blackplastic"], 0, -2.2, 0.42, 8, 2, 0.2)
+
+
+def enc_pad():
+    n = "enc_pad"
+    e = item(n)
+    box(f"{n}_pad", e, M["rubber"], 0, 0, 0, 10, 10, 1.2, bevel=0.3)
+
+
+def enc_sticker():
+    n = "enc_sticker"
+    e = item(n)
+    box(f"{n}_foil", e, M["sticker"], 0, 0, 0, 10, 6, 0.05)
+    box(f"{n}_text", e, M["recess"], 0, 0, 0.05, 7, 1, 0.01)
+
+
+enc_shell()
+enc_screw()
+enc_shield()
+enc_heatsink()
+enc_fan()
+enc_plug()
+enc_ribbon()
+enc_pad()
+enc_sticker()
+
+# ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
 

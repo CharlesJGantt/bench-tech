@@ -2,6 +2,7 @@ import { DL12 } from '../sim/devices';
 import {
   applyStress,
   createBoard,
+  hasInternalPower,
   measure,
   operatingPoint,
   powerDown,
@@ -18,7 +19,7 @@ import { generateJob, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
-import { applyPaste, boardReachable, closeForMe, drillOut, installItem, openForMe, removeItem, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { applyPaste, boardReachable, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -44,6 +45,9 @@ import { explainReading } from './explain';
 import { scopeAt, type Waveform } from '../sim/scope';
 
 export type PowerMode = 'off' | 'adapter' | 'psu-jack' | 'psu-clips';
+/** A big chip shuts itself down above this (°C). */
+const THERMAL_TRIP = 95;
+
 export type Tool = 'inspect' | 'probe' | 'iron' | 'jumper' | 'clip' | 'ipa' | 'scope';
 
 export interface LogEntry {
@@ -428,6 +432,7 @@ export class Session {
   setPowerMode(m: PowerMode): void {
     if (m === this.powerMode) return;
     this.powerMode = m;
+    if (m === 'off') this.board.mcu.tripped = false;
     const names: Record<PowerMode, string> = { off: 'Power off', adapter: 'Plugged in the 12 V adapter', 'psu-jack': 'Bench PSU connected to the DC jack', 'psu-clips': 'Bench PSU on clip leads' };
     this.addLog('action', names[m]);
     this.recompute();
@@ -561,6 +566,7 @@ export class Session {
   /** Advance time: thermal lag, thermal damage, IPA evaporation, electricity use. */
   tick(dt: number): void {
     if (this.op) this.shop.usage.powerSeconds += dt;
+    this.board.cooling = coolingFor(this.encDef, this.enc);
     const target = this.op ? steadyTemps(this.board, this.op) : {};
     const k = 1 - Math.exp(-dt / 1.8);
     let changed = false;
@@ -575,6 +581,14 @@ export class Session {
         const rate = 0.025 + Math.max(0, next - 30) * 0.012;
         this.wet[ref] = Math.max(0, w - rate * dt);
       }
+    }
+    // Thermal protection: a big chip that gets too hot shuts itself down until power is cycled
+    const fw = this.board.device.firmware?.ref;
+    if (this.op && fw && this.board.mcu.running && this.board.comps[fw]?.part?.heatW && (this.temps[fw] ?? 0) > THERMAL_TRIP) {
+      this.board.mcu.tripped = true;
+      this.addLog('event', `⚠ ${fw} hit ${Math.round(this.temps[fw])}°C and shut itself down (thermal protection). Is its heatsink on, with good paste — and is the fan running?`);
+      this.recompute();
+      return;
     }
     if (this.op) {
       const ev = applyStress(this.board, this.op, this.temps);
@@ -672,14 +686,53 @@ export class Session {
     return this.encDone(r);
   }
 
-  encPaste(id: string): EncResult {
+  encPaste(id: string, compound: 'paste' | 'lm' = 'paste'): EncResult {
     const def = this.encDef;
     const st = this.enc;
     if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
-    if (this.shop.supplies['thermal-paste'] < USAGE.pastePerChip) return { ok: false, text: 'Out of thermal paste — order a syringe from the office.' };
-    const r = applyPaste(def, st, id);
-    if (r.ok) useSupply(this.shop, 'thermal-paste', USAGE.pastePerChip);
+    const [sup, amt, name] = compound === 'lm' ? (['liquid-metal', USAGE.lmPerChip, 'liquid metal'] as const) : (['thermal-paste', USAGE.pastePerChip, 'thermal paste'] as const);
+    if (this.shop.supplies[sup] < amt) return { ok: false, text: `Out of ${name} — order some from the office.` };
+    const r = applyPaste(def, st, id, compound);
+    if (r.ok) useSupply(this.shop, sup, amt);
     return this.encDone(r);
+  }
+
+  /** Turning the board over: wet liquid metal on a chip runs off and shorts things. */
+  onFlip(): string | null {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return null;
+    const spill = spillLiquidMetal(def, st, this.board);
+    if (spill) this.encDone({ ok: true, text: spill, damage: 'punch' });
+    return spill;
+  }
+
+  /** Is a battery still plugged in (the board is live even with the bench power off)? */
+  get batteryLive(): boolean {
+    return !this.idle && hasInternalPower(this.board);
+  }
+
+  /**
+   * Soldering on a board with its battery plugged in: the iron or tweezers can bridge a live
+   * pad to ground. Returns what happened (null = got away with it).
+   */
+  batterySpark(ref: string | null, rand = Math.random): string | null {
+    if (!this.batteryLive || rand() > 0.35) return null;
+    const c = ref ? this.board.comps[ref] : null;
+    let text: string;
+    if (c?.part && ['resistor', 'capacitor', 'fuse', 'inductor', 'diode'].includes(c.part.kind)) {
+      c.fault = { type: 'open' };
+      if (!c.marks.includes('scorch')) c.marks.push('scorch');
+      text = `⚡ Spark! The battery was still connected — the tweezers shorted a live pad and ${c.ref} blew open. Unplug the battery before soldering.`;
+    } else {
+      if (c && !c.marks.includes('scorch')) c.marks.push('scorch');
+      text = '⚡ Spark! The battery was still connected and the tip touched a live pad. Nothing seems dead this time — unplug the battery before soldering.';
+    }
+    this.addLog('event', text);
+    this.recompute();
+    this.save();
+    this.emit();
+    return text;
   }
 
   encDrill(id: string): EncResult {
@@ -706,9 +759,13 @@ export class Session {
     const def = this.encDef;
     const st = this.enc;
     if (!def || !st) return [];
-    const needPaste = def.items.filter((i) => i.kind === 'heatsink' && st.removed.includes(i.id) && !st.paste[i.id]).length;
-    if (needPaste && this.shop.supplies['thermal-paste'] < needPaste * USAGE.pastePerChip) return ['Out of thermal paste — order a syringe before closing it up.'];
-    if (needPaste) useSupply(this.shop, 'thermal-paste', needPaste * USAGE.pastePerChip);
+    const sinks = def.items.filter((i) => i.kind === 'heatsink' && st.removed.includes(i.id) && !st.paste[i.id]);
+    const lm = sinks.filter((i) => i.lm).length;
+    const paste = sinks.length - lm;
+    if (lm && this.shop.supplies['liquid-metal'] < lm * USAGE.lmPerChip) return ['This chip uses liquid metal and you have none — order some (or re-paste it yourself with ordinary paste) before closing it up.'];
+    if (paste && this.shop.supplies['thermal-paste'] < paste * USAGE.pastePerChip) return ['Out of thermal paste — order a syringe before closing it up.'];
+    if (lm) useSupply(this.shop, 'liquid-metal', lm * USAGE.lmPerChip);
+    if (paste) useSupply(this.shop, 'thermal-paste', paste * USAGE.pastePerChip);
     const log = closeForMe(def, st, this.board, Math.floor(this.shop.supplies['spare-screws']));
     if (log.sparesUsed) useSupply(this.shop, 'spare-screws', log.sparesUsed);
     this.encDone({ ok: true, text: log.length ? `Closed it up: ${log.length} steps.` : '' });

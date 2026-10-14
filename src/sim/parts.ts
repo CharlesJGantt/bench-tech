@@ -84,6 +84,11 @@ export interface PartSpec {
   /** Swapped by hand (plugged in), not soldered: batteries, screens, speakers, LED strips. */
   plugIn?: boolean;
   /**
+   * Heat a big chip makes while running its firmware (W, game-scaled). It needs its
+   * heatsink: without one it hits thermal shutdown in seconds.
+   */
+  heatW?: number;
+  /**
    * Extra supply rails of a big chip (processor, SoC). The chip only boots when every rail is
    * above its UVLO; each rail draws `amps` while the chip runs and `standbyAmps` otherwise.
    */
@@ -251,6 +256,7 @@ export const PARTS: Record<string, PartSpec> = {
     label: 'Funstation 5 APU',
     marking: 'FS5-APU',
     cost: 95,
+    heatW: 3.6,
     pins: ['VDD', 'RTEN', 'VID', 'HPD', 'LED', 'BTN', 'NC7', 'NC8', 'NC9', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15', 'GND'],
     description: 'The Funstation 5 main processor (CPU + GPU). Sends video to the retimer (VID) when the TV is detected on HPD, and enables the retimer (RTEN). Extremely expensive — usually sourced from donor boards.',
   },

@@ -66,7 +66,8 @@ export class BenchScene {
   private templates = new Map<string, pc.Entity>();
   private geo!: BoardGeometry;
   private boardCanvas = document.createElement('canvas');
-  private caseEnt: pc.Entity | null = null;
+  /** Case items on the board (Blender `enc_*` models), by enclosure item id. */
+  private encEnts = new Map<string, pc.Entity>();
 
   /** The current top-side board texture (for the teardown view). */
   boardArtCanvas(): HTMLCanvasElement {
@@ -285,6 +286,89 @@ export class BenchScene {
   }
 
   /** (Re)build everything that depends on which device is on the bench. */
+  /** Give every mesh of an entity one material (case tint / translucency). */
+  private paint(e: pc.Entity, m: pc.Material): void {
+    for (const r of e.findComponents('render') as pc.RenderComponent[]) for (const mi of r.meshInstances) mi.material = m;
+  }
+
+  /**
+   * The case parts over the board, from the device's enclosure: smoked translucent shell
+   * (you can watch the board work but not touch it), shields, heatsinks, fan, screws, plugs.
+   */
+  private buildEnclosure(dev: DeviceDef): void {
+    this.encEnts.clear();
+    const def = dev.enclosure;
+    if (!def) return;
+    const shellTop = CASE_H - BOARD_T - 1;
+    const shellMat = new pc.StandardMaterial();
+    shellMat.diffuse = new pc.Color().fromString(def.color);
+    shellMat.opacity = 0.42;
+    shellMat.blendType = pc.BLEND_NORMAL;
+    shellMat.depthWrite = false;
+    shellMat.gloss = 0.6;
+    shellMat.update();
+    const W = (x: number) => x - dev.width / 2;
+    const H = (y: number) => y - dev.height / 2;
+    // Height of the top of each item (screws sit on whatever they hold down)
+    const top: Record<string, number> = { shell: shellTop, clips: shellTop, adhesive: shellTop + 1.2, sticker: shellTop + 0.05, shield: 11.25, heatsink: 8.8, fan: 8.5, cable: 3.4, screw: 0 };
+    const model: Record<string, string> = {
+      shell: 'enc_shell',
+      clips: 'enc_shell',
+      adhesive: 'enc_pad',
+      shield: 'enc_shield',
+      heatsink: 'enc_heatsink',
+      fan: 'enc_fan',
+      sticker: 'enc_sticker',
+      screw: 'enc_screw',
+    };
+    for (const it of def.items) {
+      const name = it.kind === 'cable' ? (it.latch ? 'enc_ribbon' : 'enc_jst') : model[it.kind];
+      if (!name || !this.templates.has(name)) continue;
+      const e = this.clone(name);
+      const [sw, sh] = it.size ?? [0, 0];
+      let y = 0;
+      switch (it.kind) {
+        case 'shell':
+        case 'clips':
+          e.setLocalScale((dev.width + 4) / 100, 1, (dev.height + 4) / 100);
+          y = -BOARD_T - 1;
+          this.paint(e, shellMat);
+          break;
+        case 'adhesive':
+          e.setLocalScale(sw / 10, 1, sh / 10);
+          y = shellTop;
+          break;
+        case 'shield':
+          e.setLocalScale(sw / 10, 1, sh / 10);
+          y = 11;
+          break;
+        case 'heatsink':
+          e.setLocalScale(sw / 10, 1, sh / 10);
+          y = 1.6;
+          break;
+        case 'fan':
+          e.setLocalScale(sw / 30, 1, sh / 30);
+          y = 0.5;
+          break;
+        case 'sticker':
+          y = shellTop;
+          break;
+        case 'cable':
+          y = 2.5;
+          break;
+        case 'screw': {
+          // On top of the panel it holds down
+          const held = def.items.find((x) => x.needs?.includes(it.id));
+          y = held ? (top[held.kind] ?? 0) : shellTop;
+          break;
+        }
+      }
+      e.setLocalPosition(W(it.at[0]), y, H(it.at[1]));
+      this.boardGroup.addChild(e);
+      this.encEnts.set(it.id, e);
+    }
+  }
+
   private buildBoard(): void {
     const app = this.app;
     const dev = this.session.board.device;
@@ -320,24 +404,7 @@ export class BenchScene {
     this.boardGroup = new pc.Entity('board-group');
     app.root.addChild(this.boardGroup);
     this.boardGroup.addChild(body);
-    // The closed case: a smoked shell over the board (you can watch it work, not touch it)
-    this.caseEnt = null;
-    if (dev.enclosure) {
-      const cm = new pc.StandardMaterial();
-      const c = new pc.Color().fromString(dev.enclosure.color);
-      cm.diffuse = c;
-      cm.opacity = 0.42;
-      cm.blendType = pc.BLEND_NORMAL;
-      cm.depthWrite = false;
-      cm.gloss = 0.6;
-      cm.update();
-      const shell = new pc.Entity('case');
-      shell.addComponent('render', { type: 'box', material: cm, castShadows: false });
-      shell.setLocalScale(dev.width + 4, CASE_H, dev.height + 4);
-      shell.setLocalPosition(0, CASE_H / 2 - BOARD_T - 1, 0);
-      this.boardGroup.addChild(shell);
-      this.caseEnt = shell;
-    }
+    this.buildEnclosure(dev);
     const face = new pc.Entity('pcb-top');
     face.addComponent('render', { type: 'plane', material: top, castShadows: false, receiveShadows: true });
     face.setLocalScale(dev.width, 1, dev.height);
@@ -889,7 +956,9 @@ export class BenchScene {
     const s = this.session;
     s.tick(Math.min(dt, 0.1));
     this.syncComponents();
-    if (this.caseEnt) this.caseEnt.enabled = !s.reachable;
+    // Case items: shown while they are on (no case at all on idle / old jobs)
+    const enc = s.enc;
+    for (const [id, e] of this.encEnts) e.enabled = !!enc && !enc.removed.includes(id);
 
     // LEDs + lamp
     const op = s.op;
