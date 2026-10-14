@@ -4,7 +4,10 @@
  * charge light, and a screen module on a ribbon connector whose backlight is switched by
  * a MOSFET. Fictional product.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { ldoRail } from '../blocks/power';
+import { liIonCharger, usbInput } from '../blocks/usb';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { addMark, type Rng, type Variant } from '../faults';
 
@@ -189,7 +192,7 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-export const BUTTON: DeviceDef = {
+export const BUTTON = device({
   id: 'button',
   name: 'Button Handheld Console',
   category: 'Consoles',
@@ -197,28 +200,32 @@ export const BUTTON: DeviceDef = {
   width: 120,
   height: 72,
   blocks: [
-    { name: 'USB-C / CHARGER', x: 2, y: 2, w: 48, h: 32 },
+    place('USB', usbInput({ connector: 'usbc', fuse: 'F-3A', tvs: 'D-TVS5' }), [2, 2], { out: 'VBUS' }, { conn: 'J1', fuse: 'F1', tvs: 'D1', tp: 'TP1' }, {
+      faults: false,
+      outline: { name: 'USB-C / CHARGER', x: 2, y: 2, w: 48, h: 32 },
+      layout: { conn: [9, 6], fuse: [20, 9], tvs: [25, 17, 270], tp: [13, 26] },
+    }),
+    place(
+      'CHG',
+      liIonCharger({ sense: true, cin: 'C-10U-25', cbat: 'C-22U-10', battery: true }),
+      [28, 2],
+      { vin: 'VBUS', bat: 'VSYS', stat: 'CHG' },
+      { sense: 'R1', cin: 'C1', chg: 'U1', cbat: 'C2', tp: 'TP2', conn: 'J2', pack: 'BT1' },
+      { faults: false, outline: null, layout: { sense: [31, 9], cin: [36, 17, 90], chg: [43, 9], cbat: [46, 20, 90], tp: [40, 28], conn: [55, 6], pack: [74, 21] } },
+    ),
+    place('3V3', ldoRail({ vin: 3.8, cin: 'C-1U' }), [2, 36], { vin: 'VSYS', out: '3V3' }, { reg: 'U2', cin: 'C3', cout: 'C4', tp: 'TP3' }, {
+      faults: false,
+      outline: null,
+      layout: { reg: [12, 45, 180], cin: [4, 41, 90], cout: [20, 47, 90], tp: [24, 40] },
+    }),
+  ],
+  outlines: [
     { name: 'BATTERY', x: 50, y: 2, w: 42, h: 32 },
     { name: 'SoC', x: 2, y: 36, w: 46, h: 34 },
     { name: 'SCREEN / BACKLIGHT', x: 48, y: 36, w: 70, h: 34 },
   ],
-  components: [
-    c('J1', 'J-USBC', 'USB', 9, 6, 0, { VBUS: 'VBUS_J', CC: 'CC', GND: 'GND', SHLD: 'GND' }, 'USB-C charging port'),
-    c('F1', 'F-3A', 'USB', 20, 9, 0, { '1': 'VBUS_J', '2': 'VBUS' }, 'USB input fuse'),
-    c('D1', 'D-TVS5', 'USB', 25, 17, 270, { A: 'GND', K: 'VBUS' }, 'USB surge clamp'),
-    c('R1', 'R-0R05-1206', 'CHARGER', 31, 9, 0, { '1': 'VBUS', '2': 'VBUS_S' }, 'Charge current-sense resistor'),
-    c('C1', 'C-10U-25', 'CHARGER', 36, 17, 90, { '1': 'VBUS_S', '2': 'GND' }, 'Charger input capacitor'),
-    c('U1', 'U-TC41', 'CHARGER', 43, 9, 0, { VBUS: 'VBUS_S', GND: 'GND', BAT: 'VSYS', STAT: 'CHG', NC5: 'U1_NC5', NC6: 'U1_NC6' }, 'Li-ion charger'),
-    c('C2', 'C-22U-10', 'CHARGER', 46, 20, 90, { '1': 'VSYS', '2': 'GND' }, 'System rail capacitor'),
-    c('TP1', 'TP', 'USB', 13, 26, 0, { '1': 'VBUS' }, 'USB 5 V'),
-    c('TP2', 'TP', 'CHARGER', 40, 28, 0, { '1': 'VSYS' }, 'Battery / system rail'),
+  parts: [
     c('TP4', 'TP', 'USB', 4, 28, 0, { '1': 'GND' }, 'Ground'),
-    c('J2', 'J-JST2', 'BATTERY', 55, 6, 0, { '1': 'VSYS', '2': 'GND' }, 'Battery connector'),
-    c('BT1', 'M-BATT-1S', 'BATTERY', 74, 21, 0, { '+': 'BT1_P', '-': 'BT1_N' }, 'Li-ion battery pack', 'J2'),
-    c('U2', 'U-HL33', 'SoC', 12, 45, 180, { GND: 'GND', OUT: '3V3', IN: 'VSYS', TAB: '3V3' }, '3.3 V regulator'),
-    c('C3', 'C-1U', 'SoC', 4, 41, 90, { '1': 'VSYS', '2': 'GND' }, 'LDO input capacitor'),
-    c('C4', 'C-10U-6', 'SoC', 20, 47, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
-    c('TP3', 'TP', 'SoC', 24, 40, 0, { '1': '3V3' }, '3.3 V rail'),
     c('U3', 'U-SOC-BTN', 'SoC', 32, 56, 0, {
       VDD: '3V3', BLEN: 'BL_EN_IO', BTN: 'BTN', CHG: 'CHG', LED: 'LED_IO',
       NC6: 'U3_NC6', NC7: 'U3_NC7', NC8: 'U3_NC8', NC9: 'U3_NC9', NC10: 'U3_NC10', NC11: 'U3_NC11', NC12: 'U3_NC12', NC13: 'U3_NC13', NC14: 'U3_NC14', NC15: 'U3_NC15',
@@ -254,10 +261,10 @@ export const BUTTON: DeviceDef = {
   ],
   nets: {
     GND: { desc: 'Ground', expected: 0 },
-    VBUS_J: { desc: 'USB 5 V straight from the port', expected: 5 },
+    'USB_VIN': { desc: 'USB 5 V straight from the port', expected: 5 },
     VBUS: { desc: 'USB 5 V after the fuse', expected: 5 },
-    VBUS_S: { desc: 'USB 5 V after the current-sense resistor, into the charger', expected: 5 },
-    CC: { desc: 'USB-C configuration pin' },
+    'CHG_S': { desc: 'USB 5 V after the current-sense resistor, into the charger', expected: 5 },
+    'USB_CC': { desc: 'USB-C configuration pin' },
     VSYS: { desc: 'Battery / system rail — the battery voltage, a little higher while charging', expected: 3.8 },
     VSYS_BL: { desc: 'Battery rail feeding the backlight', expected: 3.8 },
     '3V3': { desc: '3.3 V for the SoC', expected: 3.3 },
@@ -312,7 +319,7 @@ export const BUTTON: DeviceDef = {
   marketValue: 140,
   quoteBase: 40,
   minReputation: 0,
-};
+});
 
 const lit = (op: OperatingPoint, ref: string, min: number) => op.current(ref) > min;
 

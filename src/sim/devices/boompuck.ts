@@ -3,7 +3,10 @@
  * pack on a plug, 3.3 V LDO, MCU with power button, class-D amp, speaker on a plug.
  * Fictional product.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { ldoRail } from '../blocks/power';
+import { liIonCharger, usbInput } from '../blocks/usb';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { addMark, type Rng, type Variant } from '../faults';
 
@@ -150,7 +153,7 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-export const BOOMPUCK: DeviceDef = {
+export const BOOMPUCK = device({
   id: 'boompuck',
   name: 'BoomPuck Mini Bluetooth Speaker',
   category: 'Audio',
@@ -158,28 +161,32 @@ export const BOOMPUCK: DeviceDef = {
   width: 90,
   height: 64,
   blocks: [
-    { name: 'USB INPUT / CHARGER', x: 2, y: 2, w: 42, h: 28 },
+    place('USB', usbInput({ connector: 'micro', tvs: 'D-TVS5', cin: 'C-10U-25' }), [2, 2], { out: 'VBUS' }, { conn: 'J1', tvs: 'D1', cin: 'C1', tp: 'TP1' }, {
+      faults: false,
+      outline: { name: 'USB INPUT / CHARGER', x: 2, y: 2, w: 42, h: 28 },
+      layout: { conn: [10, 5], tvs: [18, 13, 270], cin: [24, 13, 90], tp: [12, 26] },
+    }),
+    place(
+      'CHG',
+      liIonCharger({ led: true, battery: true }),
+      [20, 2],
+      { vin: 'VBUS', bat: 'BAT', stat: 'CHG' },
+      { chg: 'U1', ledRes: 'R2', led: 'D2', cbat: 'C2', conn: 'J2', pack: 'BT1', tp: 'TP2' },
+      { faults: false, outline: null, layout: { chg: [32, 13], ledRes: [22, 21], led: [29, 21], cbat: [38, 21, 90], conn: [48, 6], pack: [68, 18], tp: [44, 27] } },
+    ),
+    place('3V3', ldoRail({ vin: 3.8, cin: 'C-1U' }), [2, 32], { vin: 'BAT', out: '3V3' }, { reg: 'U2', cin: 'C3', cout: 'C4', tp: 'TP3' }, {
+      faults: false,
+      outline: null,
+      layout: { reg: [14, 40, 180], cin: [5, 38, 90], cout: [23, 38, 90], tp: [30, 33] },
+    }),
+  ],
+  outlines: [
     { name: 'BATTERY', x: 44, y: 2, w: 44, h: 28 },
     { name: 'MCU', x: 2, y: 32, w: 38, h: 30 },
     { name: 'AMP / SPEAKER', x: 40, y: 32, w: 48, h: 30 },
   ],
-  components: [
-    c('J1', 'J-MUSB', 'USB', 10, 5, 0, { VBUS: 'VBUS', DM: 'USB_DM', DP: 'USB_DP', GND: 'GND', SHLD: 'GND' }, 'Micro-USB charging port'),
-    c('D1', 'D-TVS5', 'USB', 18, 13, 270, { A: 'GND', K: 'VBUS' }, 'USB surge clamp'),
-    c('C1', 'C-10U-25', 'USB', 24, 13, 90, { '1': 'VBUS', '2': 'GND' }, 'USB input capacitor'),
-    c('U1', 'U-TC41', 'CHARGER', 32, 13, 0, { VBUS: 'VBUS', GND: 'GND', BAT: 'BAT', STAT: 'CHG', NC5: 'U1_NC5', NC6: 'U1_NC6' }, 'Li-ion charger'),
-    c('R2', 'R-1K', 'CHARGER', 22, 21, 0, { '1': 'VBUS', '2': 'CHG_LED' }, 'Charge LED resistor'),
-    c('D2', 'LED-RED', 'CHARGER', 29, 21, 0, { A: 'CHG_LED', K: 'CHG' }, 'Charge LED (on while charging)'),
-    c('C2', 'C-10U-6', 'CHARGER', 38, 21, 90, { '1': 'BAT', '2': 'GND' }, 'Battery capacitor'),
-    c('J2', 'J-JST2', 'BATTERY', 48, 6, 0, { '1': 'BAT', '2': 'GND' }, 'Battery connector'),
-    c('BT1', 'M-BATT-1S', 'BATTERY', 68, 18, 0, { '+': 'BT1_P', '-': 'BT1_N' }, 'Li-ion battery pack', 'J2'),
-    c('TP1', 'TP', 'USB', 12, 26, 0, { '1': 'VBUS' }, 'USB 5 V'),
-    c('TP2', 'TP', 'CHARGER', 44, 27, 0, { '1': 'BAT' }, 'Battery rail'),
-    c('TP3', 'TP', 'MCU', 30, 33, 0, { '1': '3V3' }, '3.3 V rail'),
+  parts: [
     c('TP4', 'TP', 'USB', 4, 26, 0, { '1': 'GND' }, 'Ground'),
-    c('U2', 'U-HL33', 'MCU', 14, 40, 180, { GND: 'GND', OUT: '3V3', IN: 'BAT', TAB: '3V3' }, '3.3 V regulator'),
-    c('C3', 'C-1U', 'MCU', 5, 38, 90, { '1': 'BAT', '2': 'GND' }, 'LDO input capacitor'),
-    c('C4', 'C-10U-6', 'MCU', 23, 38, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
     c('U3', 'U-PIC8-SPK', 'MCU', 17, 54, 0, { VDD: '3V3', LED: 'LED_IO', AMPEN: 'AMP_EN', BTN: 'BTN', CHG: 'CHG', NC6: 'U3_NC6', NC7: 'U3_NC7', GND: 'GND' }, 'Speaker controller'),
     c('R3', 'R-220R', 'MCU', 6, 49, 90, { '1': 'LED_IO', '2': 'PWR_LED_A' }, 'Power LED resistor'),
     c('D3', 'LED-BLU', 'MCU', 6, 57, 90, { A: 'PWR_LED_A', K: 'GND' }, 'Power LED (blue)'),
@@ -263,7 +270,7 @@ export const BOOMPUCK: DeviceDef = {
   marketValue: 45,
   quoteBase: 25,
   minReputation: 0,
-};
+});
 
 const on = (op: OperatingPoint, ref: string, min: number) => Math.abs(op.current(ref)) > min;
 

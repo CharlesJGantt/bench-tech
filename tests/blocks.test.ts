@@ -4,7 +4,7 @@ import { device, place } from '../src/sim/blocks/core';
 import { buckRail, ldoRail, powerInput } from '../src/sim/blocks/power';
 import { createBoard, operatingPoint } from '../src/sim/circuit';
 import { FS5 } from '../src/sim/devices';
-import { DL12 } from '../src/sim/devices';
+import { DEVICE_LIST, DL12 } from '../src/sim/devices';
 
 /** A minimal board made only of blocks plus a ground test point. */
 const tiny = () =>
@@ -68,4 +68,15 @@ describe('circuit blocks', () => {
     for (const r of ['J1', 'F1', 'C1', 'U1', 'L1', 'C3', 'U2', 'C4', 'TP1', 'TP2', 'TP3', 'TP4']) expect(refs).toContain(r);
     expect(FS5.components.length).toBe(39);
   });
+});
+
+describe('service data stays consistent', () => {
+  for (const d of DEVICE_LIST)
+    it(`${d.name}: net descriptions and test points refer to real nets`, () => {
+      const used = new Set(d.components.flatMap((x) => Object.values(x.pins)));
+      for (const t of d.traces) (used.add(t.a), used.add(t.b));
+      expect(Object.keys(d.nets).filter((n) => !used.has(n))).toEqual([]);
+      expect(d.testPoints.filter((t) => !used.has(t.net)).map((t) => t.ref)).toEqual([]);
+      expect(new Set(d.components.map((x) => x.ref)).size).toBe(d.components.length);
+    });
 });
