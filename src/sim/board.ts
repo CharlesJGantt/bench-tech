@@ -120,6 +120,9 @@ export interface DeviceDef {
   ownerAttaches?: string[];
   /** The case around the board (see enclosure.ts); set from enclosures.ts in devices/index.ts. */
   enclosure?: EnclosureDef;
+  /** Cartridge boards: the console they plug into (device id) and the games sold on this board. */
+  cartFor?: string;
+  titles?: { name: string; value: number }[];
 
   /** Use the device like its owner would. */
   functional(b: BoardState): FunctionalReport;

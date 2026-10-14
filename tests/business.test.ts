@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BES_CART } from '../src/sim/devices';
 import { delivery, ELECTRICITY, RENT, SUPPLIES } from '../src/business/economy';
 import {
   availableDevices,
@@ -7,6 +8,7 @@ import {
   harvestPart,
   resaleValue,
   storeProject,
+  cartHomeFailure,
   createShop,
   endDay,
   listProject,
@@ -202,5 +204,23 @@ describe('new career', () => {
     expect(st.stock['U-LX9201'].new).toBe(1);
     expect(st.stock['U-PIC8'].new).toBe(1); // factory-programmed: otherwise salvage-only
     expect(st.stock['U-APU-F5'].new).toBe(0);
+  });
+});
+
+describe('cartridges tested at home', () => {
+  it('a dud comes back the next day for 10% and a free re-fix', () => {
+    const st = createShop(5);
+    const job = generateJob(BES_CART, 12, { variant: 'dirty-fingers' });
+    job.quote = 30;
+    cartHomeFailure(st, job);
+    const cash = st.cash;
+    const before = st.queue.length;
+    endDay(st);
+    const back = st.queue.find((q) => q.kind === 'warranty');
+    expect(back).toBeTruthy();
+    expect(back!.complaint).toMatch(/10%/);
+    expect(st.queue.length).toBeGreaterThan(before - 1);
+    expect(st.ledger.some((e) => e.amount === -3 && /10% refund/.test(e.text))).toBe(true);
+    expect(st.cash).toBeLessThan(cash);
   });
 });

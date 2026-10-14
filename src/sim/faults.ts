@@ -175,6 +175,17 @@ export interface Job {
   kind: 'customer' | 'warranty' | 'project';
   /** The state of the case (absent on old saves: treated as already open). */
   enclosure?: EnclosureState;
+  /** Cartridges: which game this one is (same board, different label). */
+  title?: string;
+  /** What the customer originally paid (cartridge home-test refunds are 10 % of it). */
+  paid?: number;
+  /** Last Test Station run on this job: day and whether the title screen came up. */
+  stationTest?: { day: number; passed: boolean };
+}
+
+/** What to call the job's item: "Pipe Brothers (BES Game Pak)" or the device name. */
+export function jobName(j: Pick<Job, 'title' | 'device'>): string {
+  return j.title ? `${j.title} (${j.device.name})` : j.device.name;
 }
 
 const CUSTOMERS = ['Dana P.', 'Marcus L.', 'Priya S.', 'Tom W.', 'Ines R.', 'Kofi A.', 'Jun H.', 'Sam B.', 'Alex M.', 'Rosa G.', 'Leah K.', 'Omar F.', 'Wren T.', 'Yuki N.'];
@@ -239,5 +250,6 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     customer,
     kind: opts.kind ?? 'customer',
     ...(device.enclosure ? { enclosure: intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
+    ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };
 }

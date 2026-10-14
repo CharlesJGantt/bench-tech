@@ -15,6 +15,9 @@ export type SupplyId =
   | 'thermal-paste'
   | 'spare-screws'
   | 'liquid-metal'
+  | 'pink-eraser'
+  | 'magic-sponge'
+  | 'pad-bright'
   | 'wipes'
   | 'brushes';
 
@@ -82,6 +85,33 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     low: 0.6,
     blurb: 'A pea of fresh paste every time a heatsink comes off — putting it back on the old, broken paste cooks the chip.',
   },
+  'pink-eraser': {
+    id: 'pink-eraser',
+    name: 'Pink pencil erasers',
+    unit: 'pcs',
+    pack: { qty: 6, cost: 3, label: 'pack of 6' },
+    start: 3,
+    low: 1,
+    blurb: 'The classic way to scrub tarnish off cartridge and connector contacts. Slow, cheap, wears down as you rub.',
+  },
+  'magic-sponge': {
+    id: 'magic-sponge',
+    name: 'Magic eraser sponges',
+    unit: 'pcs',
+    pack: { qty: 4, cost: 5, label: 'pack of 4' },
+    start: 0,
+    low: 0,
+    blurb: 'Melamine foam: scrubs contacts about 2.5× faster than a pencil eraser. Wears out a little quicker.',
+  },
+  'pad-bright': {
+    id: 'pad-bright',
+    name: 'Pad-Bright contact treatment',
+    unit: 'ml',
+    pack: { qty: 30, cost: 7, label: '30 ml bottle' },
+    start: 10,
+    low: 2,
+    blurb: 'After scrubbing: wipe it on and the contacts come up bright and stay protected. Skip it and they dull again.',
+  },
   'liquid-metal': {
     id: 'liquid-metal',
     name: 'Liquid metal compound',
@@ -130,6 +160,8 @@ export const USAGE = {
   pastePerChip: 0.3,
   /** Liquid metal per chip (g). */
   lmPerChip: 0.1,
+  /** Pad-Bright per contact (ml). */
+  padBrightPerPin: 0.15,
   /** Dissolved flux one wipe can soak up before it is spent. */
   wipeCapacity: 1.6,
   /** Brush wear per mm of scrubbing. */
@@ -182,7 +214,7 @@ export const WICKS: Record<WickDef['supply'], WickDef> = {
 
 export interface ToolDef {
   id: string;
-  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope';
+  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope' | 'testconsole';
   name: string;
   cost: number;
   blurb: string;
@@ -206,6 +238,8 @@ export const TOOLS: ToolDef[] = [
   { id: 'objective-2x', kind: 'microscope', name: '2.0× objective', cost: 120, heat: 0, radius: 0, blurb: 'Zoom in up to 4×: tiny parts and hairline joint cracks fill the view.' },
   { id: 'ring-light', kind: 'microscope', name: 'LED ring light', cost: 35, heat: 0, radius: 0, blurb: 'Even, shadow-free light (L at the microscope): fine whiskers glint even at low zoom.' },
   { id: 'tilt-mount', kind: 'microscope', name: 'Tilting microscope arm', cost: 75, heat: 0, radius: 0, blurb: 'Look in at an angle (T at the microscope) to see under a chip: stray solder balls and hidden bridges.' },
+  { id: 'tc-bes', kind: 'testconsole', name: 'Working Bintendo Entertainment System', cost: 45, heat: 0, radius: 0, blurb: 'A known-good console for the Test Station: insert a fixed BES cartridge, press power, and see the title screen for yourself before the customer does.' },
+  { id: 'gamebit', kind: 'instrument', name: 'Game-Bit security drivers', cost: 9, heat: 0, radius: 0, blurb: 'The odd security screws on game cartridges and retro consoles. Without them the shell stays shut.' },
   { id: 'screw-extractor', kind: 'instrument', name: 'Screw extractor bits', cost: 14, heat: 0, radius: 0, blurb: 'Reverse-cut bits that bite into a stripped screw head and back it out. The screw is ruined, but the case opens.' },
   { id: 'screw-mat', kind: 'instrument', name: 'Magnetic screw mat', cost: 12, heat: 0, radius: 0, blurb: 'A whiteboard mat with magnets: every screw stays where it came out, so each one goes back in its own hole — no more long screws in short holes.' },
   { id: 'micro-drill', kind: 'instrument', name: 'Micro drill & carbide bits', cost: 25, heat: 0, radius: 0, blurb: 'For boards a long screw has bitten into: drill the damaged via out under the microscope to separate the shorted inner layers again.' },

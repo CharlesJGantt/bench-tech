@@ -3,6 +3,7 @@ import * as E from './elements';
 import { part, pinsOf, type Kind, type PartSpec } from './parts';
 import { elementPower, solveDC, type Element } from './solver';
 import { corrosionLeakR, corrosionSeriesR, crustAt, type Corrosion } from './corrosion';
+import { oxideR } from './contacts';
 
 // ---------------------------------------------------------------------------
 // Board state
@@ -69,6 +70,10 @@ export interface CompState {
   unplugged?: boolean;
   /** Liquid-damage crust on the pads (see corrosion.ts). */
   corr?: Corrosion;
+  /** Connector contacts: oxide film per pin, 0..1 (see contacts.ts). */
+  oxide?: Record<string, number>;
+  /** Contacts finished with Pad-Bright (bright and protected). */
+  brightened?: string[];
 }
 
 export interface PointRef {
@@ -289,7 +294,9 @@ export function compile(b: BoardState, power: PowerConfig, meter?: { red: PointR
     const conn = b.comps[ref];
     const f = conn?.fault;
     const broken = !conn?.part || f?.type === 'open' || f?.type === 'melted' || (f?.type === 'pins-open' && f.pins.includes(pin));
-    if (!broken) add(E.resistor(n, getLead(conn, pin), 0.02));
+    // Oxide on the contact adds resistance between the plug and the board (or breaks it).
+    const r = oxideR(conn?.oxide?.[pin] ?? 0);
+    if (!broken && Number.isFinite(r)) add(E.resistor(n, getLead(conn, pin), r));
     mateNode.set(key, n);
     return n;
   };
@@ -971,7 +978,7 @@ export function applyStress(b: BoardState, op: OperatingPoint, temps?: Record<st
       ev.push({ ref: c.ref, kind: 'pop', message: `${c.ref} failed (input over-voltage)` });
       continue;
     }
-    if (p.kind === 'mcu' && !c.fault && pin('VDD') - pin('GND') > 4.3) {
+    if (p.kind === 'mcu' && !c.fault && pin('VDD') - pin('GND') > (p.rating ?? 4.3)) {
       c.fault = { type: 'dead' };
       ev.push({ ref: c.ref, kind: 'smoke', message: `${c.ref} destroyed (supply over-voltage)` });
       continue;

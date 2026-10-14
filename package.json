@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "models": "node tools/build-models.mjs",
-    "routes": "vitest run -c tools/vitest.routes.config.ts --reporter=verbose"
+    "routes": "vitest run -c tools/vitest.routes.config.ts --reporter=verbose && node -e \"require('fs').rmSync('node_modules/.vitest-cache',{recursive:true,force:true})\""
   },
   "dependencies": {
     "playcanvas": "^2.23.2"

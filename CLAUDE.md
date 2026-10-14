@@ -6,7 +6,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `npm run dev` — dev server (http://localhost:5173)
 - `npm test` — vitest (sim + fault generator invariants)
 - `npm run typecheck` / `npm run build`
-- `npm run routes` — re-route every board into `src/render/routes/*.json` (required after changing a device layout, footprint or the router; a geometry test fails while the cache is stale)
+- `npm run routes` — re-route every board into `src/render/routes/*.json` (required after adding/changing a device layout, footprint or the router; a geometry test fails while the cache is stale). It also clears `node_modules/.vitest-cache`, which otherwise keeps a stale list of route files.
 - `npm run models` — rebuild `public/models/parts.glb` from `tools/blender/*.py` via headless Blender 5.2 (override path with `BLENDER`)
 
 ## Architecture
@@ -19,6 +19,9 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
   - `scope.ts` oscilloscope view derived from the DC operating point (switching, ripple from high-ESR caps, data/audio presence). ESR meter is a `measure()` mode.
   - `corrosion.ts` liquid-damage crust per pad (`CompState.corr`): series R / leakage in the netlist, no-wet at the microscope, daily spread, whole-board treatment, render speckles.
   - `enclosure.ts` the case: items with prerequisites, tools, teardown mistakes, reassembly issues; `enclosures.ts` per-device cases (attached in `devices/index.ts`). Jobs carry `Job.enclosure`; `tests/enclosure.test.ts` opens and closes every device.
+  - `contacts.ts` oxide on connector contacts (`CompState.oxide`/`brightened`): contact resistance at the mating side, scrubbing (pink eraser / magic sponge) and Pad-Bright; `ui/contacts.ts` is the scrubbing station.
+  - `devices/retro.ts` retro helpers: `cartridge()` builds a console's cart board (one design, many `titles`; `Job.title`), `testCart()` / `consoleSlot()` externals, `cx()` for parts with floating NC pins. Generic `logic` chips (ROMs, lockout, video, RF) are a part kind with a `LogicSpec`.
+  - Carts: `ui/teststation.ts` (needs a `tc-<console>` test console tool); untested carts that fail come back next day for 10 % (`cartHomeFailure`).
   - `faults.ts` tiered fault variants + job generator (seeded). `repair.ts` repair actions + evaluation.
 - `src/business/` — pure economy: `economy.ts` (prices, supplies, rent, electricity, ad tiers, starting stock, salvage-only parts) and `shop.ts` (ledger/P&L, stock new+used, supplier orders, rush buys, customer queue, warranty comebacks, marketplace listings, flip projects, scrap/salvage, `endDay`). Tested in `tests/business.test.ts`.
 - `src/sim/persist.ts` — JSON save format for boards/jobs (devices by id, Infinity joints as -1). Whole game saves to localStorage `benchtech.save.v2`.

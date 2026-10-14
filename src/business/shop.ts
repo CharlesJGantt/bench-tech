@@ -137,7 +137,9 @@ export interface ShopState {
   /** Day each device was last searched for online (one search per device per day). */
   searched: Record<string, number>;
   /** Last kit chosen at the rework station. */
-  kit: { tip: string; nozzle: string; wick: string; flux: string; solder: string; liquid?: string };
+  kit: { tip: string; nozzle: string; wick: string; flux: string; solder: string; liquid?: string; scrubber?: string };
+  /** Wear on the eraser / sponge in use (0..1, by supply id). */
+  scrubWear?: Record<string, number>;
   stock: Record<string, StockLevel>;
   orders: Order[];
   ledger: LedgerEntry[];
@@ -145,7 +147,7 @@ export interface ShopState {
   projects: Project[];
   queue: QueuedJob[];
   /** Comebacks that will walk back in on a later day. */
-  warrantyPending: { day: number; job: SavedJob; customer: string }[];
+  warrantyPending: { day: number; job: SavedJob; customer: string; homeTest?: { refund: number } }[];
   /** Unhappy flip buyers. */
   refundsPending: { day: number; amount: number; text: string }[];
   active: ActiveWork | null;
@@ -341,6 +343,17 @@ function ageWorkmanship(b: BoardState): void {
   for (const c of Object.values(b.comps))
     for (const [pin, j] of Object.entries(c.joints)) if (j.cold) c.joints[pin] = { r: Infinity, cracked: true };
   b.jumpers = b.jumpers.filter((j) => !j.cold);
+}
+
+/**
+ * A cartridge handed back without proof it works (no test console): the customer pays now
+ * and tries it at home. If it does not boot, they come back tomorrow for 10 % back and a
+ * free re-fix.
+ */
+export function cartHomeFailure(st: ShopState, job: Job): void {
+  const paid = job.paid ?? job.quote;
+  const refund = Math.round(paid * 10) / 100;
+  st.warrantyPending.push({ day: st.day + 1, job: saveJob({ ...job, paid }), customer: job.customer, homeTest: { refund } });
 }
 
 /** Record the outcome of a customer or warranty job. */
@@ -726,6 +739,13 @@ export function endDay(st: ShopState): DayReport {
     job.kind = 'warranty';
     job.quote = 0;
     job.complaint = 'You fixed this a few days ago and it has stopped working again.';
+    if (w.homeTest) {
+      // A cartridge that failed the customer's home test: 10 % back, and you fix it again.
+      book(st, 'refund', -w.homeTest.refund, `10% refund to ${w.customer}: the cartridge failed at home`);
+      st.reputation = Math.max(0, st.reputation - 1);
+      job.complaint = `I tried it at home and it still does not work. (You refunded 10%, $${w.homeTest.refund.toFixed(2)} — please fix it properly this time.)`;
+      report.refunds.push(`${w.customer}'s cartridge failed at home — refunded $${w.homeTest.refund.toFixed(2)}; it is back in the queue to fix again`);
+    }
     job.previousRepair = 'Yes';
     job.previousRepairNote = 'Your own repair.';
     st.queue.push({ id: st.nextId++, kind: 'warranty', customer: w.customer, complaint: job.complaint, quote: 0, arrived: st.day, job: saveJob(job) });

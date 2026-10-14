@@ -441,6 +441,17 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
           break;
       }
     }
+    // Oxidised contacts: dull, dark film over the gold
+    if (c.oxide) {
+      for (const [pin, o] of Object.entries(c.oxide)) {
+        if (o < 0.04) continue;
+        const pad = pads.find((p) => p.ref === c.ref && p.pin === pin);
+        if (!pad) continue;
+        padPath(ctx, pad);
+        ctx.fillStyle = `rgba(55,48,30,${Math.min(0.75, o * 0.8)})`;
+        ctx.fill();
+      }
+    }
     // Liquid-damage crust: a haze plus mottled speckles around each crusted pad
     if (c.corr) {
       for (const [pin, v] of Object.entries(c.corr.pins)) {

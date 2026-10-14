@@ -35,6 +35,8 @@ export interface EncItem {
   covers?: boolean;
   /** Board nets a long screw in this hole punches into (internal layers). */
   punch?: [string, string];
+  /** Security screw: needs a Game-Bit driver, not an ordinary screwdriver. */
+  security?: boolean;
 }
 
 export interface EnclosureDef {
@@ -75,6 +77,8 @@ export interface EnclosureState {
 export interface EncOptions {
   /** Owns a screw extractor (gets stripped screws out). */
   extractor?: boolean;
+  /** Owns a Game-Bit security driver. */
+  gamebit?: boolean;
 }
 
 export interface EncResult {
@@ -179,6 +183,7 @@ export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState,
       return off(`You cut through the ${it.label}. (A torn sticker on a device that comes in tells you someone has been inside before.)`);
     case 'screw': {
       if (tool !== 'screwdriver') return { ok: false, text: `${it.label} needs a ${TOOL_NAME.screwdriver}.` };
+      if (it.security && !opts.gamebit) return { ok: false, text: `${it.label} is a security screw — an ordinary bit will not turn it. A Game-Bit driver (office, Tools tab) will.` };
       if (st.stripped?.includes(id)) {
         if (!opts.extractor) return { ok: false, text: `${it.label}: the head is stripped — the bit just spins. A screw extractor (office, Tools tab) will bite into it.` };
         st.stripped = st.stripped.filter((x) => x !== id);

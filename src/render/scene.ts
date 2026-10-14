@@ -651,7 +651,7 @@ export class BenchScene {
   private visualSig(): string {
     const b = this.session.board;
     return JSON.stringify([
-      Object.values(b.comps).map((c) => [c.part?.partNo, c.reversed, c.marks, c.burnt, c.joints, c.unplugged, c.corr]),
+      Object.values(b.comps).map((c) => [c.part?.partNo, c.reversed, c.marks, c.burnt, c.joints, c.unplugged, c.corr, c.oxide]),
       b.traces,
       b.liftedPads,
       b.jumpers,

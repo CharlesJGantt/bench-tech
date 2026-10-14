@@ -25,6 +25,8 @@ export interface SavedBoard {
       replaced: boolean;
       unplugged?: boolean;
       corr?: Corrosion;
+      oxide?: Record<string, number>;
+      brightened?: string[];
     }
   >;
   traces: Record<string, { broken: boolean }>;
@@ -48,7 +50,7 @@ export function saveBoard(b: BoardState): SavedBoard {
     const joints: SavedBoard['comps'][string]['joints'] = {};
     for (const [pin, j] of Object.entries(c.joints)) joints[pin] = { ...j, r: encR(j.r) };
     const fault = c.fault?.type === 'short' ? { ...c.fault } : c.fault;
-    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}) };
+    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}), ...(c.oxide ? { oxide: { ...c.oxide }, brightened: [...(c.brightened ?? [])] } : {}) };
   }
   return {
     deviceId: b.device.id,
@@ -78,6 +80,10 @@ export function loadBoard(s: SavedBoard): BoardState {
     comp.replaced = c.replaced;
     comp.unplugged = c.unplugged;
     if (c.corr) comp.corr = structuredClone(c.corr);
+    if (c.oxide) {
+      comp.oxide = { ...c.oxide };
+      comp.brightened = [...(c.brightened ?? [])];
+    }
     migrateCorrosion(comp);
   }
   b.traces = structuredClone(s.traces);

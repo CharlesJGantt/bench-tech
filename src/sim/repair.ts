@@ -3,6 +3,7 @@ import type { Job } from './faults';
 import { PIN_NAMES, part } from './parts';
 import { CLEAN_CRUST, corrodedRefs } from './corrosion';
 import { enclosureIssues } from './enclosure';
+import { contactIssues } from './contacts';
 
 /** Outcome of a soldering action, from the soldering minigame. */
 export type SolderQuality = 'good' | 'cold' | 'overheated';
@@ -136,6 +137,9 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   for (const ref of corrodedRefs(b, CLEAN_CRUST)) if (!corrodedRefs(b, 0.2).includes(ref)) notes.push(`Traces of corrosion left around ${ref}.`);
   for (const ref of Object.keys(b.comps)) if (b.comps[ref].marks.includes('scorch') && b.comps[ref].burnt) hidden.push(`Scorched board around ${ref}.`);
 
+  const con = contactIssues(b);
+  hidden.push(...con.hidden);
+  notes.push(...con.notes);
   const enc = enclosureIssues(job.device.enclosure, job.enclosure);
   hidden.push(...enc.hidden);
   notes.push(...enc.notes);

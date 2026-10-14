@@ -16,6 +16,25 @@ const screw = (id: string, label: string, at: [number, number], length: number, 
 });
 
 export const ENCLOSURES: Record<string, EnclosureDef> = {
+  bes: {
+    color: '#c9c6bd',
+    items: [
+      screw('s1', 'Bottom screw 1', [6, 6], 12, 12),
+      screw('s2', 'Bottom screw 2', [144, 6], 12, 12),
+      screw('s3', 'Bottom screw 3', [6, 94], 12, 12),
+      screw('s4', 'Bottom screw 4', [144, 94], 12, 12),
+      screw('s5', 'Bottom screw (short) 5', [70, 6], 6, 6, [], ['5V', 'GND']),
+      screw('s6', 'Bottom screw (short) 6', [70, 94], 6, 6, [], ['5V', 'GND']),
+      { id: 'top', kind: 'shell', label: 'Top shell', at: [75, 50], size: [150, 100], needs: ['s1', 's2', 's3', 's4', 's5', 's6'], covers: true },
+    ],
+  },
+  'bes-cart': {
+    color: '#8d8c88',
+    items: [
+      { ...screw('s1', 'Security screw', [45, 30], 10, 10), security: true },
+      { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
+    ],
+  },
   dl12: {
     color: '#e9e6df',
     items: [

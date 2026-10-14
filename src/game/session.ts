@@ -2,6 +2,8 @@ import { DL12 } from '../sim/devices';
 import {
   applyStress,
   createBoard,
+  cloneBoard,
+  functionalTest,
   hasInternalPower,
   measure,
   operatingPoint,
@@ -19,12 +21,14 @@ import { generateJob, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
+import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
 import {
   completeCustomerJob,
+  cartHomeFailure,
   createShop,
   endDay,
   listProject,
@@ -327,9 +331,17 @@ export class Session {
     this.setPowerMode('off');
     const job = this.job;
     const ev = evaluate(job, this.board, 0);
-    const payout = job.kind === 'warranty' ? 0 : ev.payout;
-    const rep = job.kind === 'warranty' ? (ev.outcome === 'fixed' ? 1 : ev.reputation) : ev.reputation;
+    let payout = job.kind === 'warranty' ? 0 : ev.payout;
+    let rep = job.kind === 'warranty' ? (ev.outcome === 'fixed' ? 1 : ev.reputation) : ev.reputation;
+    // Cartridges: the customer pays at pickup and tests at home; a dud comes back tomorrow.
+    const homeFail = !!job.device.cartFor && ev.outcome === 'not-fixed';
+    if (homeFail) {
+      payout = job.kind === 'warranty' ? 0 : job.quote;
+      rep = 0;
+      job.paid = job.paid ?? job.quote;
+    }
     completeCustomerJob(this.shop, job, ev.outcome, payout, rep);
+    if (homeFail) cartHomeFailure(this.shop, job);
     const a = this.shop.active;
     this.shop.queue = this.shop.queue.filter((q) => q.id !== a?.id);
     this.lastResult = { kind: 'customer', evaluation: { ...ev, payout, reputation: rep }, job };
@@ -673,7 +685,7 @@ export class Session {
     const st = this.enc;
     if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
     if (this.powerMode !== 'off') this.setPowerMode('off');
-    return this.encDone(removeItem(def, st, this.board, id, tool, { extractor: this.owns('screw-extractor') }));
+    return this.encDone(removeItem(def, st, this.board, id, tool, { extractor: this.owns('screw-extractor'), gamebit: this.owns('gamebit') }));
   }
 
   encInstall(id: string, length?: number, spare = false): EncResult {
@@ -749,8 +761,11 @@ export class Session {
     const st = this.enc;
     if (!def || !st) return [];
     if (this.powerMode !== 'off') this.setPowerMode('off');
-    const log = openForMe(def, st, this.board, { extractor: this.owns('screw-extractor') });
-    this.encDone({ ok: true, text: log.length ? `Opened it up: ${log.length} steps.` : '' });
+    const before = st.removed.length;
+    const log = openForMe(def, st, this.board, { extractor: this.owns('screw-extractor'), gamebit: this.owns('gamebit') });
+    const steps = st.removed.length - before;
+    const stuck = !boardReachable(def, st) && log.length ? ` Stopped: ${log[log.length - 1]}` : '';
+    this.encDone({ ok: true, text: log.length ? `Opened it up: ${steps} step${steps === 1 ? '' : 's'}.${stuck}` : '' });
     return log;
   }
 
@@ -768,8 +783,80 @@ export class Session {
     if (paste) useSupply(this.shop, 'thermal-paste', paste * USAGE.pastePerChip);
     const log = closeForMe(def, st, this.board, Math.floor(this.shop.supplies['spare-screws']));
     if (log.sparesUsed) useSupply(this.shop, 'spare-screws', log.sparesUsed);
-    this.encDone({ ok: true, text: log.length ? `Closed it up: ${log.length} steps.` : '' });
+    this.encDone({ ok: true, text: log.length ? `Closed it up: ${log.length} step${log.length === 1 ? '' : 's'}.` : '' });
     return log;
+  }
+
+  // ---------------------------------------------------------------- test station
+
+  /**
+   * Run the cartridge on the bench in a known-good test console (needs one on the shelf):
+   * what does the TV show? Recorded on the job.
+   */
+  stationTest(): { boots: boolean; rom: boolean; lockout: boolean; saveOk: boolean } {
+    const r = functionalTest(cloneBoard(this.board));
+    const f = r.facts as Record<string, boolean>;
+    const res = { boots: !!f.boots, rom: !!f.rom, lockout: !!f.lockout, saveOk: f.saveOk !== false };
+    const passed = res.boots && res.saveOk;
+    this.job.stationTest = { day: this.shop.day, passed };
+    this.addLog('action', `📺 Test Station: ${passed ? 'title screen, saves kept — it works.' : res.boots ? 'boots, but loses its saves.' : res.lockout ? 'grey screen.' : 'black screen, blinking light.'}`);
+    this.save();
+    this.emit();
+    return res;
+  }
+
+  // ---------------------------------------------------------------- contact cleaning
+
+  get scrubber(): Scrubber {
+    return this.shop.kit.scrubber === 'magic-sponge' ? 'magic-sponge' : 'pink-eraser';
+  }
+
+  setScrubber(id: Scrubber): void {
+    this.shop.kit.scrubber = id;
+    this.save();
+    this.emit();
+  }
+
+  /**
+   * Scrub one contact with the selected eraser / sponge (`mm` of stroke). Wears the scrubber
+   * and takes a new one from stock when it is used up. Returns false when none are left.
+   */
+  scrubContact(ref: string, pin: string, mm: number): boolean {
+    const tool = this.scrubber;
+    const wear = (this.shop.scrubWear ??= {});
+    if ((wear[tool] ?? 0) === 0 && this.shop.supplies[tool] < 1) return false;
+    if ((wear[tool] ?? 0) === 0) {
+      useSupply(this.shop, tool, 1);
+      wear[tool] = 1e-6;
+    }
+    const c = this.board.comps[ref];
+    scrubPin(c, pin, mm, tool);
+    wear[tool] += mm / SCRUBBERS[tool].lifeMm;
+    if (wear[tool] >= 1) {
+      wear[tool] = 0;
+      this.addLog('note', `The ${SCRUBBERS[tool].name} is worn down to a nub — binned it.`);
+    }
+    syncTarnishMark(c);
+    this.recompute();
+    return true;
+  }
+
+  /** Pad-Bright on one contact. */
+  padBrightContact(ref: string, pin: string): 'bright' | 'softened' | 'empty' {
+    if (this.shop.supplies['pad-bright'] < USAGE.padBrightPerPin) return 'empty';
+    useSupply(this.shop, 'pad-bright', USAGE.padBrightPerPin);
+    const c = this.board.comps[ref];
+    const r = padBright(c, pin);
+    syncTarnishMark(c);
+    this.recompute();
+    return r;
+  }
+
+  /** Leaving the contact-cleaning view: save and log. */
+  doneContacts(ref: string, summary: string): void {
+    if (summary) this.addLog('action', `${ref}: ${summary}`);
+    this.save();
+    this.emit();
   }
 
   get kit(): Kit {

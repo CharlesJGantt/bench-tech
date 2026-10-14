@@ -42,7 +42,7 @@ describe('enclosures', () => {
       const b = createBoard(d);
       const st = newEnclosure(def);
       expect(boardReachable(def, st)).toBe(false);
-      const log = openForMe(def, st, b);
+      const log = openForMe(def, st, b, { gamebit: true });
       expect(log.length).toBeGreaterThan(0);
       expect(boardReachable(def, st)).toBe(true);
       expect(st.damage).toEqual([]);
@@ -51,7 +51,7 @@ describe('enclosures', () => {
         const it = def.items.find((i) => canRemove(def, st, i.id));
         if (!it) break;
         const tool = it.kind === 'screw' ? 'screwdriver' : it.kind === 'adhesive' && !st.heated.includes(it.id) ? 'heat' : it.kind === 'clips' || it.kind === 'cable' || it.kind === 'adhesive' ? 'spudger' : 'fingers';
-        expect(removeItem(def, st, b, it.id, tool).ok).toBe(true);
+        expect(removeItem(def, st, b, it.id, tool, { gamebit: true }).ok).toBe(true);
       }
       closeForMe(def, st, b);
       expect(assembled(st)).toBe(true);
@@ -241,5 +241,13 @@ describe('enclosures', () => {
     applyPaste(def, st, 'hs', 'paste');
     closeForMe(def, st, b);
     expect(enclosureIssues(def, st).hidden.join()).toMatch(/liquid metal belongs/);
+  });
+
+  it('cartridge security screws need a Game-Bit driver', () => {
+    const d = DEVICE_LIST.find((x) => x.id === 'bes-cart')!;
+    const st = newEnclosure(d.enclosure!);
+    const b = createBoard(d);
+    expect(removeItem(d.enclosure!, st, b, 's1', 'screwdriver').text).toMatch(/Game-Bit/);
+    expect(removeItem(d.enclosure!, st, b, 's1', 'screwdriver', { gamebit: true }).ok).toBe(true);
   });
 });

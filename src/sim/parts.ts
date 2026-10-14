@@ -165,6 +165,11 @@ const cap = (partNo: string, pkg: Pkg, value: number, label: string, rating: num
 
 const mcuPins = (...io: string[]) => ['VDD', ...io, 'GND'];
 
+/** DIP pin names in footprint order: named pins by number, the rest NC<n>. */
+export function dipPins(n: number, named: Record<number, string>): string[] {
+  return Array.from({ length: n }, (_, i) => named[i + 1] ?? `NC${i + 1}`);
+}
+
 export const PARTS: Record<string, PartSpec> = {
   // ---------------------------------------------------------------- resistors (EIA markings)
   'R-10R-1206': r('R-10R-1206', 10, '10', '100', '1206'),
@@ -353,6 +358,94 @@ export const PARTS: Record<string, PartSpec> = {
   },
   'C-470U-16': cap('C-470U-16', 'CAP_EL10', 470e-6, '470µF 16V', 16, 0.5, 'electrolytic'),
   'C-10U-16E': cap('C-10U-16E', 'CAP_EL', 10e-6, '10µF 16V', 16, 0.2, 'electrolytic'),
+  // ---------------------------------------------------------------- Bintendo Entertainment System (+ cart)
+  'U-BES-CPU': {
+    partNo: 'U-BES-CPU',
+    kind: 'mcu',
+    pkg: 'DIP40',
+    value: 5,
+    label: 'BES CPU',
+    marking: 'BPU-2A03',
+    rating: 6,
+    cost: 18,
+    pins: dipPins(40, { 1: 'RST', 2: 'CE', 3: 'DIN', 4: 'LED', 5: 'VEN', 20: 'GND', 40: 'VDD' }),
+    description: 'The console processor. Held in reset (RST low) by the lockout chip until the cartridge answers; then reads the game (DIN) and tells the picture chip to draw (VEN).',
+  },
+  'U-BES-PPU': {
+    partNo: 'U-BES-PPU',
+    kind: 'logic',
+    pkg: 'DIP40',
+    value: 5,
+    label: 'BES picture chip',
+    marking: 'BPU-2C02',
+    cost: 16,
+    pins: dipPins(40, { 1: 'VEN', 2: 'VID', 20: 'GND', 40: 'VCC' }),
+    logic: { vcc: 'VCC', vmin: 4.2, iq: 0.06, ch: [{ needHigh: ['VEN'], outs: ['VID'] }] },
+    description: 'Draws the picture: composite video out (VID) whenever the CPU enables it (VEN).',
+  },
+  'U-LOCK-C': {
+    partNo: 'U-LOCK-C',
+    kind: 'logic',
+    pkg: 'DIP16',
+    value: 5,
+    label: 'Lockout chip (console)',
+    marking: 'BIC-3193',
+    cost: 4,
+    pins: dipPins(16, { 1: 'KI', 2: 'KO', 3: 'RST', 8: 'GND', 16: 'VCC' }),
+    logic: { vcc: 'VCC', vmin: 4.2, iq: 0.004, ch: [{ outs: ['KO'] }, { needHigh: ['KI'], outs: ['RST'] }] },
+    description: 'Talks to the matching chip in the cartridge (KO out, KI back). No answer = it holds the CPU in reset over and over: the famous blinking power light.',
+  },
+  'U-LOCK-G': {
+    partNo: 'U-LOCK-G',
+    kind: 'logic',
+    pkg: 'DIP16',
+    value: 5,
+    label: 'Lockout chip (cartridge)',
+    marking: 'BIC-3195',
+    cost: 4,
+    pins: dipPins(16, { 1: 'KI', 2: 'KO', 8: 'GND', 16: 'VCC' }),
+    logic: { vcc: 'VCC', vmin: 4.2, iq: 0.004, ch: [{ needHigh: ['KI'], outs: ['KO'] }] },
+    description: "The cartridge's half of the lockout handshake: answers the console (KI in, KO back).",
+  },
+  'U-ROM-BES': {
+    partNo: 'U-ROM-BES',
+    kind: 'logic',
+    pkg: 'DIP28',
+    value: 5,
+    label: 'Game ROM (mask)',
+    marking: 'BES-ROM',
+    cost: 0,
+    pins: dipPins(28, { 1: 'CE', 2: 'DO', 14: 'GND', 28: 'VCC' }),
+    logic: { vcc: 'VCC', vmin: 4.2, iq: 0.02, ch: [{ needHigh: ['CE'], outs: ['DO'] }] },
+    description: 'The game itself, burned into the chip at the factory. Nobody sells these: a dead one only comes from a donor cartridge of the same game.',
+  },
+  'U-SRAM8K': {
+    partNo: 'U-SRAM8K',
+    kind: 'logic',
+    pkg: 'DIP28',
+    value: 5,
+    label: '8K save RAM',
+    marking: 'LH5164',
+    cost: 3,
+    pins: dipPins(28, { 14: 'GND', 28: 'VCC' }),
+    logic: { vcc: 'VCC', vmin: 2.0, iq: 0.0005, ch: [] },
+    description: 'Battery-backed save memory: keeps your saved games as long as it sees at least 2 V — from the console when it is on, from the coin cell when it is off.',
+  },
+  'U-RFMOD': {
+    partNo: 'U-RFMOD',
+    kind: 'logic',
+    pkg: 'RFMOD',
+    value: 5,
+    label: 'RF modulator',
+    marking: 'RF-3/4',
+    cost: 6,
+    pins: ['5V', 'GND', 'VID', 'RF'],
+    logic: { vcc: '5V', vmin: 4.2, iq: 0.03, ch: [{ needHigh: ['VID'], outs: ['RF'] }] },
+    description: 'Turns composite video into a TV channel (RF out to the aerial socket). Dead modulator: picture on AV, none on RF.',
+  },
+
+  'J-EDGE6': { partNo: 'J-EDGE6', kind: 'connector', pkg: 'EDGE6', value: 0, label: 'Cartridge edge fingers', marking: '', cost: 0, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Gold-plated fingers along the cartridge board edge. They dull and oxidise with age: scrub them with an eraser, then treat with Pad-Bright.' },
+  'J-SLOT6': { partNo: 'J-SLOT6', kind: 'connector', pkg: 'CARTSLOT6', value: 0, label: 'Cartridge slot', marking: '', cost: 6, heatLimit: 280, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Cartridge slot connector. Its springy contacts tarnish and lose their grip over the years.' },
   'J-RCA': { partNo: 'J-RCA', kind: 'connector', pkg: 'RCA2', value: 0, label: 'RCA jack', marking: '', cost: 0.6, pins: ['SIG', 'GND'], description: 'Panel RCA (phono) jack: composite video or RF out.' },
   'J-HDR3': { partNo: 'J-HDR3', kind: 'connector', pkg: 'HDR3', value: 0, label: '3-pin port', marking: '', cost: 0.4, pins: ['5V', 'DATA', 'GND'], description: '3-pin controller / accessory port.' },
   'J-FPC3': { partNo: 'J-FPC3', kind: 'connector', pkg: 'FPC3', value: 0, label: '3-pin FPC connector', marking: '', cost: 0.5, heatLimit: 260, pins: ['VCC', 'DATA', 'GND'], description: '3-pin flip-latch ribbon connector (screen).' },

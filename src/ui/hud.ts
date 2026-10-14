@@ -7,6 +7,10 @@ import { beep, pop, sizzle } from './audio';
 import { schematicHtml } from './schematic';
 import { ReworkStation } from './rework';
 import { TeardownStation } from './teardown';
+import { ContactStation } from './contacts';
+import { TestStation } from './teststation';
+import { jobName } from '../sim/faults';
+import { scrubbable } from '../sim/contacts';
 import { assembled } from '../sim/enclosure';
 import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
@@ -37,6 +41,7 @@ const MARK_TEXT: Record<string, string> = {
   bulged: 'The top of the can is bulging.',
   loose: 'The connector wobbles when you push it.',
   'bent-pin': 'Looking into the socket, the centre pin looks bent and cracked.',
+  tarnish: 'The contacts are dull, dark and blotchy — oxidised. Scrub them clean (eraser), then Pad-Bright.',
   corrosion: 'Crusty corrosion (green, white, yellow and dark flecks) on its pads — liquid got in here. Solder will not stick to it: treat it with corrosion cleaner, scrub, rinse with IPA and wipe.',
 };
 
@@ -372,6 +377,9 @@ export class Hud {
       case 'rework':
         if (ref) this.openRework(ref);
         break;
+      case 'contacts':
+        if (ref) this.openContacts(ref);
+        break;
       case 'attach':
         s.toggleAttach(d.id!);
         break;
@@ -387,6 +395,9 @@ export class Hud {
         break;
       case 'case':
         this.openTeardown();
+        break;
+      case 'station':
+        this.openStation();
         break;
       case 'case-close-return':
         {
@@ -627,6 +638,42 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     (window as unknown as { rework: unknown }).rework = station; // console debugging
   }
 
+  // ------------------------------------------------------------------ test station
+
+  private openStation(): void {
+    const s = this.s;
+    if (s.powerMode !== 'off') s.setPowerMode('off');
+    const m = $('#modal');
+    m.className = 'show rework';
+    this.soldering = true;
+    new TestStation(s, $('#modal-body'), () => {
+      this.soldering = false;
+      m.className = '';
+      $('#modal-body').innerHTML = '';
+      s.emit();
+    }).open();
+  }
+
+  // ------------------------------------------------------------------ contacts
+
+  private openContacts(ref: string): void {
+    const s = this.s;
+    if (!s.reachable && !s.board.comps[ref].def.partNo.startsWith('J-EDGE')) {
+      this.toast('Open the case first (🔧 Case on the ticket).');
+      return;
+    }
+    if (s.powerMode !== 'off') s.setPowerMode('off');
+    const m = $('#modal');
+    m.className = 'show rework';
+    this.soldering = true;
+    new ContactStation(s, $('#modal-body'), ref, () => {
+      this.soldering = false;
+      m.className = '';
+      $('#modal-body').innerHTML = '';
+      s.emit();
+    }).open();
+  }
+
   // ------------------------------------------------------------------ teardown
 
   private openTeardown(): void {
@@ -804,7 +851,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     const s = this.s;
     const open = !assembled(s.enc);
     this.modal(`<h2>Hand it back?</h2>
-      <p>${esc(s.job.customer)} will take the ${esc(s.job.device.name)} home and use it. If it fails, you don't get paid — and if it fails <i>later</i>, they'll be back for a free warranty repair.</p>
+      <p>${esc(s.job.customer)} will take the ${esc(jobName(s.job))} home and use it. ${s.job.device.cartFor ? `They pay now and try it at home — if it does not boot, they come back tomorrow for <b>10% back</b> and you fix it again.${s.job.stationTest ? ` (Test Station, day ${s.job.stationTest.day}: ${s.job.stationTest.passed ? 'title screen ✓' : 'did NOT boot'})` : ' Test it on the 📺 Test Station first if you have the console.'}` : "If it fails, you don't get paid — and if it fails <i>later</i>, they'll be back for a free warranty repair."}</p>
       ${open ? `<p class="note bad">⚠ The case is not back together. Handing it back in bits counts against you.${s.guided ? ' Close it up first (or let me do it).' : ''}</p>` : ''}
       <p class="muted">Tip: test it yourself first — power it, check the lights, press the button.</p>
       <div class="row">${open && s.guided ? `<button class="big primary" data-act="case-close-return">Close it up, then return it</button>` : ''}<button class="big" data-act="return-yes">Return to ${esc(s.job.customer)}${open ? ' as it is' : ''}</button><button data-act="close">Keep working</button></div>`);
@@ -1146,7 +1193,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
         <div class="row"><button data-act="schematic">Service sheet</button><button data-act="pause">Pause → office</button></div>`;
     }
     return `<div class="tag">${job.kind === 'warranty' ? 'WARRANTY RETURN' : 'REPAIR TICKET'} · #${job.seed}</div>
-      <h2>${esc(job.device.name)}</h2>
+      <h2>${esc(jobName(job))}</h2>
       <div class="kv"><span>Customer</span><b>${esc(job.customer)}</b></div>
       <div class="kv"><span>Quote</span><b>${job.kind === 'warranty' ? 'free (your warranty)' : '$' + job.quote}</b></div>
       <div class="kv"><span>Previous repair</span><b>${job.previousRepair}</b></div>
@@ -1154,6 +1201,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       <p class="complaint">“${esc(job.complaint)}”</p>
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
       ${debug}${nudge}${this.caseRow()}
+      ${job.device.cartFor ? '<div class="row"><button data-act="station">📺 Test Station</button></div>' : ''}
       <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>
       <div class="row"><button data-act="pause">Pause → office</button>${job.kind === 'customer' ? '<button data-act="give-up">Give up</button>' : ''}</div>`;
@@ -1226,6 +1274,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           ? ''
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
+        ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
       </div>`
       }
       ${jumpers.map((j) => `<div class="kv small"><span>Jumper ${j.id}</span><button data-act="jumper-del" data-id="${j.id}">Remove wire</button></div>`).join('')}`;

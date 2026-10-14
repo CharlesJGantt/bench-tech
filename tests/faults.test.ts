@@ -4,6 +4,7 @@ import { DEVICE_LIST, DL12 } from '../src/sim/devices';
 import { generateJob, type Job } from '../src/sim/faults';
 import { addJumper, cleanBoard, evaluate, installPart, removePart } from '../src/sim/repair';
 import { treatCorrosion } from '../src/sim/corrosion';
+import { cleanAllContacts } from '../src/sim/contacts';
 
 function pointOnNet(b: BoardState, net: string): PointRef {
   for (const c of Object.values(b.comps)) {
@@ -39,6 +40,7 @@ function canonicalRepair(job: Job): BoardState {
   }
   cleanBoard(b);
   treatCorrosion(b, 1);
+  cleanAllContacts(b);
   return b;
 }
 
