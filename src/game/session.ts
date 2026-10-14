@@ -550,7 +550,8 @@ export class Session {
   /** Re-solve the board after anything changed. Applies instant (electrical) damage. */
   recompute(): void {
     const power = this.power;
-    if (power.kind === 'off') {
+    // No bench power — but a connected battery still runs the board.
+    if (power.kind === 'off' && (this.idle || !hasInternalPower(this.board))) {
       powerDown(this.board);
       this.op = null;
     } else {

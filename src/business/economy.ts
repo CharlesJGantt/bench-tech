@@ -135,7 +135,7 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     name: 'Corrosion cleaner',
     unit: 'ml',
     pack: { qty: 250, cost: 6.3, label: '250 ml bottle' },
-    start: 0,
+    start: 125, // half a bottle to start with
     low: 0,
     blurb: 'Fizzes the green/white crust of liquid damage into a sludge. Scrub it with the brush, then rinse with IPA and wipe it away — leftover sludge dries back into crust.',
   },

@@ -154,33 +154,6 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
     ],
   },
   ...Object.fromEntries(
-    (
-      [
-        ['button-lite', '#d9c84a', true],
-        ['rb35', '#7a5fb3', false],
-        ['rogue-pal', '#2b2b2b', false],
-        ['duo-ixl', '#3d3f8f', true],
-        ['duo-3dxl', '#8f2b2b', true],
-        ['duo-lite', '#e6e6ea', true],
-      ] as const
-    ).map(([id, color, security]) => [
-      id,
-      {
-        color,
-        items: [
-          { ...screw('s1', 'Back screw 1', [6, 6], 4, 4), security },
-          { ...screw('s2', 'Back screw 2', [154, 6], 4, 4), security },
-          screw('s3', 'Back screw 3', [6, 94], 6, 6),
-          screw('s4', 'Back screw 4', [154, 94], 3, 3, [], ['3V3', 'GND']),
-          { id: 'back', kind: 'clips', label: 'Back shell', at: [80, 50], size: [160, 100], needs: ['s1', 's2', 's3', 's4'], covers: true },
-          { id: 'bat', kind: 'cable', label: 'Battery plug', at: [40, 32], module: 'BT1', needs: ['back'] },
-          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [40, 46], module: 'LCD1', latch: true, needs: ['back'] },
-          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 62], module: 'SPK1', needs: ['back'] },
-        ],
-      } satisfies EnclosureDef,
-    ]),
-  ),
-  ...Object.fromEntries(
     (['game-clock', 'critter-mini'] as const).map((id) => [
       id,
       {

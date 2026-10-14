@@ -856,6 +856,17 @@ def screen_m():
 screen_m()
 
 
+def screen_sized(n, w, h):
+    e = item(n)
+    box(f"{n}_frame", e, M["bezel"], 0, 0, 0, w, h, 2.6, bevel=0.6, segments=3)
+    box(f"{n}_lens", e, M["glass"], 0, 0, 2.6, w - 5, h - 5, 0.15)
+    box(f"{n}_ribbon", e, M["fpc"], 0, h / 2 - 1, 0, 10, 3, 0.2)
+
+
+screen_sized("pkg_SCREEN_L", 76, 58)
+screen_sized("pkg_SCREEN_W", 118, 70)
+
+
 def tpad():
     n = "pkg_TPAD"
     e = item(n)
@@ -881,6 +892,34 @@ aa2()
 screen_s()
 fpc3()
 
+# Front-shell pieces for handhelds / controllers: assembled at runtime from the device's
+# face layout (src/sim/board.ts FaceSpec) so the windows and caps line up with the board.
+
+
+def face_pieces():
+    sh = M["shell"]
+    k = M["blackplastic"]
+    e = item("enc_slab")  # 10 x 10 x 1, scaled to fill around the screen window
+    box("enc_slab_box", e, sh, 0, 0, 0, 10, 10, 1, bevel=0.05)
+    e = item("enc_dpad")
+    box("enc_dpad_h", e, k, 0, 0, 0, 22, 7.5, 3.2, bevel=0.6)
+    box("enc_dpad_v", e, k, 0, 0, 0, 7.5, 22, 3.2, bevel=0.6)
+    cyl("enc_dpad_dimple", e, M["rubber"], 0, 0, 3.2, 3, 0.2, n=24)
+    e = item("enc_btn")
+    cyl("enc_btn_cap", e, k, 0, 0, 0, 4.6, 2.6, n=32)
+    cyl("enc_btn_dome", e, k, 0, 0, 2.6, 4.4, 0.7, n=32, r2=3.6)
+    e = item("enc_pill")
+    box("enc_pill_cap", e, M["rubber"], 0, 0, 0, 9, 3.4, 1.6, bevel=0.8)
+    e = item("enc_grille")
+    box("enc_grille_plate", e, sh, 0, 0, 0, 22, 14, 0.4)
+    for i in range(6):
+        for j in range(4):
+            cyl(f"enc_grille_h{i}_{j}", e, M["recess"], -8.75 + i * 3.5, -5.25 + j * 3.5, 0.4, 0.7, 0.05, n=12)
+    e = item("enc_bezel")  # dark border inside the screen window, 10 x 10, scaled
+    box("enc_bezel_box", e, M["bezel"], 0, 0, 0, 10, 10, 0.4)
+
+
+face_pieces()
 enc_shell()
 enc_screw()
 enc_shield()

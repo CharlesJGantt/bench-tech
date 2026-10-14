@@ -81,7 +81,9 @@ export type Pkg =
   | 'PAK'
   | 'TPAD'
   | 'FPC4'
-  | 'SCREEN_M';
+  | 'SCREEN_M'
+  | 'SCREEN_L'
+  | 'SCREEN_W';
 
 export interface PartSpec {
   partNo: string;
@@ -670,7 +672,7 @@ function handheldParts(): Record<string, PartSpec> {
     label,
     marking,
     cost,
-    pins: ['VDD', 'PWR', 'BA', 'DIN', 'LED', 'VEN', 'SND', 'EN', 'OK1', 'OK2', 'OK3', 'OK4', 'CE', 'NC14', 'NC15', 'GND'],
+    pins: ['VDD', 'PWR', 'BA', 'DIN', 'LED', 'VEN', 'SND', 'EN', 'OK1', 'OK2', 'OK3', 'OK4', 'CE', 'DP', 'BB', 'GND'],
     description: `${label}: the main chip. Starts when the power button is pressed, checks its screens and boards (OK lines), then draws the picture (VEN) and plays sound (SND). Factory-programmed — donor boards only.`,
   });
   const modConn = (partNo: string, label: string, pins: string[]): PartSpec => ({ partNo, kind: 'connector', pkg: 'FPC4', value: 0, label, marking: '', cost: 0.6, heatLimit: 260, pins, description: `${label} (flip-latch ribbon connector).` });
@@ -719,6 +721,32 @@ function handheldParts(): Record<string, PartSpec> {
       pins: ['VCC', 'EN', 'OK', 'GND'],
       logic: { vcc: 'VCC', vmin: 2.6, iq: 0.01, ch: [{ needHigh: ['EN'], outs: ['OK'] }] },
       description: 'Camera module with its long hinge ribbon. A damaged ribbon can short the camera-ready line and stop the screens.',
+    },
+    'M-HHLCD35': {
+      partNo: 'M-HHLCD35',
+      kind: 'logic',
+      pkg: 'SCREEN_L',
+      value: 3.3,
+      label: '3.5" IPS screen module (4:3)',
+      marking: '',
+      cost: 16,
+      plugIn: true,
+      pins: ['VCC', 'DATA', 'OK', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.6, iq: 0.03, ch: [{ outs: ['OK'] }] },
+      description: '3.5-inch 640 × 480 IPS panel on a 54-pin ZIF ribbon. Reports OK once powered; shows a picture when it gets picture data.',
+    },
+    'M-HHLCDW': {
+      partNo: 'M-HHLCDW',
+      kind: 'logic',
+      pkg: 'SCREEN_W',
+      value: 3.3,
+      label: 'Wide screen module (5.5")',
+      marking: '',
+      cost: 32,
+      plugIn: true,
+      pins: ['VCC', 'DATA', 'OK', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.6, iq: 0.05, ch: [{ outs: ['OK'] }] },
+      description: 'Wide-screen LCD + touch module on its ribbon. Reports OK once powered; shows a picture when it gets picture data.',
     },
     'J-FPC-LCD': modConn('J-FPC-LCD', 'Screen ribbon connector', ['VCC', 'DATA', 'OK', 'GND']),
     'J-FPC-MOD': modConn('J-FPC-MOD', 'Board ribbon connector', ['VCC', 'EN', 'OK', 'GND']),

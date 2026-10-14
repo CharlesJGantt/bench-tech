@@ -91,6 +91,22 @@ export interface Firmware {
   step(state: Record<string, number>, inputs: Record<string, boolean>, prev: Record<string, boolean>): Record<string, boolean>;
 }
 
+/** Front shell layout (centres / sizes in board mm). */
+export interface FaceSpec {
+  /** Screen openings: centre x, centre y, width, height. */
+  windows: [number, number, number, number][];
+  dpad?: [number, number];
+  /** Round face buttons (A/B/X/Y…). */
+  buttons?: [number, number][];
+  /** Small pill buttons (start / select / menu). */
+  pills?: [number, number][];
+  /** Openings the analog sticks poke through. */
+  sticks?: [number, number][];
+  grille?: [number, number];
+  /** Height of the front shell above the board (mm). */
+  height?: number;
+}
+
 export interface DeviceDef {
   id: string;
   name: string;
@@ -120,6 +136,11 @@ export interface DeviceDef {
   ownerAttaches?: string[];
   /** The case around the board (see enclosure.ts); set from enclosures.ts in devices/index.ts. */
   enclosure?: EnclosureDef;
+  /**
+   * The front of a handheld / controller (board mm): screen windows, controls and grille.
+   * The scene builds the closed front shell from it so it lines up with the parts.
+   */
+  face?: FaceSpec;
   /** Cartridge boards: the console they plug into (device id) and the games sold on this board. */
   cartFor?: string;
   titles?: { name: string; value: number }[];

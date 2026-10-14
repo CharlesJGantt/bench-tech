@@ -286,6 +286,90 @@ export class BenchScene {
   }
 
   /** (Re)build everything that depends on which device is on the bench. */
+  /**
+   * A handheld's front shell from its face layout: slabs filling everything but the screen
+   * windows and stick holes, side walls, a D-pad, buttons, pills and a speaker grille.
+   */
+  private buildFace(dev: DeviceDef, color: string): pc.Entity {
+    const f = dev.face!;
+    const H = f.height ?? 9;
+    const g = new pc.Entity('face');
+    const shell = new pc.StandardMaterial();
+    shell.diffuse = new pc.Color().fromString(color);
+    shell.gloss = 0.5;
+    shell.update();
+    const W = (x: number) => x - dev.width / 2;
+    const Z = (y: number) => y - dev.height / 2;
+    const slab = (x0: number, y0: number, x1: number, y1: number, top: number, thick: number) => {
+      if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return;
+      const e = this.clone('enc_slab');
+      e.setLocalScale((x1 - x0) / 10, thick, (y1 - y0) / 10);
+      e.setLocalPosition(W((x0 + x1) / 2), top - thick, Z((y0 + y1) / 2));
+      this.paint(e, shell);
+      g.addChild(e);
+    };
+    // Top surface: a grid cut along every opening edge; skip cells inside an opening
+    const holes = [...f.windows.map(([cx, cy, w, h]) => [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2]), ...(f.sticks ?? []).map(([x, y]) => [x - 9, y - 9, x + 9, y + 9])];
+    const xs = [...new Set([0, dev.width, ...holes.flatMap((h) => [h[0], h[2]])])].sort((a, b) => a - b);
+    const ys = [...new Set([0, dev.height, ...holes.flatMap((h) => [h[1], h[3]])])].sort((a, b) => a - b);
+    for (let i = 0; i + 1 < xs.length; i++)
+      for (let j = 0; j + 1 < ys.length; j++) {
+        const cx = (xs[i] + xs[i + 1]) / 2;
+        const cy = (ys[j] + ys[j + 1]) / 2;
+        if (holes.some((h) => cx > h[0] && cx < h[2] && cy > h[1] && cy < h[3])) continue;
+        slab(xs[i], ys[j], xs[i + 1], ys[j + 1], H, 1.2);
+      }
+    // Side walls down to the board edge
+    const wall = 1.6;
+    slab(-wall, -wall, dev.width + wall, 0, H, H + BOARD_T);
+    slab(-wall, dev.height, dev.width + wall, dev.height + wall, H, H + BOARD_T);
+    slab(-wall, 0, 0, dev.height, H, H + BOARD_T);
+    slab(dev.width, 0, dev.width + wall, dev.height, H, H + BOARD_T);
+    const cap = (name: string, x: number, y: number) => {
+      const e = this.clone(name);
+      e.setLocalPosition(W(x), H, Z(y));
+      g.addChild(e);
+    };
+    if (f.dpad) cap('enc_dpad', f.dpad[0], f.dpad[1]);
+    for (const [x, y] of f.buttons ?? []) cap('enc_btn', x, y);
+    for (const [x, y] of f.pills ?? []) cap('enc_pill', x, y);
+    if (f.grille) cap('enc_grille', f.grille[0], f.grille[1]);
+    return g;
+  }
+
+  private screenTex: pc.Texture | null = null;
+
+  /** A little procedural "game" picture for lit handheld screens. */
+  private gameScreen(): pc.Texture {
+    if (this.screenTex) return this.screenTex;
+    const cv = document.createElement('canvas');
+    cv.width = 160;
+    cv.height = 120;
+    const ctx = cv.getContext('2d')!;
+    const sky = ctx.createLinearGradient(0, 0, 0, 120);
+    sky.addColorStop(0, '#4aa8ff');
+    sky.addColorStop(1, '#bfe6ff');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, 160, 120);
+    ctx.fillStyle = '#ffffff';
+    for (const [x, y] of [[20, 20], [90, 14], [130, 30]]) ctx.fillRect(x, y, 18, 6);
+    ctx.fillStyle = '#3c9a3c';
+    ctx.fillRect(0, 96, 160, 24);
+    ctx.fillStyle = '#7a4b22';
+    for (let x = 0; x < 160; x += 8) ctx.fillRect(x, 100, 7, 4);
+    ctx.fillStyle = '#d2322d';
+    ctx.fillRect(40, 80, 8, 16);
+    ctx.fillStyle = '#f4c27a';
+    ctx.fillRect(41, 74, 6, 6);
+    ctx.fillStyle = '#e8a33a';
+    for (const x of [80, 92, 104]) ctx.fillRect(x, 60, 8, 8);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('SCORE 004200', 6, 10);
+    this.screenTex = this.texture(cv);
+    return this.screenTex;
+  }
+
   /** Give every mesh of an entity one material (case tint / translucency). */
   private paint(e: pc.Entity, m: pc.Material): void {
     for (const r of e.findComponents('render') as pc.RenderComponent[]) for (const mi of r.meshInstances) mi.material = m;
@@ -322,6 +406,13 @@ export class BenchScene {
       screw: 'enc_screw',
     };
     for (const it of def.items) {
+      // Handhelds / controllers: the covering shell is a proper front with windows and caps
+      if (dev.face && it.covers && (it.kind === 'shell' || it.kind === 'clips')) {
+        const g = this.buildFace(dev, def.color);
+        this.boardGroup.addChild(g);
+        this.encEnts.set(it.id, g);
+        continue;
+      }
       const name = it.kind === 'cable' ? (it.latch ? 'enc_ribbon' : 'enc_jst') : model[it.kind];
       if (!name || !this.templates.has(name)) continue;
       const e = this.clone(name);
@@ -718,7 +809,7 @@ export class BenchScene {
             const m = (mi.material as pc.StandardMaterial).clone();
             mi.material = m;
             v.lenses.push(m);
-            const col = c.part.kind === 'module' && c.part.pkg === 'SCREEN' ? 'screen' : (c.part.color ?? 'white');
+            const col = (c.part.kind === 'module' || c.part.kind === 'logic') && c.part.pkg.startsWith('SCREEN') ? 'screen' : (c.part.color ?? 'white');
             v.lensColor = { blue: new pc.Color(0.25, 0.5, 1), green: new pc.Color(0.25, 1, 0.3), red: new pc.Color(1, 0.22, 0.15), white: new pc.Color(1, 0.95, 0.82), screen: new pc.Color(0.75, 0.85, 1) }[col];
             v.fullI = c.part.kind === 'cob' || c.part.pkg === 'LEDBAR' ? 0.1 : c.part.pkg === 'SCREEN' ? 0.02 : 0.003;
           } else if (c.burnt) {
@@ -761,7 +852,7 @@ export class BenchScene {
 
   /** Printed part marking on the top of a package (laser-etched light grey text). */
   private addMarking(e: pc.Entity, p: PartSpec): void {
-    if (!p.marking || ['CAP_EL', 'CAP_EL10', 'BARREL', 'TACT6', 'LED0805', 'COB', 'TP', 'USBC', 'MUSB', 'HDMI', 'PWR2', 'JST2', 'FPC2', 'SCREEN', 'LEDBAR'].includes(p.pkg)) return;
+    if (!p.marking || p.pkg.startsWith('SCREEN') || ['CAP_EL', 'CAP_EL10', 'BARREL', 'TACT6', 'LED0805', 'COB', 'TP', 'USBC', 'MUSB', 'HDMI', 'PWR2', 'JST2', 'FPC2', 'LEDBAR'].includes(p.pkg)) return;
     let tex = this.markingTex.get(p.marking);
     if (!tex) {
       const cv = document.createElement('canvas');
@@ -964,6 +1055,18 @@ export class BenchScene {
     const op = s.op;
     for (const [ref, v] of this.comps) {
       if (!v.lenses.length) continue;
+      // Handheld screen modules: lit with a game picture while they get power and picture data
+      const sc = s.board.comps[ref];
+      if (sc.part?.kind === 'logic' && sc.part.pkg.startsWith('SCREEN')) {
+        const lit = !!op && !sc.unplugged && sc.fault?.type !== 'dead' && op.at({ ref, pin: 'VCC' }) - op.at({ ref, pin: 'GND' }) > 2.4 && op.at({ ref, pin: 'DATA' }) - op.at({ ref, pin: 'GND' }) > 1.2;
+        for (const m of v.lenses) {
+          m.emissiveMap = lit ? this.gameScreen() : null;
+          m.emissive = lit ? new pc.Color(1, 1, 1) : new pc.Color(0, 0, 0);
+          m.emissiveIntensity = lit ? 1.1 : 0;
+          m.update();
+        }
+        continue;
+      }
       const i = op ? Math.max(0, op.current(ref)) : 0;
       const big = v.fullI >= 0.02;
       const k = Math.min(big ? 1.4 : 1.5, i / v.fullI);

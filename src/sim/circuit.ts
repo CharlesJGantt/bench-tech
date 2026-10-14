@@ -887,6 +887,8 @@ const THETA: Record<string, number> = {
   TPAD: 20,
   FPC4: 100,
   SCREEN_M: 15,
+  SCREEN_L: 15,
+  SCREEN_W: 12,
   PAK: 20,
   '0603': 250,
   '1206': 120,

@@ -7,13 +7,34 @@
  */
 import { device, place } from '../blocks/core';
 import { liIonCharger, usbInput } from '../blocks/usb';
-import { c, type ComponentDef, type DeviceDef } from '../board';
+import { c, type ComponentDef, type DeviceDef, type FaceSpec } from '../board';
+import type { EncItem, EnclosureDef } from '../enclosure';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
 import { cx, testCart } from './retro';
 
+/**
+ * Physical form: board size, where each part sits (refs → [x, y, rot]), the block layouts
+ * and the front face (screen windows, controls). Researched against the real-world shapes:
+ * vertical "brick" (3.5" 4:3 screen on top, D-pad + ABXY below), wide (screen in the middle,
+ * sticks/D-pad left, buttons right) and clamshell (two screens, hinge in between).
+ */
+export interface Form {
+  width: number;
+  height: number;
+  screenPart: string;
+  layout: Record<string, [number, number, number?]>;
+  usb: Record<string, [number, number, number?]>;
+  chg: Record<string, [number, number, number?]>;
+  face: FaceSpec;
+}
+
 interface HandheldSpec {
+  form: Form;
+  /** Case colour, and whether the top screws are security (tri-wing) ones. */
+  color: string;
+  security?: boolean;
   id: string;
   name: string;
   tagline: string;
@@ -32,10 +53,98 @@ interface HandheldSpec {
   minReputation: number;
 }
 
-const TW = 160;
-const TH = 100;
+
+/** Vertical "brick" (RB35): 90 × 150 mm; 3.5" 4:3 screen on top, controls below, speaker + USB-C at the bottom. */
+const VERTICAL: Form = {
+  width: 90,
+  height: 150,
+  screenPart: 'M-HHLCD35',
+  layout: {
+    LCD1: [45, 34], J3: [45, 68], R10: [30, 50, 90],
+    U2: [20, 16], C2: [34, 12, 90], TP2: [34, 22], TP1: [8, 70],
+    U3: [50, 30], R1: [70, 14, 90], R2: [70, 24, 90], R3: [70, 34, 90], R15: [20, 40, 90], R16: [40, 48, 90],
+    U4: [60, 50], R8: [72, 50, 90],
+    SW11: [22, 78], SW12: [22, 94], SW13: [13, 86], SW14: [31, 86],
+    SW8: [68, 78], SW9: [59, 86], SW2: [77, 86], SW10: [68, 94],
+    SW1: [84, 108], R7: [76, 122, 90], D1: [84, 122, 90],
+    J4: [24, 108], SPK1: [24, 128],
+    Q1: [30, 104], R6: [30, 112, 90], R5: [36, 112, 90],
+  },
+  usb: { conn: [45, 145, 180], tvs: [58, 140, 270], tp: [32, 146] },
+  chg: { chg: [66, 104], ledRes: [78, 140, 90], led: [70, 140, 90], cbat: [74, 100, 90], conn: [45, 110], pack: [52, 128], tp: [66, 112] },
+  face: { windows: [[45, 34, 70, 52]], dpad: [22, 86], buttons: [[68, 78], [59, 86], [77, 86], [68, 94]], pills: [[38, 104], [52, 104]], grille: [24, 128] },
+};
+
+/** Wide handheld (Button Lite): 208 × 92 mm; 5.5" screen in the middle, stick + D-pad left, buttons + stick right. */
+const WIDE_LITE: Form = {
+  width: 208,
+  height: 92,
+  screenPart: 'M-HHLCDW',
+  layout: {
+    LCD1: [104, 46], J3: [60, 86], R10: [90, 60, 90],
+    U2: [70, 20], C2: [80, 16, 90], TP2: [80, 26], TP1: [44, 88],
+    U3: [104, 40], R1: [124, 20, 90], R2: [130, 20, 90], R3: [136, 20, 90], R15: [70, 40, 90], R16: [76, 40, 90],
+    U4: [120, 60], R8: [132, 60, 90],
+    STK1: [22, 22], SW11: [22, 50], SW12: [22, 66], SW13: [13, 58], SW14: [31, 58],
+    SW8: [186, 14], SW9: [177, 22], SW2: [195, 22], SW10: [186, 30], STK2: [186, 52],
+    SW5: [200, 86], R14: [204, 74, 90],
+    SW1: [24, 6], R7: [40, 14, 90], D1: [40, 6, 90],
+    J4: [168, 72], SPK1: [190, 78],
+    J2: [140, 6],
+  },
+  usb: { conn: [104, 88, 180], tvs: [116, 84, 270], tp: [92, 88] },
+  chg: { chg: [140, 84], ledRes: [148, 88, 90], led: [156, 88, 90], cbat: [132, 84, 90], conn: [42, 74], pack: [22, 80], tp: [126, 88] },
+  face: { windows: [[104, 46, 110, 62]], sticks: [[22, 22], [186, 52]], dpad: [22, 58], buttons: [[186, 14], [177, 22], [195, 22], [186, 30]], pills: [[40, 40], [168, 40]], grille: [190, 78] },
+};
+
+/** Big wide handheld PC (Rogue Pal): 260 × 110 mm, sticks above the D-pad / buttons, shoulder trigger. */
+const WIDE_PC: Form = {
+  width: 260,
+  height: 110,
+  screenPart: 'M-HHLCDW',
+  layout: {
+    LCD1: [130, 52], J3: [100, 100], R10: [116, 70, 90],
+    U2: [100, 26], C2: [110, 22, 90], TP2: [110, 32], TP1: [80, 104],
+    U3: [130, 46], R1: [150, 26, 90], R2: [156, 26, 90], R3: [162, 26, 90], R15: [100, 46, 90], R16: [106, 46, 90],
+    U4: [146, 70], R8: [158, 70, 90],
+    STK1: [30, 26], SW11: [30, 58], SW12: [30, 74], SW13: [21, 66], SW14: [39, 66],
+    SW8: [226, 22], SW9: [217, 30], SW2: [235, 30], SW10: [226, 38], STK2: [226, 66],
+    SW5: [250, 8], R14: [254, 22, 90],
+    SW1: [50, 8], R7: [62, 16, 90], D1: [62, 8, 90],
+    J4: [206, 90], SPK1: [230, 94],
+  },
+  usb: { conn: [130, 104], tvs: [142, 100, 270], tp: [118, 104] },
+  chg: { chg: [166, 98], ledRes: [174, 102, 90], led: [182, 102, 90], cbat: [158, 98, 90], conn: [60, 92], pack: [36, 96], tp: [166, 106] },
+  face: { windows: [[130, 52, 110, 62]], sticks: [[30, 26], [226, 66]], dpad: [30, 66], buttons: [[226, 22], [217, 30], [235, 30], [226, 38]], pills: [[64, 48], [196, 48]], grille: [230, 94] },
+};
+
+/** Clamshell, opened flat (DuoScreen): 150 × 175 mm; top screen, hinge, bottom screen with controls either side. */
+const CLAMSHELL: Form = {
+  width: 150,
+  height: 175,
+  screenPart: 'M-HHLCD35',
+  layout: {
+    LCD1: [75, 38], J3: [40, 80], R10: [50, 50, 90],
+    LCD2: [75, 125], J5: [110, 80], R11: [50, 56, 90],
+    U2: [60, 20], C2: [70, 16, 90], TP2: [70, 26], TP1: [8, 80],
+    U3: [90, 30], R1: [90, 110, 90], R2: [96, 110, 90], R3: [102, 110, 90], R15: [60, 40, 90], R16: [66, 40, 90],
+    U4: [100, 40], R8: [106, 46, 90],
+    SW11: [18, 104], SW12: [18, 120], SW13: [9, 112], SW14: [27, 112],
+    SW8: [132, 104], SW9: [123, 112], SW2: [141, 112], SW10: [132, 120],
+    SW1: [18, 140], D1: [30, 140, 90], R7: [36, 140, 90],
+    J4: [130, 52], SPK1: [130, 30],
+    J8: [19, 46], WIFI1: [19, 30], R12: [19, 56, 90],
+    J9: [95, 72], CAM1: [75, 82], R13: [100, 84, 90],
+    J2: [75, 166],
+  },
+  usb: { conn: [130, 165], tvs: [140, 160, 270], tp: [120, 170] },
+  chg: { chg: [130, 140], ledRes: [146, 146, 90], led: [146, 154, 90], cbat: [138, 140, 90], conn: [44, 156], pack: [22, 163], tp: [124, 148] },
+  face: { windows: [[75, 38, 70, 52], [75, 125, 70, 52]], dpad: [18, 112], buttons: [[132, 104], [123, 112], [141, 112], [132, 120]], pills: [[132, 136], [132, 146]], grille: [130, 30] },
+};
 
 function handheld(sp: HandheldSpec): DeviceDef {
+  const TW = sp.form.width;
+  const TH = sp.form.height;
   const okPins = { OK1: '3V3', OK2: '3V3', OK3: '3V3', OK4: '3V3' } as Record<string, string>;
   const lcds = sp.screens === 2 ? ['LCD1', 'LCD2'] : ['LCD1'];
   okPins.OK1 = 'OK_LCD1';
@@ -49,7 +158,17 @@ function handheld(sp: HandheldSpec): DeviceDef {
     c('C2', 'C-10U-6', 'POWER', 70, 18, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
     c('TP1', 'TP', 'POWER', 4, 30, 0, { '1': 'GND' }, 'Ground'),
     c('TP2', 'TP', 'POWER', 58, 22, 0, { '1': '3V3' }, '3.3 V rail'),
-    cx('U3', sp.soc, 'SOC', 62, 36, 0, { VDD: '3V3', GND: 'GND', PWR: 'PWR', BA: 'BA', DIN: 'DIN', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', EN: 'MOD_EN', CE: 'CE', ...okPins }, 'Main chip'),
+    cx('U3', sp.soc, 'SOC', 62, 36, 0, { VDD: '3V3', GND: 'GND', PWR: 'PWR', BA: 'BA', BB: 'BB', DP: 'DPAD', DIN: 'DIN', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', EN: 'MOD_EN', CE: 'CE', ...okPins }, 'Main chip'),
+    // D-pad (four dome switches under one cap) and the other face buttons
+    c('SW11', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad up'),
+    c('SW12', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad down'),
+    c('SW13', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad left'),
+    c('SW14', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad right'),
+    c('R15', 'R-10K', 'BUTTONS', 0, 0, 90, { '1': '3V3', '2': 'DPAD' }, 'D-pad pull-up'),
+    c('SW8', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'BB', '2': 'GND' }, 'X button'),
+    c('SW9', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'BB', '2': 'GND' }, 'Y button'),
+    c('SW10', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'BB', '2': 'GND' }, 'B button'),
+    c('R16', 'R-10K', 'BUTTONS', 0, 0, 90, { '1': '3V3', '2': 'BB' }, 'Face-button pull-up'),
     c('SW1', 'SW-TACT', 'BUTTONS', 140, 12, 0, { '1': 'PWR', '2': 'GND' }, 'Power button'),
     c('R1', 'R-10K', 'BUTTONS', 128, 20, 90, { '1': '3V3', '2': 'PWR' }, 'Power button pull-up'),
     c('SW2', 'SW-TACT', 'BUTTONS', 140, 34, 0, { '1': 'BA', '2': 'GND' }, 'A button'),
@@ -61,13 +180,13 @@ function handheld(sp: HandheldSpec): DeviceDef {
     c('J4', 'J-JST2', 'AUDIO', 116, 62, 0, { '1': 'SPK_P', '2': 'SPK_N' }, 'Speaker connector'),
     c('SPK1', 'M-SPK4', 'AUDIO', 134, 82, 0, { '1': 'SPK1_A', '2': 'SPK1_B' }, 'Speaker', 'J4'),
     c('J3', 'J-FPC-LCD', 'SCREEN', 40, 46, 0, { VCC: '3V3', DATA: 'LCD_D', OK: 'OK_LCD1', GND: 'GND' }, sp.screens === 2 ? 'Top screen ribbon connector' : 'Screen ribbon connector'),
-    c('LCD1', 'M-HHLCD', 'SCREEN', 30, 78, 0, { VCC: 'LCD1_VCC', DATA: 'LCD1_DATA', OK: 'LCD1_OK', GND: 'LCD1_GND' }, sp.screens === 2 ? 'Top screen' : 'Screen', 'J3'),
+    c('LCD1', sp.form.screenPart, 'SCREEN', 30, 78, 0, { VCC: 'LCD1_VCC', DATA: 'LCD1_DATA', OK: 'LCD1_OK', GND: 'LCD1_GND' }, sp.screens === 2 ? 'Top screen' : 'Screen', 'J3'),
     c('R10', 'R-100K', 'SCREEN', 52, 50, 90, { '1': 'OK_LCD1', '2': 'GND' }, 'Screen-OK pull-down'),
   ];
   if (sp.screens === 2)
     parts.push(
       c('J5', 'J-FPC-LCD', 'SCREEN', 76, 64, 0, { VCC: '3V3', DATA: 'LCD_D', OK: 'OK_LCD2', GND: 'GND' }, 'Bottom screen ribbon connector'),
-      c('LCD2', 'M-HHLCD', 'SCREEN', 84, 86, 0, { VCC: 'LCD2_VCC', DATA: 'LCD2_DATA', OK: 'LCD2_OK', GND: 'LCD2_GND' }, 'Bottom screen', 'J5'),
+      c('LCD2', sp.form.screenPart, 'SCREEN', 84, 86, 0, { VCC: 'LCD2_VCC', DATA: 'LCD2_DATA', OK: 'LCD2_OK', GND: 'LCD2_GND' }, 'Bottom screen', 'J5'),
       c('R11', 'R-100K', 'SCREEN', 66, 64, 90, { '1': 'OK_LCD2', '2': 'GND' }, 'Bottom-screen-OK pull-down'),
     );
   if (sp.wifi)
@@ -101,9 +220,14 @@ function handheld(sp: HandheldSpec): DeviceDef {
       c('R6', 'R-4K7', 'POWER', 22, 18, 90, { '1': 'VBUS', '2': 'Q1_G' }, 'Switch gate pull-up'),
       c('R5', 'R-2K2', 'POWER', 28, 18, 90, { '1': 'Q1_G', '2': 'GND' }, 'Switch bias resistor'),
     );
-  // Stick positions moved for 1-screen boards with sticks (Rogue Pal) are above; SW2 sits below STK2.
-  if (sp.sticks) for (const p of parts) if (p.ref === 'SW2') Object.assign(p, { x: 140, y: 52 });
-  if (sp.sticks) for (const p of parts) if (p.ref === 'R2') Object.assign(p, { x: 128, y: 52 });
+  // Place everything where the real thing has it
+  for (const p of parts) {
+    const at = sp.form.layout[p.ref];
+    if (!at) throw new Error(`${sp.id}: no position for ${p.ref} in its form layout`);
+    p.x = at[0];
+    p.y = at[1];
+    p.rot = (at[2] ?? 0) as ComponentDef['rot'];
+  }
 
   const variants: Variant[] = [
     {
@@ -240,7 +364,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
     return 'Something is off.' + hot;
   }
 
-  return device({
+  const dev = device({
     id: sp.id,
     name: sp.name,
     category: 'Handheld',
@@ -248,17 +372,15 @@ function handheld(sp: HandheldSpec): DeviceDef {
     width: TW,
     height: TH,
     blocks: [
-      place('USB', usbInput({ connector: sp.usb, tvs: 'D-TVS5' }), [2, 2], { out: 'VBUS' }, { conn: 'J6', tvs: 'D6', tp: 'TP6' }, { faults: true, outline: null, layout: { conn: [8, 8], tvs: [16, 18, 270], tp: [6, 24] } }),
+      place('USB', usbInput({ connector: sp.usb, tvs: 'D-TVS5' }), [2, 2], { out: 'VBUS' }, { conn: 'J6', tvs: 'D6', tp: 'TP6' }, { faults: true, outline: null, layout: sp.form.usb as never }),
       place('CHG', liIonCharger({ led: true, battery: true }), [30, 2], { vin: chgIn, bat: 'BAT', stat: 'CHG' }, { chg: 'U5', ledRes: 'R9', led: 'D5', cbat: 'C5', conn: 'J1', pack: 'BT1', tp: 'TP5' }, {
         faults: true,
         outline: null,
-        layout: { chg: [38, 10], ledRes: [36, 22, 90], led: [42, 22, 90], cbat: [48, 14, 90], conn: [40, 32], pack: [150, 90], tp: [48, 26] },
+        layout: sp.form.chg as never,
       }),
     ],
-    outlines: [
-      { name: 'POWER', x: 2, y: 2, w: 74, h: 30 },
-      { name: 'MAIN CHIP', x: 52, y: 28, w: 22, h: 18 },
-    ],
+    outlines: [],
+    face: sp.form.face,
     parts,
     traces: [],
     testPoints: [
@@ -274,6 +396,8 @@ function handheld(sp: HandheldSpec): DeviceDef {
       '3V3': { desc: '3.3 V logic rail', expected: 3.3, power: true },
       PWR: { desc: 'Power button (low when pressed)' },
       BA: { desc: 'A button (low when pressed)' },
+      BB: { desc: 'B / X / Y buttons (low when pressed)' },
+      DPAD: { desc: 'D-pad (low when any direction is pressed)' },
       LCD_D: { desc: 'Picture data to the screen(s)' },
       SND: { desc: 'Speaker amp enable' },
       MOD_EN: { desc: 'Enable for the plug-in boards' },
@@ -323,9 +447,39 @@ function handheld(sp: HandheldSpec): DeviceDef {
     quoteBase: sp.quoteBase,
     minReputation: sp.minReputation,
   });
+  dev.enclosure = handheldCase(dev, sp);
+  return dev;
+}
+
+/** The case, generated from the real board: corner screws, back shell, cables on their connectors. */
+function handheldCase(dev: DeviceDef, sp: HandheldSpec): EnclosureDef {
+  const at = (ref: string): [number, number] => {
+    const c = dev.components.find((x) => x.ref === ref)!;
+    return [c.x, c.y];
+  };
+  const W = dev.width;
+  const H = dev.height;
+  const sec = sp.security ?? false;
+  const screw = (id: string, label: string, p: [number, number], len: number, punch?: [string, string]): EncItem => ({ id, kind: 'screw', label, at: p, screw: { length: len, hole: len }, security: sec && id <= 's2', ...(punch ? { punch } : {}) });
+  const items: EncItem[] = [
+    screw('s1', 'Back screw (top left)', [4, 4], 4),
+    screw('s2', 'Back screw (top right)', [W - 4, 4], 4),
+    screw('s3', 'Back screw (bottom left)', [4, H - 4], 6),
+    screw('s4', 'Back screw (bottom right)', [W - 4, H - 4], 3, ['3V3', 'GND']),
+    { id: 'back', kind: 'clips', label: 'Back shell', at: [W / 2, H / 2], size: [W, H], needs: ['s1', 's2', 's3', 's4'], covers: true },
+    { id: 'bat', kind: 'cable', label: 'Battery plug', at: at('J1'), module: 'BT1', needs: ['back'] },
+    { id: 'lcd', kind: 'cable', label: sp.screens === 2 ? 'Top screen ribbon' : 'Screen ribbon', at: at('J3'), module: 'LCD1', latch: true, needs: ['back'] },
+    { id: 'spk', kind: 'cable', label: 'Speaker plug', at: at('J4'), module: 'SPK1', needs: ['back'] },
+  ];
+  if (sp.screens === 2) items.push({ id: 'lcd2', kind: 'cable', label: 'Bottom screen ribbon', at: at('J5'), module: 'LCD2', latch: true, needs: ['back'] });
+  return { color: sp.color, items };
 }
 
 export const BUTTON_LITE = handheld({
+  color: '#d9c84a',
+  security: true,
+  form: WIDE_LITE,
+  sticks: true,
   id: 'button-lite',
   name: 'Button Lite',
   tagline: 'The handheld-only Button: corroded backlight connectors and drifting… everything.',
@@ -357,6 +511,8 @@ export const BUTTON_LITE = handheld({
 });
 
 export const RB35 = handheld({
+  color: '#7a5fb3',
+  form: VERTICAL,
   id: 'rb35',
   name: 'Retrobit RB35',
   tagline: 'Cheap emulation handheld: a charger switch held on by one tiny resistor.',
@@ -399,6 +555,8 @@ export const RB35 = handheld({
 });
 
 export const ROGUE_PAL = handheld({
+  color: '#2b2b2b',
+  form: WIDE_PC,
   id: 'rogue-pal',
   name: 'Rogue Pal',
   tagline: 'Handheld gaming PC: drifting sticks, flat batteries, fragile triggers.',
@@ -484,6 +642,6 @@ const duoVariants = (model: 'ixl' | '3dxl' | 'lite') => (): Variant[] => {
   return v;
 };
 
-export const DUO_IXL = handheld({ id: 'duo-ixl', name: 'DuoScreen i XL', tagline: 'Big dual-screen: a dead top screen means no boot at all.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, camera: true, extraVariants: duoVariants('ixl'), marketValue: 70, quoteBase: 35, minReputation: 5 });
-export const DUO_3DXL = handheld({ id: 'duo-3dxl', name: 'DuoScreen 3D XL', tagline: 'Dual-screen 3D: camera ribbons through the hinge.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, camera: true, extraVariants: duoVariants('3dxl'), marketValue: 110, quoteBase: 40, minReputation: 8 });
-export const DUO_LITE = handheld({ id: 'duo-lite', name: 'DuoScreen Lite', tagline: 'Slim dual-screen: drops knock caps off.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, extraVariants: duoVariants('lite'), marketValue: 55, quoteBase: 30, minReputation: 3 });
+export const DUO_IXL = handheld({ form: CLAMSHELL, color: '#3d3f8f', security: true, id: 'duo-ixl', name: 'DuoScreen i XL', tagline: 'Big dual-screen: a dead top screen means no boot at all.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, camera: true, extraVariants: duoVariants('ixl'), marketValue: 70, quoteBase: 35, minReputation: 5 });
+export const DUO_3DXL = handheld({ form: CLAMSHELL, color: '#8f2b2b', security: true, id: 'duo-3dxl', name: 'DuoScreen 3D XL', tagline: 'Dual-screen 3D: camera ribbons through the hinge.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, camera: true, extraVariants: duoVariants('3dxl'), marketValue: 110, quoteBase: 40, minReputation: 8 });
+export const DUO_LITE = handheld({ form: CLAMSHELL, color: '#e6e6ea', security: true, id: 'duo-lite', name: 'DuoScreen Lite', tagline: 'Slim dual-screen: drops knock caps off.', soc: 'U-DUO-SOC', usb: 'micro', screens: 2, cardSlot: true, wifi: true, extraVariants: duoVariants('lite'), marketValue: 55, quoteBase: 30, minReputation: 3 });
