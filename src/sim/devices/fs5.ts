@@ -7,142 +7,13 @@
  */
 import { c } from '../board';
 import { device, place } from '../blocks/core';
+import { hdmiOut } from '../blocks/hdmi';
 import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { hpdSink, limitedSource, resistor } from '../elements';
-import { addMark, type Rng, type Variant } from '../faults';
+import type { Rng } from '../faults';
 
 const LINES = ['D0', 'D1', 'D2', 'CK'] as const;
-const ESD: Record<(typeof LINES)[number], string> = { D2: 'D3', D1: 'D4', D0: 'D5', CK: 'D6' };
-
-const VARIANTS: Variant[] = [
-  {
-    id: 'hdmi-bent-pin',
-    family: 'Damaged connector',
-    tier: 1,
-    weight: 1.2,
-    apply(b, rng) {
-      const pin = rng.pick(LINES);
-      b.comps.J2.fault = { type: 'pins-open', pins: [pin] };
-      addMark(b, 'J2', 'bent-pin');
-      return {
-        summary: `The HDMI port's ${pin} contact is bent flat, so one data line never reaches the TV. Replace the port (it has a plastic body — low-melt alloy and gentle hot air).`,
-        refs: ['J2'],
-        hint: 'Look inside the HDMI port. Then, power off, compare the data pins in diode mode — they should all read about the same.',
-        flavor: 'Someone tripped over the HDMI cable. It powers on but there is no picture any more.',
-      };
-    },
-  },
-  {
-    id: 'hdmi-port-joint',
-    family: 'Cracked solder joint',
-    tier: 2,
-    weight: 0.8,
-    apply(b, rng) {
-      const pin = rng.pick(LINES);
-      b.comps.J2.joints[pin] = { r: Infinity, cracked: true };
-      return {
-        summary: `The HDMI port's ${pin} pin has a cracked solder joint (cable strain). Reflow it — keep the heat low, the port is plastic.`,
-        refs: ['J2'],
-        hint: 'Compare each HDMI pin leg with its pad. Zoom right in on the joints.',
-        flavor: 'The picture used to flicker if I touched the cable. Now there is no picture.',
-      };
-    },
-  },
-  {
-    id: 'hdmi-5v-fuse',
-    family: 'Blown fuse',
-    tier: 2,
-    weight: 0.8,
-    apply(b) {
-      b.comps.F2.fault = { type: 'open' };
-      return {
-        summary: 'The HDMI +5 V polyfuse F2 failed open, so the TV never sees +5 V and never signals hot-plug — the APU never sends video.',
-        refs: ['F2'],
-        hint: 'A TV only "answers" (hot-plug detect) if it sees +5 V on its HDMI pin. Is there 5 V on the port?',
-      };
-    },
-  },
-  {
-    id: 'esd-short',
-    family: 'Failed diode',
-    tier: 2,
-    weight: 0.9,
-    apply(b, rng) {
-      const line = rng.pick(LINES);
-      const ref = ESD[line];
-      b.comps[ref].fault = { type: 'short', r: rng.range(0.5, 2) };
-      return {
-        summary: `ESD protection diode ${ref} on the ${line} line failed short after a static zap, pulling that line to ground.`,
-        refs: [ref],
-        hint: 'Power off, diode mode, red on ground: one HDMI data line reads near zero while the others read ~0.5 V. Which part on that line is shorted?',
-      };
-    },
-  },
-  {
-    id: 'retimer-short',
-    family: 'Failed HDMI retimer',
-    tier: 2,
-    weight: 0.8,
-    apply(b) {
-      b.comps.U4.fault = { type: 'short', r: 1.5 };
-      addMark(b, 'U4', 'discolored');
-      return {
-        summary: 'The HDMI retimer U4 failed with all its outputs shorted to ground. Replace it (expensive — you may need to order one or pull one from a donor board).',
-        refs: ['U4'],
-        hint: 'Every HDMI data line reads near zero in diode mode. The one part all four lines go through is the retimer.',
-      };
-    },
-  },
-  {
-    id: 'retimer-dead',
-    family: 'Failed HDMI retimer',
-    tier: 3,
-    weight: 0.6,
-    apply(b) {
-      b.comps.U4.fault = { type: 'dead' };
-      return {
-        summary: 'The HDMI retimer U4 is dead: it has power, enable and video in, but drives nothing out. Replace it.',
-        refs: ['U4'],
-        hint: 'With the TV connected and the console on: is U4 powered and enabled, and does it get video from the APU? Then it is the chip.',
-      };
-    },
-  },
-  {
-    id: 'prev-port-bridge',
-    family: 'Bad previous repair',
-    tier: 2,
-    weight: 0.7,
-    apply(b) {
-      addMark(b, 'J2', 'rework-residue');
-      addMark(b, 'J2', 'crooked');
-      b.jumpers.push({ id: b.nextJumperId++, a: { ref: 'J2', pin: 'CK' }, b: { ref: 'J2', pin: '5V' }, cold: false, bridge: true });
-      return {
-        summary: 'Another shop replaced the HDMI port and left a solder bridge between the CK and +5 V pins. Wick the bridge away (or redo the port).',
-        refs: ['J2'],
-        hint: 'Someone has been here before — inspect the HDMI pins under magnification, and check neighbouring pins for continuity.',
-        flavor: 'A shop replaced the HDMI port last month. Still no picture.',
-        previousRepair: true,
-      };
-    },
-  },
-  {
-    id: 'hpd-shifter-dead',
-    family: 'Failed level shifter',
-    tier: 2,
-    weight: 0.8,
-    apply(b) {
-      b.comps.U5.fault = { type: 'dead' };
-      return {
-        summary: 'Level shifter U5 died: the TV\'s hot-plug signal reaches its input but never comes out the other side, so the console never sees the TV and sends no picture. Replace U5.',
-        refs: ['U5'],
-        hint: 'Check the level shifter U5 with the meter, powered with a TV connected: its input (A) should be high, and if both supplies are there its output (B) should be high too.',
-        flavor: 'Powers on fine but my TV just says no signal.',
-      };
-    },
-  },
-];
-
 export const FS5 = device({
   id: 'fs5',
   name: 'Funstation 5 (main board, HDMI section)',
@@ -154,6 +25,17 @@ export const FS5 = device({
     place('IN', powerInput({ connector: 'header', volts: 12, fuse: 'F-5A', bulk: 'C-470U-35', source: 'the internal PSU' }), [2, 2], { out: '12V' }, { conn: 'J1', fuse: 'F1', bulk: 'C1', tpIn: 'TP1', tpOut: 'TP2' }),
     place('5V', buckRail({ vout: 5, vin: 12 }), [32, 2], { vin: '12V', out: '5V' }, { reg: 'U1', boot: 'C5', enTop: 'R2', enBot: 'R3', ind: 'L1', fbTop: 'R4', fbBot: 'R5', cout: 'C3', tp: 'TP3' }),
     place('3V3', ldoRail({ vin: 5 }), [58, 2], { vin: '5V', out: '3V3' }, { reg: 'U2', cout: 'C4', tp: 'TP4' }),
+    place(
+      'HDMI',
+      hdmiOut(),
+      [40, 34],
+      { vcc: '3V3', en: 'RT_EN_IO', video: 'VID_IO', fiveV: '5V_H', hpd: 'HPD_IN' },
+      {
+        enRes: 'R8', vidRes: 'R9', dec: 'C7', rt: 'U4', esd2: 'D3', esd1: 'D4', esd0: 'D5', esdCk: 'D6',
+        poly: 'F2', diode: 'D7', port: 'J2', shifter: 'U5', hpdPull: 'R11', tp5v: 'TP6', tpHpd: 'TP7',
+      },
+      { outline: null },
+    ),
   ],
   outlines: [
     { name: 'APU', x: 86, y: 2, w: 52, h: 40 },
@@ -172,26 +54,9 @@ export const FS5 = device({
     c('R7', 'R-10K', 'APU', 107, 30, 270, { '1': '3V3', '2': 'BTN' }, 'Button pull-up'),
     c('SW1', 'SW-TACT', 'APU', 121, 32, 0, { '1': 'BTN', '2': 'GND' }, 'Power button'),
     c('TP5', 'TP', 'APU', 134, 40, 0, { '1': 'GND' }, 'Ground'),
-    c('R8', 'R-100R', 'RETIMER', 50, 59, 0, { '1': 'RT_EN_IO', '2': 'RT_EN' }, 'Retimer enable resistor'),
-    c('R9', 'R-100R', 'RETIMER', 50, 70, 0, { '1': 'VID_IO', '2': 'VID' }, 'Video link resistor'),
-    c('C7', 'C-100N', 'RETIMER', 56, 54, 90, { '1': '3V3', '2': 'GND' }, 'Retimer decoupling'),
-    c('U4', 'U-LX9201', 'RETIMER', 62, 64, 0, { VCC: '3V3', EN: 'RT_EN', IN: 'VID', D2: 'HD_D2', D1: 'HD_D1', D0: 'HD_D0', CK: 'HD_CK', GND: 'GND' }, 'HDMI retimer'),
-    c('D3', 'D-ESD5', 'RETIMER', 80, 58, 0, { A: 'GND', K: 'HD_D2' }, 'ESD diode (D2 line)'),
-    c('D4', 'D-ESD5', 'RETIMER', 80, 64, 0, { A: 'GND', K: 'HD_D1' }, 'ESD diode (D1 line)'),
-    c('D5', 'D-ESD5', 'RETIMER', 80, 70, 0, { A: 'GND', K: 'HD_D0' }, 'ESD diode (D0 line)'),
-    c('D6', 'D-ESD5', 'RETIMER', 80, 76, 0, { A: 'GND', K: 'HD_CK' }, 'ESD diode (CK line)'),
-    c('F2', 'F-POLY05', 'HDMI', 82, 36, 0, { '1': '5V_H', '2': 'H5V_F' }, 'HDMI +5 V polyfuse'),
-    c('D7', 'D-SS14', 'HDMI', 98, 50, 0, { A: 'H5V_F', K: 'HDMI_5V' }, 'HDMI +5 V back-feed diode'),
-    c('J2', 'J-HDMI', 'HDMI', 116, 68, 90, { D2: 'HD_D2', D1: 'HD_D1', D0: 'HD_D0', CK: 'HD_CK', '5V': 'HDMI_5V', HPD: 'HPD_PORT', GND: 'GND', SHLD: 'GND' }, 'HDMI port'),
-    c('U5', 'U-LS1T', 'HDMI', 100, 79, 0, { VA: 'HDMI_5V', GND: 'GND', A: 'HPD_PORT', B: 'HPD_IN', VB: '3V3', EN: '3V3' }, 'Hot-plug level shifter (5 V → 3.3 V)'),
-    c('R11', 'R-100K', 'HDMI', 90, 83, 0, { '1': 'HPD_IN', '2': 'GND' }, 'Hot-plug detect pull-down'),
-    c('TP6', 'TP', 'HDMI', 130, 52, 0, { '1': 'HDMI_5V' }, 'HDMI +5 V'),
-    c('TP7', 'TP', 'HDMI', 74, 82, 0, { '1': 'HPD_IN' }, 'Hot-plug detect'),
   ],
   traces: [{ id: 'T1', a: '5V', b: '5V_H' }],
   testPoints: [
-    { ref: 'TP6', net: 'HDMI_5V', expected: '≈4.6 V (to the TV)' },
-    { ref: 'TP7', net: 'HPD_IN', expected: '≈3.3 V once the TV is detected' },
     { ref: 'TP5', net: 'GND', expected: '0 V' },
   ],
   nets: {
@@ -203,17 +68,7 @@ export const FS5 = device({
     LED_IO: { desc: 'APU power-light output' },
     PWR_LED_A: { desc: 'Power light anode' },
     RT_EN_IO: { desc: 'APU "retimer enable" output (high once the TV is detected)' },
-    RT_EN: { desc: 'Retimer enable pin' },
     VID_IO: { desc: 'APU video output (high when sending video)' },
-    VID: { desc: 'Video into the retimer' },
-    HD_D0: { desc: 'HDMI data line 0 (≈2.8 V with a TV connected and video running; ~0.5 V diode reading to ground)' },
-    HD_D1: { desc: 'HDMI data line 1 (same as D0)' },
-    HD_D2: { desc: 'HDMI data line 2 (same as D0)' },
-    HD_CK: { desc: 'HDMI clock line (same as D0)' },
-    H5V_F: { desc: 'HDMI +5 V after the polyfuse', expected: 5 },
-    HDMI_5V: { desc: 'HDMI +5 V to the TV (after the diode)', expected: 4.6 },
-    HPD_PORT: { desc: 'Hot-plug detect from the TV (5 V when the TV sees the console)' },
-    HPD_IN: { desc: 'Hot-plug detect into the APU, from level shifter U5 — 3.3 V = TV detected' },
   },
   input: {
     ref: 'J1',
@@ -259,11 +114,10 @@ export const FS5 = device({
     return [
       { label: 'Power light (white)', value: op.current('D1') > 5e-4 ? 'on' : 'off', ok: op.current('D1') > 5e-4 },
       { label: 'TV', value: tvState(b, op), ok: tvState(b, op) === 'picture' },
-      { label: 'HDMI +5 V', value: `${op.net('HDMI_5V').toFixed(2)} V` },
+      { label: 'HDMI +5 V', value: `${op.net('HDMI_P5V').toFixed(2)} V` },
     ];
   },
-  variants: VARIANTS,
-  missable: ['D1', 'D3', 'D4', 'D5', 'D6', 'C6', 'C7', 'R11', 'SW1'],
+  missable: ['D1', 'C6', 'SW1'],
   marketValue: 320,
   quoteBase: 60,
   minReputation: 15,
