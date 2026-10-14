@@ -641,7 +641,11 @@ export function capsOn(b: BoardState, net: string): CompState[] {
 /** A regulator goes unstable — and its output sags — when an output capacitor has dried out (high ESR). */
 export function esrSag(b: BoardState, net: string | undefined, k: number): number {
   if (!net) return 1;
-  return capsOn(b, net).some((x) => x.fault?.type === 'esr' && !x.unplugged) ? k : 1;
+  if (capsOn(b, net).some((x) => x.fault?.type === 'esr' && !x.unplugged)) return k;
+  // Every output capacitor knocked off (or removed): the regulator oscillates just the same.
+  const nets = netGroup(b, net);
+  const designed = Object.values(b.comps).filter((x) => /^C-/.test(x.def.partNo) && Object.values(x.def.pins).some((n) => nets.has(n)) && Object.values(x.def.pins).includes('GND'));
+  return designed.length && designed.every((x) => !x.part) ? k : 1;
 }
 
 /** The net a buck converter regulates: the far side of the inductor on its switch node. */
@@ -882,6 +886,7 @@ const THETA: Record<string, number> = {
   SLIDE: 60,
   TPAD: 20,
   FPC4: 100,
+  SCREEN_M: 15,
   PAK: 20,
   '0603': 250,
   '1206': 120,

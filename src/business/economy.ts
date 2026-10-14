@@ -303,7 +303,7 @@ export const SPECIAL_ORDER_COST = 10;
 export const RUSH_MARKUP = 3;
 export const RUSH_MIN = 1.5;
 /** Parts the supplier will not sell (factory-programmed — salvage only). */
-export const NOT_SOLD = new Set(['U-PIC8', 'U-PIC8-SPK', 'U-PIC8-SBX', 'U-PAD-MCU']);
+export const NOT_SOLD = new Set(['U-PIC8', 'U-PIC8-SPK', 'U-PIC8-SBX', 'U-PAD-MCU', 'U-BTL-SOC', 'U-RB35-SOC', 'U-RP-APU', 'U-DUO-SOC', 'U-GNC-CPU', 'U-CRT-CPU']);
 
 /** Market crazes: a device's resale price jumps for a few days. */
 export const TRENDS = [

@@ -6,6 +6,8 @@ import { FS5 } from './fs5';
 import { SBOX } from './sbox';
 import { VIEWMAX } from './viewmax';
 import { BES, BES_CART } from './bes';
+import { CRITTER_MINI, GAME_CLOCK } from './lcdgames';
+import { BUTTON_LITE, DUO_3DXL, DUO_IXL, DUO_LITE, RB35, ROGUE_PAL } from './handhelds';
 import { BUTTON_GRIP, DUALPULSE, SBOX_PAD } from './controllers';
 import { DB_CART, DBA_CART, DREAMBOY, DREAMBOY_ADVANCE, DREAMBOY_COLOR, DREAMBOY_MICRO, DREAMBOY_POCKET, DREAMBOY_SP } from './dreamboy';
 import { B64, B64_CART, PALTARI, PALTARI_CART, VEGA, VEGA_CART } from './consoles3';
@@ -38,6 +40,14 @@ export const DEVICES: Record<string, DeviceDef> = {
   [DUALPULSE.id]: DUALPULSE,
   [SBOX_PAD.id]: SBOX_PAD,
   [BUTTON_GRIP.id]: BUTTON_GRIP,
+  [BUTTON_LITE.id]: BUTTON_LITE,
+  [RB35.id]: RB35,
+  [ROGUE_PAL.id]: ROGUE_PAL,
+  [DUO_IXL.id]: DUO_IXL,
+  [DUO_3DXL.id]: DUO_3DXL,
+  [DUO_LITE.id]: DUO_LITE,
+  [GAME_CLOCK.id]: GAME_CLOCK,
+  [CRITTER_MINI.id]: CRITTER_MINI,
 };
 
 export const DEVICE_LIST: DeviceDef[] = Object.values(DEVICES);

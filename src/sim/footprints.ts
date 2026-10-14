@@ -216,6 +216,7 @@ export const FOOTPRINTS: Record<Pkg, Footprint> = {
   AA2: { w: 52, h: 30, height: 14, pads: two(26, 2, 2) },
   SLIDE: { w: 9, h: 4, height: 5, pads: rowOf(2, 4, 0, 1.6, 1.6) },
   FPC4: { w: 10, h: 4, height: 1.5, pads: rowOf(4, 1.2, 2.6, 0.6, 1.4, false) },
+  SCREEN_M: { w: 52, h: 34, height: 3, pads: rowOf(4, 1.2, 15, 0.8, 1.4, false) },
   TPAD: { w: 30, h: 14, height: 2, pads: rowOf(4, 1.2, 8, 0.8, 1.4, false) },
   PAK: { w: 24, h: 10, height: 30, pads: two(1, 1.4, 1.4).map((p) => ({ ...p, y: 4 })) },
   SCREEN_S: { w: 46, h: 40, height: 4, pads: rowOf(3, 1.2, 18, 0.8, 1.4, false) },

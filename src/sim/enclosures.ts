@@ -153,6 +153,48 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       { id: 'bat', kind: 'adhesive', label: 'Glued-in battery', at: [24, 46], size: [34, 20], needs: ['back'] },
     ],
   },
+  ...Object.fromEntries(
+    (
+      [
+        ['button-lite', '#d9c84a', true],
+        ['rb35', '#7a5fb3', false],
+        ['rogue-pal', '#2b2b2b', false],
+        ['duo-ixl', '#3d3f8f', true],
+        ['duo-3dxl', '#8f2b2b', true],
+        ['duo-lite', '#e6e6ea', true],
+      ] as const
+    ).map(([id, color, security]) => [
+      id,
+      {
+        color,
+        items: [
+          { ...screw('s1', 'Back screw 1', [6, 6], 4, 4), security },
+          { ...screw('s2', 'Back screw 2', [154, 6], 4, 4), security },
+          screw('s3', 'Back screw 3', [6, 94], 6, 6),
+          screw('s4', 'Back screw 4', [154, 94], 3, 3, [], ['3V3', 'GND']),
+          { id: 'back', kind: 'clips', label: 'Back shell', at: [80, 50], size: [160, 100], needs: ['s1', 's2', 's3', 's4'], covers: true },
+          { id: 'bat', kind: 'cable', label: 'Battery plug', at: [40, 32], module: 'BT1', needs: ['back'] },
+          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [40, 46], module: 'LCD1', latch: true, needs: ['back'] },
+          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 62], module: 'SPK1', needs: ['back'] },
+        ],
+      } satisfies EnclosureDef,
+    ]),
+  ),
+  ...Object.fromEntries(
+    (['game-clock', 'critter-mini'] as const).map((id) => [
+      id,
+      {
+        color: id === 'game-clock' ? '#b8b3a6' : '#e7a8c0',
+        items: [
+          { id: 'door', kind: 'clips', label: 'Battery door', at: [14, 26], size: [24, 22] },
+          { ...screw('s1', 'Back screw 1', [4, 4], 5, 5), security: id === 'critter-mini' },
+          screw('s2', 'Back screw 2', [86, 4], 5, 5),
+          screw('s3', 'Back screw 3', [86, 52], 5, 5),
+          { id: 'back', kind: 'shell', label: 'Back cover', at: [45, 28], size: [90, 56], needs: ['door', 's1', 's2', 's3'], covers: true },
+        ],
+      } satisfies EnclosureDef,
+    ]),
+  ),
   'bes-cart': {
     color: '#8d8c88',
     items: [

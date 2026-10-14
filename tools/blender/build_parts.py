@@ -845,6 +845,17 @@ def pak():
     box(f"{n}_label", e, M["sticker"], 0, -5.05, 12, 18, 0.1, 14)
 
 
+def screen_m():
+    n = "pkg_SCREEN_M"
+    e = item(n)
+    box(f"{n}_frame", e, M["bezel"], 0, 0, 0, 52, 34, 2.6, bevel=0.6, segments=3)
+    box(f"{n}_lens", e, M["glass"], 0, -1, 2.6, 46, 27, 0.15)
+    box(f"{n}_ribbon", e, M["fpc"], 0, 16, 0, 8, 3, 0.2)
+
+
+screen_m()
+
+
 def tpad():
     n = "pkg_TPAD"
     e = item(n)

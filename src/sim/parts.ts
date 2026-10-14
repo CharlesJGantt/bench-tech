@@ -80,7 +80,8 @@ export type Pkg =
   | 'SLIDE'
   | 'PAK'
   | 'TPAD'
-  | 'FPC4';
+  | 'FPC4'
+  | 'SCREEN_M';
 
 export interface PartSpec {
   partNo: string;
@@ -187,6 +188,8 @@ export const PARTS: Record<string, PartSpec> = {
   'R-1K': r('R-1K', 1000, '1k', '102'),
   'R-4K7': r('R-4K7', 4700, '4.7k', '472'),
   'R-10K': r('R-10K', 10000, '10k', '103'),
+  'R-2K2': r('R-2K2', 2200, '2.2k', '222'),
+  'R-3K': r('R-3K', 3000, '3k', '302'),
   'R-22K': r('R-22K', 22000, '22k', '223'),
   'R-47K': r('R-47K', 47000, '47k', '473'),
   'R-52K3': r('R-52K3', 52300, '52.3k', '71C'),
@@ -503,6 +506,9 @@ export const PARTS: Record<string, PartSpec> = {
   },
   'J-FPC4': { partNo: 'J-FPC4', kind: 'connector', pkg: 'FPC4', value: 0, label: 'Touchpad ribbon connector', marking: '', cost: 0.5, heatLimit: 260, pins: ['VCC', 'TEN', 'TOUT', 'GND'], description: 'Flip-latch ribbon connector for the touchpad.' },
   'SW-TRIG': { partNo: 'SW-TRIG', kind: 'button', pkg: 'TACT6', value: 0, label: 'Trigger switch + spring', marking: '', cost: 1.5, description: 'Trigger mechanism: a switch with a return spring. A broken spring leaves it stuck pressed.' },
+  ...handheldParts(),
+  'J-CELLCLIP': { partNo: 'J-CELLCLIP', kind: 'connector', pkg: 'JST2', value: 0, label: 'Coin-cell clip', marking: '', cost: 0.8, pins: ['+', '-'], description: 'Spring clip holding the button cells. Its contacts tarnish when cells leak.' },
+  'M-LR44X2': { partNo: 'M-LR44X2', kind: 'battery', pkg: 'COIN', value: 3.0, label: '2 × LR44 button cells', marking: 'LR44', cost: 1.5, plugIn: true, pins: ['+', '-'], description: 'Two 1.5 V button cells in series.' },
   'SW-TACT': { partNo: 'SW-TACT', kind: 'button', pkg: 'TACT6', value: 0, label: 'Tact switch', marking: '', cost: 0.15, description: '6 × 6 mm tactile switch' },
   TP: { partNo: 'TP', kind: 'testpoint', pkg: 'TP', value: 0, label: 'Test point', marking: '', cost: 0, description: 'Test pad' },
 };
@@ -645,5 +651,70 @@ function retroChips(): Record<string, PartSpec> {
       logic: { vcc: 'VCC', vmin: 2.4, iq: 0.012, ch: [] },
       description: 'Reflective LCD with its ribbon. Needs its supply (VCC) and the picture data (DATA) from the CPU.',
     },
+  };
+}
+
+/** Handheld SoCs (donor-only), screens that report OK, Wi-Fi boards and cameras. */
+function handheldParts(): Record<string, PartSpec> {
+  const soc = (partNo: string, label: string, marking: string, cost: number): PartSpec => ({
+    partNo,
+    kind: 'mcu',
+    pkg: 'QFP16',
+    value: 3.3,
+    label,
+    marking,
+    cost,
+    pins: ['VDD', 'PWR', 'BA', 'DIN', 'LED', 'VEN', 'SND', 'EN', 'OK1', 'OK2', 'OK3', 'OK4', 'CE', 'NC14', 'NC15', 'GND'],
+    description: `${label}: the main chip. Starts when the power button is pressed, checks its screens and boards (OK lines), then draws the picture (VEN) and plays sound (SND). Factory-programmed — donor boards only.`,
+  });
+  const modConn = (partNo: string, label: string, pins: string[]): PartSpec => ({ partNo, kind: 'connector', pkg: 'FPC4', value: 0, label, marking: '', cost: 0.6, heatLimit: 260, pins, description: `${label} (flip-latch ribbon connector).` });
+  return {
+    'U-BTL-SOC': soc('U-BTL-SOC', 'Button Lite SoC', 'HDH-CPU', 45),
+    'U-RB35-SOC': soc('U-RB35-SOC', 'Retrobit SoC', 'RB-A7', 12),
+    'U-RP-APU': soc('U-RP-APU', 'Rogue Pal APU', 'RP-Z1', 85),
+    'U-DUO-SOC': soc('U-DUO-SOC', 'DuoScreen SoC', 'TWL-CPU', 40),
+    'U-GNC-CPU': soc('U-GNC-CPU', 'Game & Clock CPU', 'GC-4BIT', 30),
+    'U-CRT-CPU': soc('U-CRT-CPU', 'Critter Mini CPU', 'CRT-MCU', 60),
+    'M-HHLCD': {
+      partNo: 'M-HHLCD',
+      kind: 'logic',
+      pkg: 'SCREEN_M',
+      value: 3.3,
+      label: 'Screen module',
+      marking: '',
+      cost: 18,
+      plugIn: true,
+      pins: ['VCC', 'DATA', 'OK', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.6, iq: 0.03, ch: [{ outs: ['OK'] }] },
+      description: 'LCD + backlight module on a ribbon. Reports OK to the main chip once powered; shows a picture when it gets picture data (DATA).',
+    },
+    'M-WIFIB': {
+      partNo: 'M-WIFIB',
+      kind: 'logic',
+      pkg: 'TPAD',
+      value: 3.3,
+      label: 'Wi-Fi board',
+      marking: 'WIFI',
+      cost: 7,
+      plugIn: true,
+      pins: ['VCC', 'EN', 'OK', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.6, iq: 0.02, ch: [{ needHigh: ['EN'], outs: ['OK'] }] },
+      description: 'Plug-in Wi-Fi board. The main chip will not finish booting if it does not answer.',
+    },
+    'M-CAM': {
+      partNo: 'M-CAM',
+      kind: 'logic',
+      pkg: 'TPAD',
+      value: 3.3,
+      label: 'Camera + ribbon',
+      marking: 'CAM',
+      cost: 6,
+      plugIn: true,
+      pins: ['VCC', 'EN', 'OK', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.6, iq: 0.01, ch: [{ needHigh: ['EN'], outs: ['OK'] }] },
+      description: 'Camera module with its long hinge ribbon. A damaged ribbon can short the camera-ready line and stop the screens.',
+    },
+    'J-FPC-LCD': modConn('J-FPC-LCD', 'Screen ribbon connector', ['VCC', 'DATA', 'OK', 'GND']),
+    'J-FPC-MOD': modConn('J-FPC-MOD', 'Board ribbon connector', ['VCC', 'EN', 'OK', 'GND']),
   };
 }
