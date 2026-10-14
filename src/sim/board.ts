@@ -115,6 +115,10 @@ export interface FaceSpec {
   grips?: [number, number, number, number][];
   /** Height of the front shell above the board (mm). */
   height?: number;
+  /** Corner radii of the body outline: top-left, top-right, bottom-right, bottom-left (mm). */
+  corners?: [number, number, number, number];
+  /** Clamshells opened flat: y of the hinge groove across the shell (mm). */
+  hinge?: number;
 }
 
 export interface DeviceDef {

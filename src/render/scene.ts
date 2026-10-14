@@ -132,15 +132,18 @@ export class BenchScene {
 
   async load(): Promise<void> {
     const app = this.app;
-    const asset = new pc.Asset('parts', 'container', { url: `${import.meta.env.BASE_URL}models/parts.glb` });
-    app.assets.add(asset);
-    await new Promise<void>((resolve, reject) => {
-      asset.once('load', () => resolve());
-      asset.once('error', (e: unknown) => reject(e));
-      app.assets.load(asset);
-    });
-    const root = (asset.resource as pc.ContainerResource).instantiateRenderEntity();
-    for (const child of root.children as pc.Entity[]) this.templates.set(child.name, child);
+    // parts.glb: parts, tools, bench; shells.glb: Blender front shells per device (face_<id>)
+    for (const file of ['parts', 'shells']) {
+      const asset = new pc.Asset(file, 'container', { url: `${import.meta.env.BASE_URL}models/${file}.glb` });
+      app.assets.add(asset);
+      await new Promise<void>((resolve, reject) => {
+        asset.once('load', () => resolve());
+        asset.once('error', (e: unknown) => reject(e));
+        app.assets.load(asset);
+      });
+      const root = (asset.resource as pc.ContainerResource).instantiateRenderEntity();
+      for (const child of root.children as pc.Entity[]) this.templates.set(child.name, child);
+    }
 
     this.buildWorld();
     this.bindInput();
@@ -300,6 +303,13 @@ export class BenchScene {
     shell.update();
     const W = (x: number) => x - dev.width / 2;
     const Z = (y: number) => y - dev.height / 2;
+    // The Blender-built shell (rounded outline, grips, windows and holes cut out)
+    const blenderShell = this.templates.has(`face_${dev.id}`);
+    if (blenderShell) {
+      const e = this.clone(`face_${dev.id}`);
+      this.paint(e, shell);
+      g.addChild(e);
+    }
     const slab = (x0: number, y0: number, x1: number, y1: number, top: number, thick: number) => {
       if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return;
       const e = this.clone('enc_slab');
@@ -308,11 +318,11 @@ export class BenchScene {
       this.paint(e, shell);
       g.addChild(e);
     };
-    // Top surface: a grid cut along every opening edge; skip cells inside an opening
+    // Fallback (no Blender shell yet): top surface as a grid of slabs around the openings
     const holes = [...f.windows.map(([cx, cy, w, h]) => [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2]), ...(f.sticks ?? []).map(([x, y]) => [x - 7, y - 7, x + 7, y + 7])];
     const xs = [...new Set([0, dev.width, ...holes.flatMap((h) => [h[0], h[2]])])].sort((a, b) => a - b);
     const ys = [...new Set([0, dev.height, ...holes.flatMap((h) => [h[1], h[3]])])].sort((a, b) => a - b);
-    for (let i = 0; i + 1 < xs.length; i++)
+    for (let i = 0; i + 1 < xs.length && !blenderShell; i++)
       for (let j = 0; j + 1 < ys.length; j++) {
         const cx = (xs[i] + xs[i + 1]) / 2;
         const cy = (ys[j] + ys[j + 1]) / 2;
@@ -321,17 +331,19 @@ export class BenchScene {
       }
     // Side walls down to the board edge
     const wall = 1.6;
-    slab(-wall, -wall, dev.width + wall, 0, H, H + BOARD_T);
-    slab(-wall, dev.height, dev.width + wall, dev.height + wall, H, H + BOARD_T);
-    slab(-wall, 0, 0, dev.height, H, H + BOARD_T);
-    slab(dev.width, 0, dev.width + wall, dev.height, H, H + BOARD_T);
+    if (!blenderShell) {
+      slab(-wall, -wall, dev.width + wall, 0, H, H + BOARD_T);
+      slab(-wall, dev.height, dev.width + wall, dev.height + wall, H, H + BOARD_T);
+      slab(-wall, 0, 0, dev.height, H, H + BOARD_T);
+      slab(dev.width, 0, dev.width + wall, dev.height, H, H + BOARD_T);
+    }
     const cap = (name: string, x: number, y: number) => {
       const e = this.clone(name);
       e.setLocalPosition(W(x), H, Z(y));
       g.addChild(e);
     };
     // Grips hanging off the board (controllers): a solid block of shell each
-    for (const [x0, y0, x1, y1] of f.grips ?? []) slab(x0, y0, x1, y1, H, H + BOARD_T + 6);
+    if (!blenderShell) for (const [x0, y0, x1, y1] of f.grips ?? []) slab(x0, y0, x1, y1, H, H + BOARD_T + 6);
     for (const p of f.panels ?? []) {
       const m = new pc.StandardMaterial();
       m.diffuse = new pc.Color().fromString(p.color);

@@ -7,7 +7,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `npm test` — vitest (sim + fault generator invariants)
 - `npm run typecheck` / `npm run build`
 - `npm run routes` — re-route every board into `src/render/routes/*.json` (required after adding/changing a device layout, footprint or the router; a geometry test fails while the cache is stale). It also clears `node_modules/.vitest-cache`, which otherwise keeps a stale list of route files.
-- `npm run models` — rebuild `public/models/parts.glb` from `tools/blender/*.py` via headless Blender 5.2 (override path with `BLENDER`)
+- `npm run models` — export device face layouts (`tools/build-faces.gen.ts` → `tools/blender/faces.json`), then rebuild `public/models/parts.glb` (`build_parts.py`) and `public/models/shells.glb` (`build_shells.py`: one rounded front shell per handheld / controller, `face_<id>`) via headless Blender 5.2 (override path with `BLENDER`). Re-run after changing a device's `face` layout.
 
 ## Architecture
 - `src/sim/` — **no PlayCanvas imports**. Pure, unit-tested.
@@ -36,5 +36,6 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - Faults must stay approachable: every variant has a tier (1 easy/visible → 3 expert). Default jobs never exceed the reputation-unlocked tier; tier 3 is never default.
 - New devices must pass `tests/devices.test.ts` (healthy board passes, routes cleanly, parts fit).
 - Every fault variant must pass `tests/faults.test.ts`: produces a symptom, canonical repair returns the board to "fixed".
+- Handhelds and controllers declare a `face` (screen windows, stick holes, grips, button positions, corner radii, hinge); the scene puts the Blender shell `face_<id>` on top and adds the D-pad, buttons, pills, panels and LED glow strips from the same layout.
 - 3D items come from Blender scripts (mm units, item = Empty named `pkg_*` / `tool_*` / `env_*` at origin). Runtime-driven child names: `*_lens`, `*_lcd`, `*_dial`, `*_disp_*`.
 - Board layout coordinates: mm, x right, y down; world = (x − w/2, height, y − h/2).

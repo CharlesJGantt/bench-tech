@@ -37,7 +37,7 @@ const BRICK = (color: string): DbForm => ({
     LCD1: [45, 36], J3: [45, 60], U2: [45, 32], R5: [32, 28, 90], R1: [14, 32, 90], D1: [14, 40, 90],
     U4: [70, 70], R6: [60, 70, 90], J4: [78, 82], SPK1: [78, 104], BT1: [40, 124], J1: [40, 142],
   },
-  face: { windows: [[45, 36, 40, 30]], dpad: [20, 84], buttons: [[64, 86], [76, 78]], pills: [[36, 104], [52, 104]], grille: [78, 104], height: 16 },
+  face: { windows: [[45, 36, 40, 30]], dpad: [20, 84], buttons: [[64, 86], [76, 78]], pills: [[36, 104], [52, 104]], grille: [78, 104], height: 16, corners: [5, 5, 26, 5] },
 });
 
 /** The wide Advance: screen in the middle, D-pad left, A/B right, batteries under the bottom. */
@@ -66,7 +66,7 @@ const CLAM_SP: DbForm = {
   },
   usb: { conn: [78, 140, 90], tvs: [70, 130, 270], tp: [70, 146] },
   chg: { chg: [56, 140], ledRes: [48, 148, 90], led: [48, 154, 90], cbat: [62, 148, 90], conn: [42, 100], pack: [42, 118], tp: [40, 146] },
-  face: { windows: [[42, 40, 40, 30]], dpad: [18, 110], buttons: [[66, 106], [56, 114]], pills: [[34, 130], [50, 130]], grille: [18, 150], height: 10 },
+  face: { windows: [[42, 40, 40, 30]], dpad: [18, 110], buttons: [[66, 106], [56, 114]], pills: [[34, 130], [50, 130]], grille: [18, 150], height: 10, hinge: 82 },
 };
 
 /** The tiny Micro: small wide body, battery behind the D-pad. */

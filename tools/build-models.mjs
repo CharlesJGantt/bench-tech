@@ -12,7 +12,14 @@ if (!existsSync(blender)) {
   process.exit(1);
 }
 
-const jobs = [['build_parts.py', 'parts.glb']];
+// Device face layouts come from the TypeScript sources: export them first.
+const faces = spawnSync('npx', ['vitest', 'run', '-c', 'tools/vitest.faces.config.ts'], { cwd: root, stdio: 'inherit', shell: true });
+if (faces.status !== 0) process.exit(faces.status ?? 1);
+
+const jobs = [
+  ['build_parts.py', 'parts.glb'],
+  ['build_shells.py', 'shells.glb'],
+];
 mkdirSync(join(root, 'public', 'models'), { recursive: true });
 for (const [script, out] of jobs) {
   const r = spawnSync(blender, ['-b', '--factory-startup', '-P', join(root, 'tools', 'blender', script), '--', join(root, 'public', 'models', out)], {
