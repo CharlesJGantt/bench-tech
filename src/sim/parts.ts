@@ -83,7 +83,8 @@ export type Pkg =
   | 'FPC4'
   | 'SCREEN_M'
   | 'SCREEN_L'
-  | 'SCREEN_W';
+  | 'SCREEN_W'
+  | 'TFSLOT';
 
 export interface PartSpec {
   partNo: string;
@@ -459,6 +460,7 @@ export const PARTS: Record<string, PartSpec> = {
 
   'J-EDGE6': { partNo: 'J-EDGE6', kind: 'connector', pkg: 'EDGE6', value: 0, label: 'Cartridge edge fingers', marking: '', cost: 0, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Gold-plated fingers along the cartridge board edge. They dull and oxidise with age: scrub them with an eraser, then treat with Pad-Bright.' },
   'J-SLOT6': { partNo: 'J-SLOT6', kind: 'connector', pkg: 'CARTSLOT6', value: 0, label: 'Cartridge slot', marking: '', cost: 6, heatLimit: 280, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Cartridge slot connector. Its springy contacts tarnish and lose their grip over the years.' },
+  'J-TFSLOT': { partNo: 'J-TFSLOT', kind: 'connector', pkg: 'TFSLOT', value: 0, label: 'microSD card slot', marking: '', cost: 1.2, heatLimit: 260, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Push-push microSD slot. Emulation handhelds load their games from the card in here.' },
   'J-RCA': { partNo: 'J-RCA', kind: 'connector', pkg: 'RCA2', value: 0, label: 'RCA jack', marking: '', cost: 0.6, pins: ['SIG', 'GND'], description: 'Panel RCA (phono) jack: composite video or RF out.' },
   'J-HDR3': { partNo: 'J-HDR3', kind: 'connector', pkg: 'HDR3', value: 0, label: '3-pin port', marking: '', cost: 0.4, pins: ['5V', 'DATA', 'GND'], description: '3-pin controller / accessory port.' },
   'J-FPC3': { partNo: 'J-FPC3', kind: 'connector', pkg: 'FPC3', value: 0, label: '3-pin FPC connector', marking: '', cost: 0.5, heatLimit: 260, pins: ['VCC', 'DATA', 'GND'], description: '3-pin flip-latch ribbon connector (screen).' },

@@ -11,7 +11,7 @@ import type { EncItem, EnclosureDef } from '../enclosure';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
-import { cartridge, cx, testCart } from './retro';
+import { silk, cartridge, cx, testCart } from './retro';
 
 type At = Record<string, [number, number, number?]>;
 
@@ -124,6 +124,7 @@ function dreamBoy(m: Model): DeviceDef {
       c('J1', 'J-AA2', 'BATT', 75, 74, 0, { '+': 'BATT_P', '-': 'GND' }, 'Battery springs'),
       c('BT1', 'M-AA2', 'BATT', 75, 58, 0, { '+': 'BT1_P', '-': 'BT1_N' }, '2 × AA batteries', 'J1'),
     );
+  silk(parts, { U2: 'CPU', SW1: 'POWER', J2: 'CARTRIDGE', J3: 'LCD', J4: 'SPEAKER', U4: 'AMP', J1: 'BATTERY', F1: 'FUSE' });
   for (const p of parts) {
     const at = m.form.layout[p.ref];
     if (!at) throw new Error(`${m.id}: no position for ${p.ref}`);

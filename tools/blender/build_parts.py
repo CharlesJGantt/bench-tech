@@ -867,6 +867,17 @@ screen_sized("pkg_SCREEN_L", 76, 58)
 screen_sized("pkg_SCREEN_W", 118, 70)
 
 
+def tfslot():
+    n = "pkg_TFSLOT"
+    e = item(n)
+    box(f"{n}_shell", e, M["steel"], 0, 0, 0, 12, 11, 1.8, bevel=0.1)
+    box(f"{n}_mouth", e, M["recess"], 0, -5.45, 0.4, 11, 0.12, 1.0)
+    box(f"{n}_card", e, M["blackplastic"], 0, -6.5, 0.6, 10, 2.5, 0.7)
+
+
+tfslot()
+
+
 def tpad():
     n = "pkg_TPAD"
     e = item(n)
@@ -900,7 +911,7 @@ def face_pieces():
     sh = M["shell"]
     k = M["blackplastic"]
     e = item("enc_slab")  # 10 x 10 x 1, scaled to fill around the screen window
-    box("enc_slab_box", e, sh, 0, 0, 0, 10, 10, 1, bevel=0.05)
+    box("enc_slab_box", e, sh, 0, 0, 0, 10, 10, 1)
     e = item("enc_dpad")
     box("enc_dpad_h", e, k, 0, 0, 0, 22, 7.5, 3.2, bevel=0.6)
     box("enc_dpad_v", e, k, 0, 0, 0, 7.5, 22, 3.2, bevel=0.6)

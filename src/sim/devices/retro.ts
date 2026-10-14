@@ -318,3 +318,8 @@ export function cartridge(spec: CartSpec): DeviceDef {
     titles: spec.titles,
   });
 }
+
+/** Put function labels on the silkscreen ("A", "CPU", "POWER"…). */
+export function silk(parts: ComponentDef[], labels: Record<string, string>): void {
+  for (const p of parts) if (labels[p.ref]) p.silk = labels[p.ref];
+}

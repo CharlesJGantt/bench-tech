@@ -314,6 +314,14 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
     const lx = above ? def.x : r.x + r.w + 0.6 + (def.ref.length * fs) / 3;
     const ly = above ? r.y - 1.1 - fs / 2 : def.y;
     ctx.fillText(def.ref, lx * PX, ly * PX);
+    // Function label (button names, CPU…) on the other side of the part
+    if (def.silk) {
+      ctx.font = `bold ${Math.max(1.3, fs) * PX}px Arial, sans-serif`;
+      // Wide parts: under the part. Tall parts: under the reference designator beside them.
+      const sx = above ? def.x : lx;
+      const sy = above ? r.y + r.h + 1.1 + fs / 2 : def.y + fs * 1.5;
+      ctx.fillText(def.silk, sx * PX, sy * PX);
+    }
 
     // Polarity marks
     const pads = padsOf(def);

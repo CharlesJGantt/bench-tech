@@ -11,7 +11,7 @@ import { customerSession, type BoardState, type DamageEvent, type FunctionalRepo
 import { tarnish } from '../contacts';
 import { resistor } from '../elements';
 import { addMark, type Rng, type Variant } from '../faults';
-import { cx, testCart } from './retro';
+import { silk, cx, testCart } from './retro';
 
 export interface ConsoleSpec {
   id: string;
@@ -83,6 +83,7 @@ export function retroConsole(spec: ConsoleSpec): DeviceDef {
       c('J7', 'J-HDR3', 'PORTS', 64, 90, 0, { '5V': '5V', DATA: 'PAD2', GND: 'GND' }, 'Controller port 2'),
       c('R7', 'R-10K', 'PORTS', 64, 80, 0, { '1': '5V', '2': 'PAD2' }, 'Port 2 data pull-up'),
     );
+  silk(parts, { U2: 'CPU', U3: 'VIDEO', U4: 'LOCKOUT', U5: 'SOUND', RF1: 'RF MOD', J2: 'CARTRIDGE', J5: 'PLAYER 1', J7: 'PLAYER 2', J3: 'AV OUT', J4: 'RF OUT', J6: 'AUDIO', SW1: 'POWER', U1: '5V REG' });
   parts.push(...(spec.extras ?? []));
 
   const tvInput = spec.rf ? 'aerial' : 'AV';

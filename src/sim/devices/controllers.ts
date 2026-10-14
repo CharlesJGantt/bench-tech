@@ -10,7 +10,7 @@ import { c, type ComponentDef, type DeviceDef } from '../board';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
-import { cx } from './retro';
+import { silk, cx } from './retro';
 
 interface PadSpec {
   id: string;
@@ -53,6 +53,7 @@ function controller(sp: PadSpec): DeviceDef {
     c('R7', 'R-220R', 'RADIO', 40, 22, 90, { '1': 'LED_IO', '2': 'PWR_A' }, 'Power light resistor'),
     c('D2', 'LED-WHT', 'RADIO', 40, 30, 90, { A: 'PWR_A', K: 'GND' }, 'Power light'),
   ];
+  silk(parts, { U2: 'MCU', SW2: 'HOME', SW3: 'A', SW4: 'B', SW5: 'TRIG', STK1: 'L-STICK', U3: 'WIRELESS', D1: 'LINK', D2: 'POWER', SW1: 'BATT' });
   if (sp.sticks === 2) parts.push(cx('STK2', 'M-STICK', 'STICKS', 78, 46, 0, { VCC: 'VCC', GND: 'GND', X: 'STK2_X', Y: 'STK2_Y' }, 'Right analog stick'));
   if (sp.touchpad)
     parts.push(

@@ -216,6 +216,7 @@ export const FOOTPRINTS: Record<Pkg, Footprint> = {
   AA2: { w: 52, h: 30, height: 14, pads: two(26, 2, 2) },
   SLIDE: { w: 9, h: 4, height: 5, pads: rowOf(2, 4, 0, 1.6, 1.6) },
   FPC4: { w: 10, h: 4, height: 1.5, pads: rowOf(4, 1.2, 2.6, 0.6, 1.4, false) },
+  TFSLOT: { w: 12, h: 11, height: 1.8, pads: rowOf(6, 1.1, 5.5, 0.6, 1.4, false) },
   SCREEN_L: { w: 76, h: 58, height: 3, pads: rowOf(4, 1.2, 27, 0.8, 1.4, false) },
   SCREEN_W: { w: 118, h: 70, height: 3, pads: rowOf(4, 1.2, 33, 0.8, 1.4, false) },
   SCREEN_M: { w: 52, h: 34, height: 3, pads: rowOf(4, 1.2, 15, 0.8, 1.4, false) },

@@ -21,6 +21,8 @@ export interface ComponentDef {
   role: string;
   /** Plug-in module: its pins connect through this connector's contacts (no PCB traces). */
   mates?: string;
+  /** Function label printed on the silkscreen next to the part ("A", "CPU", "POWER"…). */
+  silk?: string;
 }
 
 export interface TraceDef {

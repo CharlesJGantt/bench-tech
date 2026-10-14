@@ -12,7 +12,7 @@ import type { EncItem, EnclosureDef } from '../enclosure';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
-import { cx, testCart } from './retro';
+import { cx, silk, testCart } from './retro';
 
 /**
  * Physical form: board size, where each part sits (refs → [x, y, rot]), the block layouts
@@ -42,6 +42,8 @@ interface HandheldSpec {
   usb: 'usbc' | 'micro';
   screens: 1 | 2;
   cardSlot?: boolean;
+  /** The games come on a microSD card (emulation handhelds) instead of game cards. */
+  microSD?: boolean;
   sticks?: boolean;
   wifi?: boolean;
   camera?: boolean;
@@ -61,7 +63,7 @@ const VERTICAL: Form = {
   screenPart: 'M-HHLCD35',
   layout: {
     LCD1: [45, 34], J3: [45, 68], R10: [30, 50, 90],
-    U2: [20, 16], C2: [34, 12, 90], TP2: [34, 22], TP1: [8, 70],
+    U2: [20, 16], C2: [34, 12, 90], TP2: [34, 22], TP1: [8, 104], J2: [9, 72, 90],
     U3: [50, 30], R1: [70, 14, 90], R2: [70, 24, 90], R3: [70, 34, 90], R15: [20, 40, 90], R16: [40, 48, 90],
     U4: [60, 50], R8: [72, 50, 90],
     SW11: [22, 78], SW12: [22, 94], SW13: [13, 86], SW14: [31, 86],
@@ -203,7 +205,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
     );
   if (sp.cardSlot)
     parts.push(
-      c('J2', 'J-SLOT6', 'CARD', 100, 8, 0, { '5V': '3V3', GND: 'GND', CE: 'CE', D0: 'DIN', LKI: 'CARD_LKI', LKO: 'CARD_LKO' }, 'Game card slot'),
+      c('J2', sp.microSD ? 'J-TFSLOT' : 'J-SLOT6', 'CARD', 100, 8, 0, { '5V': '3V3', GND: 'GND', CE: 'CE', D0: 'DIN', LKI: 'CARD_LKI', LKO: 'CARD_LKO' }, sp.microSD ? 'microSD games slot' : 'Game card slot'),
       c('R3', 'R-10K', 'CARD', 82, 24, 90, { '1': 'DIN', '2': 'GND' }, 'Card data pull-down'),
     );
   else parts.push(c('R3', 'R-10K', 'CARD', 82, 24, 90, { '1': '3V3', '2': 'DIN' }, 'Data tie-high (no card slot)'));
@@ -220,6 +222,11 @@ function handheld(sp: HandheldSpec): DeviceDef {
       c('R6', 'R-4K7', 'POWER', 22, 18, 90, { '1': 'VBUS', '2': 'Q1_G' }, 'Switch gate pull-up'),
       c('R5', 'R-2K2', 'POWER', 28, 18, 90, { '1': 'Q1_G', '2': 'GND' }, 'Switch bias resistor'),
     );
+  silk(parts, {
+    U3: 'CPU', SW1: 'POWER', SW2: 'A', SW10: 'B', SW8: 'X', SW9: 'Y', SW11: 'UP', SW12: 'DOWN', SW13: 'LEFT', SW14: 'RIGHT',
+    SW5: 'TRIG', STK1: 'L-STICK', STK2: 'R-STICK', J2: sp.microSD ? 'microSD' : 'GAME CARD', J3: sp.screens === 2 ? 'TOP LCD' : 'LCD', J5: 'BOTTOM LCD',
+    J8: 'WIFI', J9: 'CAMERA', J4: 'SPEAKER', U2: '3.3V REG', U4: 'AMP',
+  });
   // Place everything where the real thing has it
   for (const p of parts) {
     const at = sp.form.layout[p.ref];
@@ -281,7 +288,9 @@ function handheld(sp: HandheldSpec): DeviceDef {
             apply(b: BoardState, rng: Rng) {
               tarnish(b, 'J2', rng.range(0.5, 0.75), () => rng.next());
               b.comps.J2.oxide!.D0 = 0.95;
-              return { summary: 'The game-card slot contacts are tarnished: no card reads. Scrub the slot contacts and Pad-Bright them.', refs: ['J2'], hint: 'Every game card fails? Look at the card slot contacts.', flavor: 'It says “cannot read the game card” with every card.' };
+              return sp.microSD
+                ? { summary: 'The microSD slot contacts are tarnished: the games card is never read. Scrub the slot contacts and Pad-Bright them.', refs: ['J2'], hint: 'It boots to an error. Is the card being read at all? Look at the slot contacts.', flavor: 'It says “no games found” even with a fresh card.' }
+                : { summary: 'The game-card slot contacts are tarnished: no card reads. Scrub the slot contacts and Pad-Bright them.', refs: ['J2'], hint: 'Every game card fails? Look at the card slot contacts.', flavor: 'It says “cannot read the game card” with every card.' };
             },
           } as Variant,
         ]
@@ -344,7 +353,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
       { label: sp.screens === 2 ? 'Picture on both screens' : 'Picture on the screen', ok: st.picture },
       { label: 'Sound', ok: st.sound },
       { label: 'Buttons work', ok: aWorks && st.trigger },
-      ...(sp.cardSlot ? [{ label: 'Reads a game card', ok: st.card }] : []),
+      ...(sp.cardSlot ? [{ label: sp.microSD ? 'Loads games from the microSD card' : 'Reads a game card', ok: st.card }] : []),
       ...(sp.sticks ? [{ label: 'Sticks rest centred', ok: st.centred }] : []),
       { label: 'Charges', ok: charging },
     ];
@@ -426,7 +435,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
         return { LED: on, EN: on, CE: on, VEN: booted, SND: booted };
       },
     },
-    externals: sp.cardSlot ? [testCart('J2', '🎮 Game card (known good)', 2.4)] : [],
+    externals: sp.cardSlot ? [testCart('J2', sp.microSD ? '💾 microSD card with games' : '🎮 Game card (known good)', 2.4)] : [],
     ownerAttaches: sp.cardSlot ? ['cart'] : [],
     functional,
     complain,
@@ -437,7 +446,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
         { label: 'Power light', value: st.on ? 'on' : 'off', ok: st.on },
         { label: sp.screens === 2 ? 'Screens' : 'Screen', value: st.picture ? 'picture' : 'black', ok: st.picture },
         { label: 'Sound', value: st.sound ? 'playing' : 'silent', ok: st.sound },
-        ...(sp.cardSlot ? [{ label: 'Game card', value: st.card ? 'reads' : b.attached.includes('cart') ? 'not read' : 'none in', ok: st.card }] : []),
+        ...(sp.cardSlot ? [{ label: sp.microSD ? 'microSD card' : 'Game card', value: st.card ? 'reads' : b.attached.includes('cart') ? 'not read' : 'none in', ok: st.card }] : []),
       ];
     },
     variants,
@@ -511,6 +520,8 @@ export const BUTTON_LITE = handheld({
 });
 
 export const RB35 = handheld({
+  cardSlot: true,
+  microSD: true,
   color: '#7a5fb3',
   form: VERTICAL,
   id: 'rb35',

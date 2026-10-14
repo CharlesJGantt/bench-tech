@@ -9,7 +9,7 @@ import { c, type DeviceDef } from '../board';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
-import { cx } from './retro';
+import { silk, cx } from './retro';
 
 interface LcdGameSpec {
   id: string;
@@ -112,7 +112,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     return 'Something is wrong with it.';
   }
 
-  return device({
+  const dev = device({
     id: sp.id,
     name: sp.name,
     category: 'LCD game',
@@ -181,6 +181,8 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     quoteBase: sp.quoteBase,
     minReputation: sp.minReputation,
   });
+  silk(dev.components, { U1: 'CPU', SW1: 'GAME', J1: 'BATTERY', J3: 'LCD', U2: 'BEEPER', J4: 'SPEAKER' });
+  return dev;
 }
 
 export const GAME_CLOCK = lcdGame({ id: 'game-clock', name: 'Game & Clock', tagline: 'Pocket LCD game with a clock: faded screens and crusty cell clips.', cpu: 'U-GNC-CPU', marketValue: 70, quoteBase: 25, minReputation: 0 });

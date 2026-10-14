@@ -888,6 +888,7 @@ const THETA: Record<string, number> = {
   FPC4: 100,
   SCREEN_M: 15,
   SCREEN_L: 15,
+  TFSLOT: 80,
   SCREEN_W: 12,
   PAK: 20,
   '0603': 250,

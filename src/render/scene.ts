@@ -413,6 +413,8 @@ export class BenchScene {
         this.encEnts.set(it.id, g);
         continue;
       }
+      // Battery doors and other back-side panels of a faced device are not drawn over its front
+      if (dev.face && (it.kind === 'shell' || it.kind === 'clips' || it.kind === 'adhesive')) continue;
       const name = it.kind === 'cable' ? (it.latch ? 'enc_ribbon' : 'enc_jst') : model[it.kind];
       if (!name || !this.templates.has(name)) continue;
       const e = this.clone(name);
