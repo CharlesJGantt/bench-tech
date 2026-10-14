@@ -78,7 +78,9 @@ export type Pkg =
   | 'SCREEN_S'
   | 'FPC3'
   | 'SLIDE'
-  | 'PAK';
+  | 'PAK'
+  | 'TPAD'
+  | 'FPC4';
 
 export interface PartSpec {
   partNo: string;
@@ -463,6 +465,44 @@ export const PARTS: Record<string, PartSpec> = {
   'SW-SLIDE': { partNo: 'SW-SLIDE', kind: 'button', pkg: 'SLIDE', value: 0, label: 'Power switch (slide)', marking: '', cost: 1.2, latched: true, pins: ['1', '2'], description: 'Latching slide power switch. Its contacts oxidise with age: the console then powers on only now and then. Clean the contacts.' },
   'M-JUMPERPAK': { partNo: 'M-JUMPERPAK', kind: 'module', pkg: 'PAK', value: 0.05, label: 'Jumper pak', marking: 'JUMPER', cost: 8, plugIn: true, pins: ['A', 'B'], description: 'Plug-in terminator for the memory expansion slot. Without it (or an expansion pak) the console shows a black screen.' },
   'J-EXP2': { partNo: 'J-EXP2', kind: 'connector', pkg: 'JST2', value: 0, label: 'Expansion slot', marking: '', cost: 3, pins: ['A', 'B'], description: 'Memory expansion slot: needs a jumper pak or expansion pak plugged in.' },
+  'U-PAD-MCU': {
+    partNo: 'U-PAD-MCU',
+    kind: 'mcu',
+    pkg: 'QFP16',
+    value: 3.3,
+    label: 'Controller MCU',
+    marking: 'PADCTL',
+    cost: 0,
+    pins: ['VDD', 'HOME', 'BA', 'BB', 'TRIG', 'TPD', 'BTEN', 'LED', 'TEN', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15', 'GND'],
+    description: 'The controller brain: reads the buttons, sticks and touchpad, and runs the wireless chip. Factory-programmed — donor boards only.',
+  },
+  'U-BT': {
+    partNo: 'U-BT',
+    kind: 'logic',
+    pkg: 'SOT23-6',
+    value: 3.3,
+    label: 'Wireless chip',
+    marking: 'BTW1',
+    cost: 4,
+    pins: ['VCC', 'GND', 'EN', 'LINK', 'NC5', 'NC6'],
+    logic: { vcc: 'VCC', vmin: 2.6, iq: 0.015, ch: [{ needHigh: ['EN'], outs: ['LINK'] }] },
+    description: 'Bluetooth-ish wireless chip: pairs and links once enabled (EN), signalling LINK. Swapping one is small-QFN-style rework.',
+  },
+  'M-TOUCHPAD': {
+    partNo: 'M-TOUCHPAD',
+    kind: 'logic',
+    pkg: 'TPAD',
+    value: 3.3,
+    label: 'Touchpad assembly',
+    marking: '',
+    cost: 9,
+    plugIn: true,
+    pins: ['VCC', 'TEN', 'TOUT', 'GND'],
+    logic: { vcc: 'VCC', vmin: 2.6, iq: 0.006, ch: [{ needHigh: ['TEN'], outs: ['TOUT'] }] },
+    description: 'Touchpad with its own ribbon. A torn ribbon means replacing the whole assembly.',
+  },
+  'J-FPC4': { partNo: 'J-FPC4', kind: 'connector', pkg: 'FPC4', value: 0, label: 'Touchpad ribbon connector', marking: '', cost: 0.5, heatLimit: 260, pins: ['VCC', 'TEN', 'TOUT', 'GND'], description: 'Flip-latch ribbon connector for the touchpad.' },
+  'SW-TRIG': { partNo: 'SW-TRIG', kind: 'button', pkg: 'TACT6', value: 0, label: 'Trigger switch + spring', marking: '', cost: 1.5, description: 'Trigger mechanism: a switch with a return spring. A broken spring leaves it stuck pressed.' },
   'SW-TACT': { partNo: 'SW-TACT', kind: 'button', pkg: 'TACT6', value: 0, label: 'Tact switch', marking: '', cost: 0.15, description: '6 × 6 mm tactile switch' },
   TP: { partNo: 'TP', kind: 'testpoint', pkg: 'TP', value: 0, label: 'Test point', marking: '', cost: 0, description: 'Test pad' },
 };

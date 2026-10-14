@@ -820,11 +820,15 @@ def screen_s():
     box(f"{n}_ribbon", e, M["fpc"], 0, 19, 0, 6, 3, 0.2)
 
 
-def fpc3():
-    n = "pkg_FPC3"
+def fpc_n(n, w):
     e = item(n)
-    box(f"{n}_body", e, M["nylon"], 0, 0, 0, 9, 4, 1.2, bevel=0.1)
-    box(f"{n}_latch", e, M["blackplastic"], 0, -1.4, 1.2, 9, 1.2, 0.3)
+    box(f"{n}_body", e, M["nylon"], 0, 0, 0, w, 4, 1.2, bevel=0.1)
+    box(f"{n}_latch", e, M["blackplastic"], 0, -1.4, 1.2, w, 1.2, 0.3)
+
+
+def fpc3():
+    fpc_n("pkg_FPC3", 9)
+    fpc_n("pkg_FPC4", 10)
 
 
 def slide():
@@ -841,6 +845,14 @@ def pak():
     box(f"{n}_label", e, M["sticker"], 0, -5.05, 12, 18, 0.1, 14)
 
 
+def tpad():
+    n = "pkg_TPAD"
+    e = item(n)
+    box(f"{n}_panel", e, M["blackplastic"], 0, 0, 0, 30, 14, 1.6, bevel=0.4)
+    box(f"{n}_ribbon", e, M["fpc"], 0, 8, 0, 6, 3, 0.15)
+
+
+tpad()
 slide()
 pak()
 to220()
