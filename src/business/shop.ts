@@ -21,6 +21,7 @@ import {
   RUSH_MIN,
   SPECIAL_ORDER_COST,
   STARTING_STOCK,
+  STARTER_PACK,
   STARTING_TOOLS,
   SUPPLIES,
   tool,
@@ -744,7 +745,7 @@ export function endDay(st: ShopState): DayReport {
 
 export function createShop(seed = 12345): ShopState {
   const stock: Record<string, StockLevel> = {};
-  for (const p of Object.keys(PARTS)) stock[p] = { new: STARTING_STOCK[p] ?? 0, used: 0 };
+  for (const p of Object.keys(PARTS)) stock[p] = { new: (STARTING_STOCK[p] ?? 0) + (STARTER_PACK[p] ?? 0), used: 0 };
   const st: ShopState = {
     version: 2,
     day: 1,

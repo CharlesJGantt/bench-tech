@@ -30,7 +30,7 @@ describe('shop economy', () => {
     expect(st.market.length).toBe(3);
     expect(st.supplies.solder).toBe(SUPPLIES.solder.start);
     expect(stockOf(st, 'R-10K').new).toBeGreaterThan(0);
-    expect(stockOf(st, 'U-PIC8').new).toBe(0); // programmed MCUs only come from donor boards
+    expect(stockOf(st, 'U-PIC8').new).toBe(1); // programmed MCUs: one in the starter pack, otherwise donor boards only
   });
 
   it('bills electricity and advertising daily, and rent weekly', () => {
@@ -135,20 +135,22 @@ describe('shop economy', () => {
 
   it('slower delivery is cheaper but takes longer', () => {
     const st = createShop(30);
+    const start = stockOf(st, 'U-LX9201').new;
     const o = placeOrder(st, [{ kind: 'part', id: 'U-LX9201', qty: 1 }], 'economy')!;
     expect(o.arrives).toBe(st.day + delivery('economy').days);
     endDay(st);
-    expect(stockOf(st, 'U-LX9201').new).toBe(0);
+    expect(stockOf(st, 'U-LX9201').new).toBe(start);
     endDay(st);
     endDay(st);
-    expect(stockOf(st, 'U-LX9201').new).toBe(1);
+    expect(stockOf(st, 'U-LX9201').new).toBe(start + 1);
   });
 
   it('expensive chips are special order: no local rush buy', () => {
     const st = createShop(31);
+    const start = stockOf(st, 'U-LX9201').new;
     expect(rushBuy(st, 'U-LX9201')).toBe(false);
     expect(rushBuy(st, 'U-APU-F5')).toBe(false);
-    expect(stockOf(st, 'U-LX9201').new).toBe(0);
+    expect(stockOf(st, 'U-LX9201').new).toBe(start);
   });
 
   it('better devices come in as reputation grows', () => {
@@ -189,5 +191,16 @@ describe('shop economy', () => {
     expect(harvestPart(st, 77, healthy.ref).ok).toBe(false); // already gone
     const dead = job.faults.flatMap((f) => f.refs ?? []).find((r) => job.board.comps[r]?.fault);
     if (dead) expect(harvestPart(st, 77, dead).ok).toBe(false);
+  });
+});
+
+describe('new career', () => {
+  it('starts on day 1 with a starter pack of hard-to-get parts', () => {
+    const st = createShop(1);
+    expect(st.day).toBe(1);
+    expect(st.stock['U-TC41'].new).toBeGreaterThanOrEqual(1);
+    expect(st.stock['U-LX9201'].new).toBe(1);
+    expect(st.stock['U-PIC8'].new).toBe(1); // factory-programmed: otherwise salvage-only
+    expect(st.stock['U-APU-F5'].new).toBe(0);
   });
 });

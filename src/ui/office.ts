@@ -126,7 +126,10 @@ function overview(s: Session): string {
     ${pnlTable(s, st.day, st.day, `Today (day ${st.day})`)}
     ${pnlTable(s, weekFrom, st.day, `Last 7 days`)}
     </div>
-    <div class="of-card"><h3>Ledger</h3><table class="bom">${recent || '<tr><td class="muted">No transactions yet.</td></tr>'}</table></div>`;
+    <div class="of-card"><h3>Ledger</h3><table class="bom">${recent || '<tr><td class="muted">No transactions yet.</td></tr>'}</table></div>
+    <div class="of-card"><h3>Career</h3><p>Day ${st.day} · reputation ${st.reputation} · ${st.jobsDone} job${st.jobsDone === 1 ? '' : 's'} done · ${st.comebacks} comeback${st.comebacks === 1 ? '' : 's'}</p>
+      <p class="muted small">Start over on day 1 with a fresh shop, starting cash and a starter pack of parts (one or two of the chips you would normally have to order). This wipes the current save.</p>
+      <div class="row"><button data-act="new-game">⟲ Start a new career</button></div></div>`;
 }
 
 function work(s: Session): string {

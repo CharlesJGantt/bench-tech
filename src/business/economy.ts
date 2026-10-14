@@ -275,6 +275,39 @@ export const TRENDS = [
   'Viral video',
 ];
 
+/**
+ * Starter pack: one or two of the chips, connectors and modules you would otherwise have to
+ * order (or could never buy — factory-programmed controllers), so the first jobs of a new
+ * career can be fixed straight away and money starts coming in. The big processors, screens
+ * and LED strips are not included — those come from orders or donor boards.
+ */
+export const STARTER_PACK: Record<string, number> = {
+  'U-TC41': 2,
+  'U-LS1T': 2,
+  'U-SA8002': 1,
+  'U-LB693': 1,
+  'U-LX9201': 1,
+  'U-PIC8': 1,
+  'U-PIC8-SPK': 1,
+  'U-PIC8-SBX': 1,
+  'Q-NPWR': 1,
+  'Q-PPWR': 1,
+  'L-22U': 1,
+  'D-TVS24': 1,
+  'D-SS36': 1,
+  'C-470U-35': 1,
+  'C-1000U-16': 1,
+  'LED-COB3': 1,
+  'R-2R0-1206': 2,
+  'R-0R05-1206': 1,
+  'J-HDMI': 1,
+  'J-PWR2': 1,
+  'J-FPC2': 1,
+  'M-BATT-1S': 1,
+  'U-7805T': 1,
+  'BT-CR2032T': 2,
+};
+
 export const STARTING_STOCK: Record<string, number> = {
   'R-33R-1206': 2,
   'R-100R': 5,

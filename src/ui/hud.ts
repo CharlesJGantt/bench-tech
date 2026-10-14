@@ -577,8 +577,12 @@ export class Hud {
         this.scene.focusBoard();
         break;
       case 'new-game':
-        if (confirm('Start a brand-new shop? Your current save will be lost.')) {
+        if (confirm(`Start a new career on day 1?
+
+Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects and every job in the queue will be wiped. This cannot be undone.`)) {
           s.newGame();
+          this.cart = {};
+          this.toast('New career started — day 1. A starter pack of parts is in the drawers.');
           this.openOffice('work');
           this.tutorial.start();
         }
@@ -757,7 +761,8 @@ export class Hud {
     </ol>
     <p class="muted">Camera: right-drag to orbit, Shift+right-drag or middle-drag to pan, mouse wheel to zoom, <kbd>F</kbd> to reset. Guided mode explains every reading in plain words.</p>
     <p>Between jobs you run the business from the <b>🏪 Office</b>: pick customers, reorder supplies and parts, advertise, buy broken devices to fix and sell (watch for 🔥 demand spikes), and keep donor boards in the store-room for expensive parts.</p>
-    <div class="row"><button class="big" data-act="office">Open the shop</button><button class="big" data-act="tutorial">▶ Play the tutorial</button></div>`);
+    <div class="row"><button class="big" data-act="office">Open the shop</button><button class="big" data-act="tutorial">▶ Play the tutorial</button></div>
+    <div class="row"><button data-act="new-game" title="Wipe this save and start again on day 1 with a fresh shop and a starter pack of parts">⟲ Start a new career (day 1)</button></div>`);
   }
 
   /** Phone the customer: next-day parts, waiting, or buying the dead device as spares. */
