@@ -21,6 +21,8 @@ export interface SceneCallbacks {
 }
 
 const BOARD_T = 1.6;
+/** Height of the closed case shown over the board (mm). */
+const CASE_H = 16;
 
 function templateFor(p: PartSpec): string {
   switch (p.pkg) {
@@ -64,6 +66,12 @@ export class BenchScene {
   private templates = new Map<string, pc.Entity>();
   private geo!: BoardGeometry;
   private boardCanvas = document.createElement('canvas');
+  private caseEnt: pc.Entity | null = null;
+
+  /** The current top-side board texture (for the teardown view). */
+  boardArtCanvas(): HTMLCanvasElement {
+    return this.boardCanvas;
+  }
   private boardTex!: pc.Texture;
   private bottomCanvas = document.createElement('canvas');
   private bottomTex!: pc.Texture;
@@ -312,6 +320,24 @@ export class BenchScene {
     this.boardGroup = new pc.Entity('board-group');
     app.root.addChild(this.boardGroup);
     this.boardGroup.addChild(body);
+    // The closed case: a smoked shell over the board (you can watch it work, not touch it)
+    this.caseEnt = null;
+    if (dev.enclosure) {
+      const cm = new pc.StandardMaterial();
+      const c = new pc.Color().fromString(dev.enclosure.color);
+      cm.diffuse = c;
+      cm.opacity = 0.42;
+      cm.blendType = pc.BLEND_NORMAL;
+      cm.depthWrite = false;
+      cm.gloss = 0.6;
+      cm.update();
+      const shell = new pc.Entity('case');
+      shell.addComponent('render', { type: 'box', material: cm, castShadows: false });
+      shell.setLocalScale(dev.width + 4, CASE_H, dev.height + 4);
+      shell.setLocalPosition(0, CASE_H / 2 - BOARD_T - 1, 0);
+      this.boardGroup.addChild(shell);
+      this.caseEnt = shell;
+    }
     const face = new pc.Entity('pcb-top');
     face.addComponent('render', { type: 'plane', material: top, castShadows: false, receiveShadows: true });
     face.setLocalScale(dev.width, 1, dev.height);
@@ -863,6 +889,7 @@ export class BenchScene {
     const s = this.session;
     s.tick(Math.min(dt, 0.1));
     this.syncComponents();
+    if (this.caseEnt) this.caseEnt.enabled = !s.reachable;
 
     // LEDs + lamp
     const op = s.op;

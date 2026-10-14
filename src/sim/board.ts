@@ -3,6 +3,7 @@
  * netlist, firmware, how its owner uses it, and how it can fail.
  * Layout units are millimetres, origin top-left, y down. All products are fictional.
  */
+import type { EnclosureDef } from './enclosure';
 import type { BoardState, DamageEvent, FunctionalReport, OperatingPoint } from './circuit';
 import type { Rng, Variant } from './faults';
 import type { Element } from './solver';
@@ -117,6 +118,8 @@ export interface DeviceDef {
   externals?: External[];
   /** Externals the owner always has connected when using it. */
   ownerAttaches?: string[];
+  /** The case around the board (see enclosure.ts); set from enclosures.ts in devices/index.ts. */
+  enclosure?: EnclosureDef;
 
   /** Use the device like its owner would. */
   functional(b: BoardState): FunctionalReport;

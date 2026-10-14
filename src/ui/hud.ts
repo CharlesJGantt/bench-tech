@@ -6,6 +6,8 @@ import type { BenchScene, BoardHit } from '../render/scene';
 import { beep, pop, sizzle } from './audio';
 import { schematicHtml } from './schematic';
 import { ReworkStation } from './rework';
+import { TeardownStation } from './teardown';
+import { assembled } from '../sim/enclosure';
 import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
@@ -173,6 +175,10 @@ export class Hud {
 
   flip(): void {
     const s = this.s;
+    if (!this.scene.flipped && !s.reachable) {
+      this.toast('Take the board out of its case first (🔧 Case on the ticket).');
+      return;
+    }
     if (!this.scene.flipped && s.powerMode !== 'off') {
       s.setPowerMode('off');
       this.toast('Unplugged the power before turning the board over.');
@@ -245,6 +251,10 @@ export class Hud {
       return;
     }
     if (!hit) return;
+    if (!s.reachable && s.tool !== 'inspect') {
+      if (ev.button === 0) this.toast('The case is still closed — open it up first (🔧 Case on the ticket). You can still power it and watch it work.');
+      return;
+    }
     if (ev.button === 2 && s.tool !== 'probe' && s.tool !== 'clip') return;
     const point: PointRef | null = hit.pad ? { ref: hit.pad.ref, pin: hit.pad.pin } : null;
     switch (s.tool) {
@@ -368,6 +378,19 @@ export class Hud {
         break;
       case 'return':
         this.confirmReturn();
+        break;
+      case 'case':
+        this.openTeardown();
+        break;
+      case 'case-close-return':
+        {
+          const log = s.encCloseForMe();
+          if (!assembled(s.enc)) this.toast(log[log.length - 1] ?? 'Could not close it up.', 'bad');
+          else {
+            s.returnToCustomer();
+            this.showDebrief();
+          }
+        }
         break;
       case 'return-yes':
         s.returnToCustomer();
@@ -561,6 +584,10 @@ export class Hud {
 
   private openRework(ref: string): void {
     const s = this.s;
+    if (!s.reachable) {
+      this.toast('Open the case first (🔧 Case on the ticket) — you cannot get a microscope on a board inside its case.');
+      return;
+    }
     const m = $('#modal');
     m.className = 'show rework';
     this.soldering = true;
@@ -574,6 +601,23 @@ export class Hud {
     });
     station.open(ref);
     (window as unknown as { rework: unknown }).rework = station; // console debugging
+  }
+
+  // ------------------------------------------------------------------ teardown
+
+  private openTeardown(): void {
+    const s = this.s;
+    if (!s.encDef || !s.enc) return;
+    const m = $('#modal');
+    m.className = 'show rework';
+    this.soldering = true;
+    const station = new TeardownStation(s, $('#modal-body'), this.scene.boardArtCanvas(), () => {
+      this.soldering = false;
+      m.className = '';
+      $('#modal-body').innerHTML = '';
+      s.emit();
+    });
+    station.open();
   }
 
   // ------------------------------------------------------------------ soldering minigame
@@ -733,10 +777,12 @@ export class Hud {
 
   private confirmReturn(): void {
     const s = this.s;
+    const open = !assembled(s.enc);
     this.modal(`<h2>Hand it back?</h2>
       <p>${esc(s.job.customer)} will take the ${esc(s.job.device.name)} home and use it. If it fails, you don't get paid — and if it fails <i>later</i>, they'll be back for a free warranty repair.</p>
+      ${open ? `<p class="note bad">⚠ The case is not back together. Handing it back in bits counts against you.${s.guided ? ' Close it up first (or let me do it).' : ''}</p>` : ''}
       <p class="muted">Tip: test it yourself first — power it, check the lights, press the button.</p>
-      <div class="row"><button class="big" data-act="return-yes">Return to ${esc(s.job.customer)}</button><button data-act="close">Keep working</button></div>`);
+      <div class="row">${open && s.guided ? `<button class="big primary" data-act="case-close-return">Close it up, then return it</button>` : ''}<button class="big" data-act="return-yes">Return to ${esc(s.job.customer)}${open ? ' as it is' : ''}</button><button data-act="close">Keep working</button></div>`);
   }
 
   // ------------------------------------------------------------------ office
@@ -1042,6 +1088,17 @@ export class Hud {
     }
   }
 
+  /** Case status and the button to the teardown station. */
+  private caseRow(): string {
+    const s = this.s;
+    const def = s.encDef;
+    const st = s.enc;
+    if (!def || !st) return '';
+    const status = assembled(st) ? 'closed' : s.reachable ? 'open' : 'partly open';
+    const sticker = st.stickerBroken && def.items.some((i) => i.kind === 'sticker') && !st.removed.includes('sticker') ? '<p class="note small">🔍 The warranty sticker is already torn — someone has been inside this before.</p>' : '';
+    return `${sticker}<div class="row"><button data-act="case" title="Take it apart / put it back together">🔧 Case: ${status}</button></div>`;
+  }
+
   private ticketHtml(): string {
     const s = this.s;
     const job = s.job;
@@ -1059,7 +1116,7 @@ export class Hud {
         <div class="kv"><span>Paid</span><b>$${(p?.paid ?? 0).toFixed(2)}</b></div>
         <div class="kv"><span>Sells for (working)</span><b>~$${(job.device.marketValue * trendMult(s.shop, job.device.id)).toFixed(0)}${trendMult(s.shop, job.device.id) > 1 ? ' 🔥' : ''}</b></div>
         <p class="complaint">Seller said: “${esc(job.complaint)}”</p>
-        ${debug}${nudge}
+        ${debug}${nudge}${this.caseRow()}
         <div class="row"><button class="primary" data-act="list-sale">List for sale</button><button data-act="store-donor" title="Keep it in the store-room and pull parts later">Store-room</button><button data-act="scrap">Strip all parts</button></div>
         <div class="row"><button data-act="schematic">Service sheet</button><button data-act="pause">Pause → office</button></div>`;
     }
@@ -1071,7 +1128,7 @@ export class Hud {
       ${job.previousRepairNote ? `<p class="quote">“${esc(job.previousRepairNote)}”</p>` : ''}
       <p class="complaint">“${esc(job.complaint)}”</p>
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
-      ${debug}${nudge}
+      ${debug}${nudge}${this.caseRow()}
       <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>
       <div class="row"><button data-act="pause">Pause → office</button>${job.kind === 'customer' ? '<button data-act="give-up">Give up</button>' : ''}</div>`;

@@ -18,6 +18,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
   - `circuit.ts` board state → netlist, operating point + MCU firmware loop, multimeter, thermal/stress damage, functional (customer) test.
   - `scope.ts` oscilloscope view derived from the DC operating point (switching, ripple from high-ESR caps, data/audio presence). ESR meter is a `measure()` mode.
   - `corrosion.ts` liquid-damage crust per pad (`CompState.corr`): series R / leakage in the netlist, no-wet at the microscope, daily spread, whole-board treatment, render speckles.
+  - `enclosure.ts` the case: items with prerequisites, tools, teardown mistakes, reassembly issues; `enclosures.ts` per-device cases (attached in `devices/index.ts`). Jobs carry `Job.enclosure`; `tests/enclosure.test.ts` opens and closes every device.
   - `faults.ts` tiered fault variants + job generator (seeded). `repair.ts` repair actions + evaluation.
 - `src/business/` — pure economy: `economy.ts` (prices, supplies, rent, electricity, ad tiers, starting stock, salvage-only parts) and `shop.ts` (ledger/P&L, stock new+used, supplier orders, rush buys, customer queue, warranty comebacks, marketplace listings, flip projects, scrap/salvage, `endDay`). Tested in `tests/business.test.ts`.
 - `src/sim/persist.ts` — JSON save format for boards/jobs (devices by id, Infinity joints as -1). Whole game saves to localStorage `benchtech.save.v2`.

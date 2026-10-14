@@ -114,7 +114,7 @@ export interface BoardState {
    * Damage to the PCB itself (carbonised fibreglass between two nets). It is not a part,
    * so no amount of part swapping fixes it — the board is scrap.
    */
-  pcbDamage: { a: string; b: string; r: number; near: string }[];
+  pcbDamage: { a: string; b: string; r: number; near: string; screw?: string }[];
 }
 
 export function createBoard(device: DeviceDef): BoardState {

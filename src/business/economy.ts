@@ -12,6 +12,7 @@ export type SupplyId =
   | 'ipa'
   | 'flux-cleaner'
   | 'corrosion-cleaner'
+  | 'thermal-paste'
   | 'wipes'
   | 'brushes';
 
@@ -70,6 +71,15 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     low: 0,
     blurb: 'Dissolves flux about 1.5× faster than IPA, and strips the baked-on "unknown" flux other repairers leave behind, which IPA barely touches.',
   },
+  'thermal-paste': {
+    id: 'thermal-paste',
+    name: 'Thermal paste',
+    unit: 'g',
+    pack: { qty: 4, cost: 6, label: '4 g syringe' },
+    start: 2,
+    low: 0.6,
+    blurb: 'A pea of fresh paste every time a heatsink comes off — putting it back on the old, broken paste cooks the chip.',
+  },
   'corrosion-cleaner': {
     id: 'corrosion-cleaner',
     name: 'Corrosion cleaner',
@@ -96,6 +106,8 @@ export const USAGE = {
   ipaPerSec: 4,
   /** IPA used by flooding the whole board on the bench */
   ipaFlood: 25,
+  /** Thermal paste per heatsink (g). */
+  pastePerChip: 0.3,
   /** Dissolved flux one wipe can soak up before it is spent. */
   wipeCapacity: 1.6,
   /** Brush wear per mm of scrubbing. */
@@ -172,6 +184,7 @@ export const TOOLS: ToolDef[] = [
   { id: 'objective-2x', kind: 'microscope', name: '2.0× objective', cost: 120, heat: 0, radius: 0, blurb: 'Zoom in up to 4×: tiny parts and hairline joint cracks fill the view.' },
   { id: 'ring-light', kind: 'microscope', name: 'LED ring light', cost: 35, heat: 0, radius: 0, blurb: 'Even, shadow-free light (L at the microscope): fine whiskers glint even at low zoom.' },
   { id: 'tilt-mount', kind: 'microscope', name: 'Tilting microscope arm', cost: 75, heat: 0, radius: 0, blurb: 'Look in at an angle (T at the microscope) to see under a chip: stray solder balls and hidden bridges.' },
+  { id: 'micro-drill', kind: 'instrument', name: 'Micro drill & carbide bits', cost: 25, heat: 0, radius: 0, blurb: 'For boards a long screw has bitten into: drill the damaged via out under the microscope to separate the shorted inner layers again.' },
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
 ];
 

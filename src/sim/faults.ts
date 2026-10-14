@@ -4,6 +4,7 @@
  * lets the owner keep using it (so damage propagates), and writes the ticket.
  */
 import type { DeviceDef } from './board';
+import { newEnclosure, type EnclosureDef, type EnclosureState } from './enclosure';
 import { CORROSION_COLORS, corrode } from './corrosion';
 import { createBoard, functionalTest, type BoardState, type DamageEvent, type Mark } from './circuit';
 
@@ -86,6 +87,21 @@ export function liquidDamage(b: BoardState, rng: Rng, refs: string[], lo = 0.35,
   for (const ref of refs) corrode(b, ref, rng.range(lo, hi), color, () => rng.next());
 }
 
+/** The case as it comes in: someone who has been inside may have torn the sticker and lost a screw. */
+function intakeEnclosure(def: EnclosureDef, previousRepair: Job['previousRepair'], rng: Rng): EnclosureState {
+  const st = newEnclosure(def);
+  const opened = previousRepair === 'Yes' || (previousRepair === 'Unknown' && rng.next() < 0.4);
+  if (!opened) return st;
+  st.stickerBroken = true;
+  const screws = def.items.filter((i) => i.screw);
+  if (screws.length && rng.next() < 0.5) {
+    const s = rng.pick(screws);
+    st.screws[s.id] = 0;
+    st.missingAtIntake = [s.id];
+  }
+  return st;
+}
+
 const RED_HERRINGS: Mark[] = ['residue', 'crooked', 'discolored', 'scratch'];
 
 function addRedHerrings(b: BoardState, rng: Rng, count: number, previousRepair: boolean): void {
@@ -154,6 +170,8 @@ export interface Job {
   customer: string;
   /** Who it belongs to: a paying customer, a free warranty return, or your own flip project. */
   kind: 'customer' | 'warranty' | 'project';
+  /** The state of the case (absent on old saves: treated as already open). */
+  enclosure?: EnclosureState;
 }
 
 const CUSTOMERS = ['Dana P.', 'Marcus L.', 'Priya S.', 'Tom W.', 'Ines R.', 'Kofi A.', 'Jun H.', 'Sam B.', 'Alex M.', 'Rosa G.', 'Leah K.', 'Omar F.', 'Wren T.', 'Yuki N.'];
@@ -204,6 +222,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   else if (previousRepair === 'Unknown') previousRepairNote = 'Bought it second-hand.';
 
   const quote = device.quoteBase + 10 * fault.tier + 5 * rng.int(0, 3) + (history.length ? 10 : 0);
+  const customer = rng.pick(CUSTOMERS);
   return {
     seed,
     device,
@@ -214,7 +233,8 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     previousRepair,
     previousRepairNote,
     quote,
-    customer: rng.pick(CUSTOMERS),
+    customer,
     kind: opts.kind ?? 'customer',
+    ...(device.enclosure ? { enclosure: intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
   };
 }

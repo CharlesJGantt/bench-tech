@@ -18,6 +18,7 @@ import { generateJob, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
+import { applyPaste, boardReachable, closeForMe, drillOut, installItem, openForMe, removeItem, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -277,6 +278,8 @@ export class Session {
     job.complaint = 'It was working last night. This morning it is completely dead — no lights at all.';
     job.previousRepair = 'No';
     job.quote = 35;
+    // Robin already took the base cover off (the walkthrough starts at the board).
+    if (job.enclosure && DL12.enclosure) openForMe(DL12.enclosure, job.enclosure, job.board);
     const id = this.shop.nextId++;
     this.shop.queue.unshift({ id, kind: 'customer', customer: job.customer, complaint: job.complaint, quote: job.quote, arrived: this.shop.day, tutorial: true, job: saveJob(job) });
     // Make sure there is a spare fuse to fit.
@@ -627,6 +630,87 @@ export class Session {
   }
 
   /** The kit currently selected for the rework station. */
+  // ---------------------------------------------------------------- the case
+
+  get encDef(): EnclosureDef | undefined {
+    return this.idle ? undefined : this.job.device.enclosure;
+  }
+
+  /** The case on the job on the bench (old saves have none: treated as open). */
+  get enc(): EnclosureState | undefined {
+    return this.idle ? undefined : this.job.enclosure;
+  }
+
+  /** Can the board be probed / soldered (case off)? */
+  get reachable(): boolean {
+    return this.idle || boardReachable(this.encDef, this.enc);
+  }
+
+  private encDone(r: EncResult): EncResult {
+    if (r.text) this.addLog(r.damage ? 'event' : 'action', r.text);
+    this.recompute();
+    this.save();
+    this.emit();
+    return r;
+  }
+
+  encRemove(id: string, tool: EncTool): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    if (this.powerMode !== 'off') this.setPowerMode('off');
+    return this.encDone(removeItem(def, st, this.board, id, tool));
+  }
+
+  encInstall(id: string, length?: number): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    return this.encDone(installItem(def, st, this.board, id, length));
+  }
+
+  encPaste(id: string): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    if (this.shop.supplies['thermal-paste'] < USAGE.pastePerChip) return { ok: false, text: 'Out of thermal paste — order a syringe from the office.' };
+    const r = applyPaste(def, st, id);
+    if (r.ok) useSupply(this.shop, 'thermal-paste', USAGE.pastePerChip);
+    return this.encDone(r);
+  }
+
+  encDrill(id: string): EncResult {
+    const st = this.enc;
+    if (!st) return { ok: false, text: 'There is no case on this one.' };
+    if (!this.owns('micro-drill')) return { ok: false, text: 'You need a micro drill for that — the office sells one (Tools tab).' };
+    if (!st.removed.includes(id)) return { ok: false, text: 'Take that long screw out first (screwdriver), then drill out the damaged via.' };
+    return this.encDone(drillOut(st, this.board, id));
+  }
+
+  /** Guided: open it the right way. */
+  encOpenForMe(): string[] {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return [];
+    if (this.powerMode !== 'off') this.setPowerMode('off');
+    const log = openForMe(def, st, this.board);
+    this.encDone({ ok: true, text: log.length ? `Opened it up: ${log.length} steps.` : '' });
+    return log;
+  }
+
+  /** Guided: close it up, re-pasting heatsinks and matching screws. */
+  encCloseForMe(): string[] {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return [];
+    const needPaste = def.items.filter((i) => i.kind === 'heatsink' && st.removed.includes(i.id) && !st.paste[i.id]).length;
+    if (needPaste && this.shop.supplies['thermal-paste'] < needPaste * USAGE.pastePerChip) return ['Out of thermal paste — order a syringe before closing it up.'];
+    if (needPaste) useSupply(this.shop, 'thermal-paste', needPaste * USAGE.pastePerChip);
+    const log = closeForMe(def, st, this.board);
+    this.encDone({ ok: true, text: log.length ? `Closed it up: ${log.length} steps.` : '' });
+    return log;
+  }
+
   get kit(): Kit {
     const k = this.shop.kit;
     const tip = tool(k.tip);
