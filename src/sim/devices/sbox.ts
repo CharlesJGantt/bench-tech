@@ -4,7 +4,9 @@
  * motherboard through a P-channel power MOSFET, and shuts it off again if the rail's
  * "power good" never comes up. Fictional product.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { resistor } from '../elements';
 import { addMark, type Rng, type Variant } from '../faults';
@@ -158,7 +160,7 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-export const SBOX: DeviceDef = {
+export const SBOX = device({
   id: 'sbox',
   name: 'Sbox One X (power board)',
   category: 'Consoles',
@@ -166,38 +168,47 @@ export const SBOX: DeviceDef = {
   width: 110,
   height: 70,
   blocks: [
-    { name: '12V INPUT', x: 2, y: 2, w: 34, h: 30 },
-    { name: 'STANDBY 5V / 3V3', x: 36, y: 2, w: 40, h: 30 },
+    place(
+      'IN',
+      powerInput({ connector: 'header', volts: 12, fuse: 'F-5A', bulk: 'C-1000U-16', source: 'the power brick' }),
+      [2, 2],
+      { out: '12V' },
+      { conn: 'J1', fuse: 'F1', bulk: 'C1', tpIn: 'TP1', tpOut: 'TP2' },
+      { faults: false, outline: { name: '12V INPUT', x: 2, y: 2, w: 34, h: 30 }, layout: { conn: [9, 7], fuse: [21, 7], bulk: [26, 22], tpIn: [5, 22], tpOut: [13, 28] } },
+    ),
+    place(
+      'SB',
+      buckRail({ vout: 5, vin: 12, inductor: 'L-22U', led: 'red' }),
+      [36, 2],
+      { vin: '12V', out: '5V_SB' },
+      { reg: 'U1', boot: 'C5', enTop: 'R2', enBot: 'R3', ind: 'L1', fbTop: 'R4', fbBot: 'R5', cout: 'C3', ledRes: 'R15', led: 'D2', tp: 'TP3' },
+      {
+        faults: false,
+        outline: { name: 'STANDBY 5V / 3V3', x: 36, y: 2, w: 40, h: 30 },
+        layout: {
+          reg: [45, 10], boot: [45, 4], enTop: [39, 15, 90], enBot: [39, 22, 90], ind: [53, 10], fbTop: [46, 19, 90], fbBot: [46, 26, 90],
+          cout: [59, 19, 90], ledRes: [53, 28], led: [60, 28], tp: [66, 26],
+        },
+      },
+    ),
+    place('SB3', ldoRail({ vin: 5 }), [62, 2], { vin: '5V_SB', out: '3V3_SB' }, { reg: 'U2', cout: 'C4', tp: 'TP4' }, {
+      faults: false,
+      outline: null,
+      layout: { reg: [68, 9], cout: [73, 20, 90], tp: [81, 26] },
+    }),
+  ],
+  outlines: [
     { name: 'STANDBY MCU', x: 76, y: 2, w: 32, h: 30 },
     { name: 'MAIN 12V SWITCH', x: 2, y: 34, w: 76, h: 34 },
     { name: 'MOTHERBOARD', x: 78, y: 34, w: 30, h: 34 },
   ],
-  components: [
-    c('J1', 'J-PWR2', 'INPUT', 9, 7, 0, { '12V': 'VIN_J', GND: 'GND' }, '12 V input from the power brick'),
-    c('F1', 'F-5A', 'INPUT', 21, 7, 0, { '1': 'VIN_J', '2': '12V' }, 'Main fuse'),
-    c('C1', 'C-1000U-16', 'INPUT', 26, 22, 0, { '+': '12V', '-': 'GND' }, '12 V bulk capacitor'),
-    c('TP1', 'TP', 'INPUT', 5, 22, 0, { '1': 'VIN_J' }, 'Raw input'),
-    c('TP2', 'TP', 'INPUT', 13, 28, 0, { '1': '12V' }, '12 V rail'),
-    c('U1', 'U-VX2302', 'STANDBY', 45, 10, 0, { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN_SB', IN: '12V', SW: 'SW' }, 'Standby 5 V buck'),
-    c('C5', 'C-100N', 'STANDBY', 45, 4, 0, { '1': 'BST', '2': 'SW' }, 'Bootstrap capacitor'),
-    c('R2', 'R-100K', 'STANDBY', 39, 15, 90, { '1': '12V', '2': 'EN_SB' }, 'Enable divider (top)'),
-    c('R3', 'R-47K', 'STANDBY', 39, 22, 90, { '1': 'EN_SB', '2': 'GND' }, 'Enable divider (bottom)'),
-    c('L1', 'L-22U', 'STANDBY', 53, 10, 0, { '1': 'SW', '2': '5V_SB' }, 'Buck inductor'),
-    c('R4', 'R-52K3', 'STANDBY', 46, 19, 90, { '1': '5V_SB', '2': 'FB' }, 'Feedback divider (top)'),
-    c('R5', 'R-10K', 'STANDBY', 46, 26, 90, { '1': 'FB', '2': 'GND' }, 'Feedback divider (bottom)'),
-    c('C3', 'C-22U-10', 'STANDBY', 59, 19, 90, { '1': '5V_SB', '2': 'GND' }, 'Standby 5 V capacitor'),
-    c('R15', 'R-1K', 'STANDBY', 53, 28, 0, { '1': '5V_SB', '2': 'SB_LED_A' }, 'Standby LED resistor'),
-    c('D2', 'LED-RED', 'STANDBY', 60, 28, 0, { A: 'SB_LED_A', K: 'GND' }, 'Standby light'),
-    c('TP3', 'TP', 'STANDBY', 66, 26, 0, { '1': '5V_SB' }, 'Standby 5 V'),
-    c('U2', 'U-HL33', 'STANDBY', 68, 9, 0, { GND: 'GND', OUT: '3V3_SB', IN: '5V_SB', TAB: '3V3_SB' }, 'Standby 3.3 V regulator'),
-    c('C4', 'C-10U-6', 'STANDBY', 73, 20, 90, { '1': '3V3_SB', '2': 'GND' }, 'Standby 3.3 V capacitor'),
+  parts: [
     c('U3', 'U-PIC8-SBX', 'MCU', 88, 12, 0, { VDD: '3V3_SB', LED: 'LED_IO', MAINEN: 'MAIN_EN_IO', BTN: 'BTN', PG: 'PG', NC6: 'U3_NC6', NC7: 'U3_NC7', GND: 'GND' }, 'Standby / power-sequencing MCU'),
     c('C6', 'C-100N', 'MCU', 80, 6, 90, { '1': '3V3_SB', '2': 'GND' }, 'MCU decoupling'),
     c('R6', 'R-220R', 'MCU', 99, 5, 0, { '1': 'LED_IO', '2': 'PWR_LED_A' }, 'Power LED resistor'),
     c('D1', 'LED-WHT', 'MCU', 105, 5, 0, { A: 'PWR_LED_A', K: 'GND' }, 'Power light (white)'),
     c('R14', 'R-10K', 'MCU', 99, 13, 0, { '1': '3V3_SB', '2': 'BTN' }, 'Button pull-up'),
     c('SW1', 'SW-TACT', 'MCU', 101, 23, 0, { '1': 'BTN', '2': 'GND' }, 'Power button'),
-    c('TP4', 'TP', 'MCU', 81, 26, 0, { '1': '3V3_SB' }, 'Standby 3.3 V'),
     c('TP5', 'TP', 'MCU', 90, 28, 0, { '1': 'GND' }, 'Ground'),
     c('R10', 'R-10K', 'MAIN', 21, 44, 90, { '1': '12V', '2': 'Q1_G' }, 'Q1 gate pull-up (keeps it off)'),
     c('Q1', 'Q-PPWR', 'MAIN', 31, 46, 180, { G: 'Q1_G', S: '12V', D: '12V_MAIN' }, 'Main 12 V switch (P-MOSFET)'),
@@ -215,7 +226,7 @@ export const SBOX: DeviceDef = {
   ],
   traces: [],
   testPoints: [
-    { ref: 'TP1', net: 'VIN_J', expected: '12 V (brick connected)' },
+    { ref: 'TP1', net: 'IN_VIN', expected: '12 V (brick connected)' },
     { ref: 'TP2', net: '12V', expected: '≈12 V' },
     { ref: 'TP3', net: '5V_SB', expected: '5.0 V (always on)' },
     { ref: 'TP4', net: '3V3_SB', expected: '3.3 V (always on)' },
@@ -231,15 +242,15 @@ export const SBOX: DeviceDef = {
   ],
   nets: {
     GND: { desc: 'Ground', expected: 0 },
-    VIN_J: { desc: 'Raw 12 V from the power brick', expected: 12 },
+    'IN_VIN': { desc: 'Raw 12 V from the power brick', expected: 12 },
     '12V': { desc: '12 V input rail (after the fuse)', expected: 12 },
-    EN_SB: { desc: 'Enable of the standby regulator U1', expected: 3.8 },
-    FB: { desc: 'U1 feedback — regulated to 0.8 V', expected: 0.8 },
-    SW: { desc: 'Standby buck switch node', expected: 5 },
-    BST: { desc: 'U1 bootstrap pin' },
+    'SB_EN': { desc: 'Enable of the standby regulator U1', expected: 3.8 },
+    'SB_FB': { desc: 'U1 feedback — regulated to 0.8 V', expected: 0.8 },
+    'SB_SW': { desc: 'Standby buck switch node', expected: 5 },
+    'SB_BST': { desc: 'U1 bootstrap pin' },
     '5V_SB': { desc: 'Standby 5 V — on whenever the brick is plugged in', expected: 5 },
     '3V3_SB': { desc: 'Standby 3.3 V for the standby MCU', expected: 3.3 },
-    SB_LED_A: { desc: 'Standby light anode' },
+    'SB_LED': { desc: 'Standby light anode' },
     BTN: { desc: 'Power button — high normally, low while pressed', expected: 3.3 },
     LED_IO: { desc: 'MCU power-light output (high when the console is on)' },
     PWR_LED_A: { desc: 'Power light anode' },
@@ -319,7 +330,7 @@ export const SBOX: DeviceDef = {
   marketValue: 260,
   quoteBase: 50,
   minReputation: 10,
-};
+});
 
 const running = (op: OperatingPoint) => op.current('mobo') > 0.8;
 

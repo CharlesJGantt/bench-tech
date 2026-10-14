@@ -3,7 +3,9 @@
  * scaler with power button, and an LED backlight boost converter (external MOSFET,
  * Schottky, current-sense resistor) driving a plug-in LED strip. Fictional product.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { addMark, type Rng, type Variant } from '../faults';
 
@@ -158,7 +160,7 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-export const VIEWMAX: DeviceDef = {
+export const VIEWMAX = device({
   id: 'viewmax',
   name: 'ViewMax 24 Monitor (power board)',
   category: 'Displays',
@@ -166,31 +168,38 @@ export const VIEWMAX: DeviceDef = {
   width: 120,
   height: 72,
   blocks: [
-    { name: 'POWER INPUT', x: 2, y: 2, w: 34, h: 28 },
-    { name: '5V / 3V3 LOGIC', x: 36, y: 2, w: 40, h: 28 },
+    place(
+      'IN',
+      powerInput({ connector: 'barrel', volts: 19, fuse: 'F-1A', bulk: 'C-470U-35', source: 'the power brick', tvs: 'D-TVS24' }),
+      [2, 2],
+      { out: '19V' },
+      { conn: 'J1', fuse: 'F1', tvs: 'D1', bulk: 'C1', tpIn: 'TP1', tpOut: 'TP2' },
+      { faults: false, outline: { name: 'POWER INPUT', x: 2, y: 2, w: 34, h: 28 }, layout: { conn: [7, 14], fuse: [21, 7], tvs: [21, 17, 270], bulk: [29, 22], tpIn: [15, 26], tpOut: [4, 26] } },
+    ),
+    place(
+      '5V',
+      buckRail({ vout: 5, vin: 19, enBottom: 'R-22K' }),
+      [36, 2],
+      { vin: '19V', out: '5V' },
+      { reg: 'U1', boot: 'C5', enTop: 'R2', enBot: 'R3', ind: 'L1', fbTop: 'R4', fbBot: 'R5', cout: 'C3', tp: 'TP3' },
+      {
+        faults: false,
+        outline: { name: '5V / 3V3 LOGIC', x: 36, y: 2, w: 40, h: 28 },
+        layout: { reg: [45, 10], boot: [45, 4], enTop: [39, 15, 90], enBot: [39, 22, 90], ind: [53, 10], fbTop: [46, 19, 90], fbBot: [46, 26, 90], cout: [59, 19, 90], tp: [53, 26] },
+      },
+    ),
+    place('3V3', ldoRail({ vin: 5 }), [62, 2], { vin: '5V', out: '3V3' }, { reg: 'U2', cout: 'C4', tp: 'TP4' }, {
+      faults: false,
+      outline: null,
+      layout: { reg: [67, 9], cout: [72, 20, 90], tp: [65, 26] },
+    }),
+  ],
+  outlines: [
     { name: 'SCALER', x: 76, y: 2, w: 42, h: 28 },
     { name: 'BACKLIGHT BOOST', x: 2, y: 32, w: 82, h: 28 },
     { name: 'LED STRIP', x: 84, y: 32, w: 34, h: 28 },
   ],
-  components: [
-    c('J1', 'J-BARREL', 'INPUT', 7, 14, 0, { TIP: 'VIN_J', SLEEVE: 'GND' }, '19 V input jack'),
-    c('F1', 'F-1A', 'INPUT', 21, 7, 0, { '1': 'VIN_J', '2': '19V' }, 'Input fuse'),
-    c('D1', 'D-TVS24', 'INPUT', 21, 17, 270, { A: 'GND', K: '19V' }, 'Input surge clamp'),
-    c('C1', 'C-470U-35', 'INPUT', 29, 22, 0, { '+': '19V', '-': 'GND' }, '19 V bulk capacitor'),
-    c('TP1', 'TP', 'INPUT', 15, 26, 0, { '1': 'VIN_J' }, 'Raw input'),
-    c('TP2', 'TP', 'INPUT', 4, 26, 0, { '1': '19V' }, '19 V rail'),
-    c('U1', 'U-VX2302', 'LOGIC', 45, 10, 0, { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN_BUCK', IN: '19V', SW: 'SW' }, '5 V buck converter'),
-    c('C5', 'C-100N', 'LOGIC', 45, 4, 0, { '1': 'BST', '2': 'SW' }, 'Bootstrap capacitor'),
-    c('R2', 'R-100K', 'LOGIC', 39, 15, 90, { '1': '19V', '2': 'EN_BUCK' }, 'Enable divider (top)'),
-    c('R3', 'R-22K', 'LOGIC', 39, 22, 90, { '1': 'EN_BUCK', '2': 'GND' }, 'Enable divider (bottom)'),
-    c('L1', 'L-10U', 'LOGIC', 53, 10, 0, { '1': 'SW', '2': '5V' }, 'Buck inductor'),
-    c('R4', 'R-52K3', 'LOGIC', 46, 19, 90, { '1': '5V', '2': 'FB' }, 'Feedback divider (top)'),
-    c('R5', 'R-10K', 'LOGIC', 46, 26, 90, { '1': 'FB', '2': 'GND' }, 'Feedback divider (bottom)'),
-    c('C3', 'C-22U-10', 'LOGIC', 59, 19, 90, { '1': '5V', '2': 'GND' }, '5 V output capacitor'),
-    c('TP3', 'TP', 'LOGIC', 53, 26, 0, { '1': '5V' }, '5 V rail'),
-    c('U2', 'U-HL33', 'LOGIC', 67, 9, 0, { GND: 'GND', OUT: '3V3', IN: '5V', TAB: '3V3' }, '3.3 V regulator'),
-    c('C4', 'C-10U-6', 'LOGIC', 72, 20, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
-    c('TP4', 'TP', 'LOGIC', 65, 26, 0, { '1': '3V3' }, '3.3 V rail'),
+  parts: [
     c('U3', 'U-SCL24', 'SCALER', 90, 15, 0, {
       VDD: '3V3', BLEN: 'BL_EN_IO', BTN: 'BTN', LED: 'LED_IO',
       NC5: 'U3_NC5', NC6: 'U3_NC6', NC7: 'U3_NC7', NC8: 'U3_NC8', NC9: 'U3_NC9', NC10: 'U3_NC10', NC11: 'U3_NC11', NC12: 'U3_NC12', NC13: 'U3_NC13', NC14: 'U3_NC14', NC15: 'U3_NC15',
@@ -219,7 +228,7 @@ export const VIEWMAX: DeviceDef = {
   ],
   traces: [{ id: 'T1', a: '19V', b: '19V_BL' }],
   testPoints: [
-    { ref: 'TP1', net: 'VIN_J', expected: '19 V (brick plugged in)' },
+    { ref: 'TP1', net: 'IN_VIN', expected: '19 V (brick plugged in)' },
     { ref: 'TP2', net: '19V', expected: '≈19 V' },
     { ref: 'TP3', net: '5V', expected: '5.0 V' },
     { ref: 'TP4', net: '3V3', expected: '3.3 V' },
@@ -234,13 +243,13 @@ export const VIEWMAX: DeviceDef = {
   ],
   nets: {
     GND: { desc: 'Ground', expected: 0 },
-    VIN_J: { desc: 'Raw 19 V input from the jack', expected: 19 },
+    'IN_VIN': { desc: 'Raw 19 V input from the jack', expected: 19 },
     '19V': { desc: '19 V main rail (after the fuse)', expected: 19 },
     '19V_BL': { desc: '19 V feed into the backlight boost converter', expected: 19 },
-    EN_BUCK: { desc: 'Enable pin of the 5 V regulator U1 — must be above 1.2 V', expected: 3.4 },
-    FB: { desc: 'U1 feedback — regulated to 0.8 V', expected: 0.8 },
-    SW: { desc: '5 V buck switch node (average ≈ 5 V)', expected: 5 },
-    BST: { desc: 'U1 bootstrap pin' },
+    '5V_EN': { desc: 'Enable pin of the 5 V regulator U1 — must be above 1.2 V', expected: 3.4 },
+    '5V_FB': { desc: 'U1 feedback — regulated to 0.8 V', expected: 0.8 },
+    '5V_SW': { desc: '5 V buck switch node (average ≈ 5 V)', expected: 5 },
+    '5V_BST': { desc: 'U1 bootstrap pin' },
     '5V': { desc: '5 V logic rail', expected: 5 },
     '3V3': { desc: '3.3 V rail for the scaler', expected: 3.3 },
     BTN: { desc: 'Power button — high normally, low while pressed', expected: 3.3 },
@@ -295,7 +304,7 @@ export const VIEWMAX: DeviceDef = {
   marketValue: 110,
   quoteBase: 45,
   minReputation: 5,
-};
+});
 
 const lit = (op: OperatingPoint, ref: string, min: number) => op.current(ref) > min;
 

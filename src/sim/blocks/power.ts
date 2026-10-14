@@ -3,6 +3,7 @@
  * Each brings its parts, test points, net descriptions and fault variants.
  */
 import { addMark } from '../faults';
+import { part } from '../parts';
 import type { BlockDef } from './core';
 
 // ---------------------------------------------------------------------------
@@ -30,9 +31,10 @@ export function powerInput(o: InputOpts): BlockDef {
   const plus = header ? '12V' : 'TIP';
   const minus = header ? 'GND' : 'SLEEVE';
   const v = `${o.volts} V`;
-  const fused = o.tvs || o.reverse ? 'VF' : 'out';
+  // Without reverse protection the fuse feeds the rail directly (a TVS then clamps the rail).
+  const fused = o.reverse ? 'VF' : 'out';
   const extra: BlockDef['parts'] = [];
-  if (o.tvs) extra.push({ key: 'tvs', partNo: o.tvs, at: [22, 31], rot: 270, pins: { A: 'GND', K: 'VF' }, role: 'Surge / over-voltage clamp' });
+  if (o.tvs) extra.push({ key: 'tvs', partNo: o.tvs, at: [22, 31], rot: 270, pins: { A: 'GND', K: fused }, role: 'Surge / over-voltage clamp' });
   if (o.reverse)
     extra.push(
       { key: 'rpFet', partNo: 'Q-PFET', at: [27, 23], pins: { D: 'VF', S: 'out', G: 'G' }, role: 'Reverse-polarity protection' },
@@ -111,24 +113,27 @@ export interface BuckOpts {
   vin: number;
   /** Inductor part (default 10 µH). */
   inductor?: string;
+  /** Bottom resistor of the enable divider (default 47 k; use a smaller one for higher input voltages). */
+  enBottom?: string;
   /** Input capacitor part, if fitted. */
   cin?: string;
   /** Number of output capacitors (default 1). */
   couts?: 1 | 2;
-  /** Green power LED on the output. */
-  led?: boolean;
+  /** Power LED on the output (true = green). */
+  led?: boolean | 'green' | 'red';
 }
 
 /** Ports: `vin`, `out`. Local nets: EN, FB, SW, BST. */
 export function buckRail(o: BuckOpts): BlockDef {
   const v = `${o.vout} V`;
+  const enBot = o.enBottom ?? 'R-47K';
   const extra: BlockDef['parts'] = [];
   if (o.cin) extra.push({ key: 'cin', partNo: o.cin, at: [3, 6], rot: 90, pins: { '1': 'vin', '2': 'GND' }, role: 'Buck input capacitor' });
   if (o.couts === 2) extra.push({ key: 'cout2', partNo: 'C-22U-10', at: [23, 24], rot: 90, pins: { '1': 'out', '2': 'GND' }, role: `${v} output capacitor` });
   if (o.led)
     extra.push(
       { key: 'ledRes', partNo: 'R-1K', at: [18, 31], pins: { '1': 'out', '2': 'LED' }, role: 'Power LED resistor' },
-      { key: 'led', partNo: 'LED-GRN', at: [18, 36], pins: { A: 'LED', K: 'GND' }, role: 'Power indicator LED' },
+      { key: 'led', partNo: o.led === 'red' ? 'LED-RED' : 'LED-GRN', at: [18, 36], pins: { A: 'LED', K: 'GND' }, role: 'Power indicator LED' },
     );
   return {
     title: `${o.vout}V BUCK`,
@@ -138,7 +143,7 @@ export function buckRail(o: BuckOpts): BlockDef {
       { key: 'reg', partNo: 'U-VX2302', at: [9, 8], pins: { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN', IN: 'vin', SW: 'SW' }, role: `${v} buck converter` },
       { key: 'boot', partNo: 'C-100N', at: [9, 2], pins: { '1': 'BST', '2': 'SW' }, role: 'Bootstrap capacitor' },
       { key: 'enTop', partNo: 'R-100K', at: [3, 13], rot: 90, pins: { '1': 'vin', '2': 'EN' }, role: 'Enable divider (top)' },
-      { key: 'enBot', partNo: 'R-47K', at: [3, 20], rot: 90, pins: { '1': 'EN', '2': 'GND' }, role: 'Enable divider (bottom)' },
+      { key: 'enBot', partNo: enBot, at: [3, 20], rot: 90, pins: { '1': 'EN', '2': 'GND' }, role: 'Enable divider (bottom)' },
       { key: 'ind', partNo: o.inductor ?? 'L-10U', at: [17, 8], pins: { '1': 'SW', '2': 'out' }, role: 'Buck inductor' },
       { key: 'fbTop', partNo: 'R-52K3', at: [10, 17], rot: 90, pins: { '1': 'out', '2': 'FB' }, role: 'Feedback divider (top)' },
       { key: 'fbBot', partNo: 'R-10K', at: [10, 24], rot: 90, pins: { '1': 'FB', '2': 'GND' }, role: 'Feedback divider (bottom)' },
@@ -148,7 +153,7 @@ export function buckRail(o: BuckOpts): BlockDef {
     ],
     nets: {
       vin: { desc: `${o.vin} V into the ${v} regulator`, expected: o.vin, power: true },
-      EN: { desc: `Enable of the ${v} regulator`, expected: o.vin * (47 / 147) },
+      EN: { desc: `Enable of the ${v} regulator`, expected: (o.vin * part(enBot).value) / (part('R-100K').value + part(enBot).value) },
       FB: { desc: `${v} regulator feedback — regulated to 0.8 V`, expected: 0.8 },
       SW: { desc: `${v} buck switch node`, expected: o.vout, power: true },
       BST: { desc: `${v} regulator bootstrap pin` },
