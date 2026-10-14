@@ -3,7 +3,7 @@ import { DL12 } from '../src/sim/devices';
 import { cloneBoard, createBoard, functionalTest, type BoardState } from '../src/sim/circuit';
 import { addMark, generateJob } from '../src/sim/faults';
 import { evaluate } from '../src/sim/repair';
-import { DEFAULT_KIT, applyRework, click, cutWick, initRework, jointResults, meltOf, pickFromTray, step, type ReworkState, type ReworkTool } from '../src/rework/model';
+import { DEFAULT_KIT, applyRework, bridgeVisible, click, cutWick, maxZoom, initRework, jointResults, meltOf, pickFromTray, step, type ReworkState, type ReworkTool } from '../src/rework/model';
 import { WICKS } from '../src/business/economy';
 
 const DT = 1 / 60;
@@ -308,5 +308,43 @@ describe('rework station', () => {
     expect(st.used['flux-cleaner'] ?? 0).toBeGreaterThan(1.9);
     expect(st.used.ipa ?? 0).toBe(0);
     expect(st.pads[0].solvent).toBe('flux-cleaner');
+  });
+
+  it('a hidden whisker comes into the microscope, needs zoom or a ring light to see, and pulls back with flux and heat', () => {
+    const b = createBoard(DL12);
+    b.jumpers.push({ id: b.nextJumperId++, a: { ref: 'U3', pin: Object.keys(b.comps.U3.joints)[1] }, b: { ref: 'U3', pin: Object.keys(b.comps.U3.joints)[2] }, cold: false, bridge: true, hidden: 'whisker' });
+    expect(functionalTest(cloneBoard(b)).passed).toBe(false);
+    const st = initRework(b, 'U3');
+    expect(st.bridges).toEqual([[1, 2, 'whisker']]);
+    expect(bridgeVisible('whisker', { zoom: maxZoom([]), ring: false, tilt: false })).toBe(false);
+    expect(bridgeVisible('whisker', { zoom: 1.5, ring: true, tilt: false })).toBe(true);
+    expect(bridgeVisible('whisker', { zoom: maxZoom(['objective-1x']), ring: false, tilt: false })).toBe(true);
+    const p1 = st.pads[1];
+    hold(st, 'flux', p1.x, p1.y, 0.5);
+    hold(st, 'iron', p1.x, p1.y, 2);
+    expect(st.bridges).toEqual([]);
+    applyRework(b, st);
+    expect(b.jumpers.filter((j) => j.bridge)).toEqual([]);
+  });
+
+  it('a solder ball under a chip only shows tilted, survives wicking, and leaves with the chip', () => {
+    const b = createBoard(DL12);
+    const pins = Object.keys(b.comps.U3.joints);
+    b.jumpers.push({ id: b.nextJumperId++, a: { ref: 'U3', pin: pins[0] }, b: { ref: 'U3', pin: pins[pins.length - 1] }, cold: false, bridge: true, hidden: 'ball' });
+    const st = initRework(b, 'U3', {}, { ...DEFAULT_KIT, nozzle: { heat: 0.8, radius: 6, name: '10 mm' } });
+    expect(bridgeVisible('ball', { zoom: 4, ring: true, tilt: false })).toBe(false);
+    expect(bridgeVisible('ball', { zoom: 1, ring: false, tilt: true })).toBe(true);
+    // Fluxing and heating the pins does not move it
+    hold(st, 'flux', st.pads[0].x, st.pads[0].y, 0.5);
+    hold(st, 'iron', st.pads[0].x, st.pads[0].y, 2);
+    expect(st.bridges.length).toBe(1);
+    // Lift the chip: hot air over the whole part, then tweezers
+    hold(st, 'flux', 0, 0, 0.5);
+    hold(st, 'hotair', 0, 0, 6);
+    click(st, 'tweezers', 0, 0);
+    expect(st.held).not.toBeNull();
+    hold(st, 'hotair', 0, 0, 0.1);
+    expect(st.part).toBeNull();
+    expect(st.bridges).toEqual([]);
   });
 });

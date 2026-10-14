@@ -80,6 +80,11 @@ export interface Jumper {
   cold: boolean;
   /** An accidental solder bridge rather than a deliberate wire. */
   bridge?: boolean;
+  /**
+   * A bridge you cannot see with the naked eye: a thin `whisker` between fine pins (needs
+   * magnification or a ring light) or a solder `ball` under a chip (needs the tilt view).
+   */
+  hidden?: 'whisker' | 'ball';
 }
 
 export interface McuState {

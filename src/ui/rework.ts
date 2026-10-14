@@ -2,7 +2,11 @@ import { FOOTPRINTS } from '../sim/footprints';
 import { crustSpeckles, hashStr } from '../sim/corrosion';
 import { PARTS, POLARIZED, type PartSpec } from '../sim/parts';
 import {
+  bridgeVisible,
   cutWick,
+  maxZoom,
+  say,
+  type ScopeView,
   meltOf,
   aligned,
   click,
@@ -59,6 +63,11 @@ export class ReworkStation {
   private timer = 0;
   private last = 0;
   private scale = 60;
+  /** Microscope view: zoom (wheel), pan offset in mm (right-drag), ring light (L), tilt (T). */
+  private view: ScopeView = { zoom: 1, ring: false, tilt: false };
+  private ox = 0;
+  private oy = 0;
+  private panning: { x: number; y: number } | null = null;
   private bubbles: { x: number; y: number; t: number }[] = [];
   private keyDown = (e: KeyboardEvent) => this.onKey(e, true);
   private keyUp = (e: KeyboardEvent) => this.onKey(e, false);
@@ -136,18 +145,48 @@ export class ReworkStation {
     cv.addEventListener('pointerdown', (e) => {
       cv.setPointerCapture(e.pointerId);
       this.mouse = this.toMm(e);
+      if (e.button === 2 && this.view.zoom > 1) this.panning = { x: e.clientX, y: e.clientY };
       if (e.button !== 0) return;
       this.down = true;
       if (this.tool === 'tweezers') click(this.st, this.tool, this.mouse.x, this.mouse.y);
     });
     cv.addEventListener('pointermove', (e) => {
+      if (this.panning) {
+        this.ox -= (e.clientX - this.panning.x) / this.scale;
+        this.oy -= (e.clientY - this.panning.y) / this.scale;
+        this.panning = { x: e.clientX, y: e.clientY };
+      }
       const m = this.toMm(e);
       if (this.mouse && this.down) this.moved += Math.hypot(m.x - this.mouse.x, m.y - this.mouse.y);
       this.mouse = m;
     });
-    cv.addEventListener('pointerup', () => (this.down = false));
+    cv.addEventListener('pointerup', () => {
+      this.down = false;
+      this.panning = null;
+    });
+    cv.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        const max = maxZoom(this.session.shop.tools);
+        const z = Math.min(max, Math.max(1, this.view.zoom * Math.exp(-Math.max(-600, Math.min(600, e.deltaY)) * 0.0015)));
+        if (z === this.view.zoom) {
+          if (e.deltaY < 0 && max < 4) say(this.st, `That is as far as this objective goes (${max}×). A stronger objective in the office's Tools tab zooms further.`);
+          return;
+        }
+        // Keep the point under the cursor fixed while zooming
+        const r = cv.getBoundingClientRect();
+        const m = this.toMm(e);
+        this.scale = (this.scale / this.view.zoom) * z;
+        this.view.zoom = z;
+        this.ox = z === 1 ? 0 : m.x - (e.clientX - r.left - r.width / 2) / this.scale;
+        this.oy = z === 1 ? 0 : m.y - (e.clientY - r.top - r.height / 2) / this.scale;
+      },
+      { passive: false },
+    );
     cv.addEventListener('pointerleave', () => {
       this.down = false;
+      this.panning = null;
       this.mouse = null;
     });
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -276,8 +315,22 @@ export class ReworkStation {
     if (t) this.setTool(t.id);
     if (e.key === 'r' || e.key === 'R') rotateHeld(this.st);
     if (e.key === 'c' || e.key === 'C') cutWick(this.st);
+    if (e.key === 'l' || e.key === 'L') this.toggleView('ring', 'ring-light', 'an LED ring light');
+    if (e.key === 't' || e.key === 'T') this.toggleView('tilt', 'tilt-mount', 'a tilting microscope arm');
+    if (e.key === '0') {
+      this.view.zoom = 1;
+      this.ox = this.oy = 0;
+    }
     if (e.key === 'Delete' || e.key === 'Backspace') dropHeld(this.st);
     if (e.key === 'Escape') this.finish(true);
+  }
+
+  private toggleView(key: 'ring' | 'tilt', toolId: string, name: string): void {
+    if (!this.session.shop.tools.includes(toolId)) {
+      say(this.st, `You need ${name} for that — buy one in the office (Tools tab).`);
+      return;
+    }
+    this.view[key] = !this.view[key];
   }
 
   private finish(apply: boolean): void {
@@ -301,9 +354,9 @@ export class ReworkStation {
 
   // ---------------------------------------------------------------- drawing
 
-  private toMm(e: PointerEvent): { x: number; y: number } {
+  private toMm(e: PointerEvent | WheelEvent): { x: number; y: number } {
     const r = this.canvas.getBoundingClientRect();
-    return { x: (e.clientX - r.left - r.width / 2) / this.scale, y: (e.clientY - r.top - r.height / 2) / this.scale };
+    return { x: (e.clientX - r.left - r.width / 2) / this.scale + this.ox, y: (e.clientY - r.top - r.height / 2) / this.scale + this.oy };
   }
 
   private draw(dt: number): void {
@@ -321,9 +374,12 @@ export class ReworkStation {
     const st = this.st;
     const spanX = Math.max(...st.pads.map((p) => Math.abs(p.x) + p.w / 2)) * 2 + 7;
     const spanY = Math.max(...st.pads.map((p) => Math.abs(p.y) + p.h / 2)) * 2 + 7;
-    const S = (this.scale = Math.min(W / spanX, H / spanY));
-    const X = (x: number) => W / 2 + x * S;
-    const Y = (y: number) => H / 2 + y * S;
+    const S = (this.scale = Math.min(W / spanX, H / spanY) * this.view.zoom);
+    // Keep the pan inside the footprint area
+    this.ox = Math.max(-spanX / 2, Math.min(spanX / 2, this.ox));
+    this.oy = Math.max(-spanY / 2, Math.min(spanY / 2, this.oy));
+    const X = (x: number) => W / 2 + (x - this.ox) * S;
+    const Y = (y: number) => H / 2 + (y - this.oy) * S;
 
     // Solder mask with a vignette like a microscope view
     ctx.fillStyle = '#1e6e40';
@@ -357,16 +413,18 @@ export class ReworkStation {
       ctx.fillText(label, X(k.x * 1.9), Y(k.y * 1.9));
     }
 
-    // Bridges under the pads' solder
-    for (const [i, j] of st.bridges) {
+    // Bridges under the pads' solder (fine whiskers only show with enough zoom or a ring light)
+    for (const [i, j, kind] of st.bridges) {
+      if (kind === 'ball' || !bridgeVisible(kind, this.view)) continue;
       const a = st.pads[i];
       const b = st.pads[j];
-      ctx.strokeStyle = '#cfd4d8';
+      ctx.strokeStyle = kind === 'whisker' ? (this.view.ring ? '#ffffff' : '#dfe3e6') : '#cfd4d8';
       ctx.lineCap = 'round';
-      ctx.lineWidth = Math.min(a.w, a.h) * 0.8 * S;
+      ctx.lineWidth = kind === 'whisker' ? Math.max(1, 0.06 * S) : Math.min(a.w, a.h) * 0.8 * S;
       ctx.beginPath();
       ctx.moveTo(X(a.x), Y(a.y));
-      ctx.lineTo(X(b.x), Y(b.y));
+      if (kind === 'whisker') ctx.quadraticCurveTo(X((a.x + b.x) / 2 + 0.15), Y((a.y + b.y) / 2 - 0.1), X(b.x), Y(b.y));
+      else ctx.lineTo(X(b.x), Y(b.y));
       ctx.stroke();
     }
 
@@ -376,7 +434,21 @@ export class ReworkStation {
       ctx.fillStyle = p.solder < 0.08 ? '#c98a52' : p.dirty ? '#8e9295' : '#d7dadd';
       ctx.fillRect(X(p.x - p.w / 2), Y(p.y - p.h / 2), p.w * S, p.h * S);
     });
-    if (st.part) this.drawPart(ctx, st.part, X, Y, S, 1);
+    // Tilted, you can look in under the part's body: it is drawn see-through, with any solder balls
+    if (st.part) this.drawPart(ctx, st.part, X, Y, S, this.view.tilt ? 0.3 : 1);
+    if (this.view.tilt)
+      for (const [i, j, kind] of st.bridges) {
+        if (kind !== 'ball') continue;
+        const mx = (st.pads[i].x + st.pads[j].x) / 2;
+        const my = (st.pads[i].y + st.pads[j].y) / 2;
+        const g = ctx.createRadialGradient(X(mx) - 0.08 * S, Y(my) - 0.08 * S, 1, X(mx), Y(my), 0.3 * S);
+        g.addColorStop(0, '#ffffff');
+        g.addColorStop(1, '#8d9399');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(X(mx), Y(my), 0.3 * S, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
     const color = this.session.board.comps[st.ref].corr?.color ?? 'green';
     // Solder: copper → tinned → blob; dull when old/oxidised, bright when molten
@@ -582,6 +654,31 @@ export class ReworkStation {
         ctx.fillText(label, mx + 20, my + 25);
       }
     }
+
+    // Microscope readout: magnification, light, angle
+    {
+      const tools = this.session.shop.tools;
+      const max = maxZoom(tools);
+      const parts = [`${(0.7 * this.view.zoom).toFixed(1)}× lens view (max ${(0.7 * max).toFixed(1)}×) · wheel zoom${this.view.zoom > 1 ? ', right-drag pans, 0 resets' : ''}`];
+      if (tools.includes('ring-light')) parts.push(`ring light ${this.view.ring ? 'ON' : 'off'} (L)`);
+      if (tools.includes('tilt-mount')) parts.push(`${this.view.tilt ? 'TILTED — looking under the part' : 'straight down'} (T)`);
+      ctx.font = '600 12px Segoe UI, sans-serif';
+      ctx.textAlign = 'left';
+      const text = parts.join(' · ');
+      const tw = ctx.measureText(text).width;
+      const tx = Math.max(8, (W - tw) / 2);
+      ctx.fillStyle = 'rgba(10,12,14,0.7)';
+      ctx.fillRect(tx - 7, H - 58, tw + 14, 22);
+      ctx.fillStyle = '#e8e6e1';
+      ctx.fillText(text, tx, H - 43);
+      if (this.view.ring) {
+        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7);
+        g.addColorStop(0, 'rgba(255,255,255,0.06)');
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
   }
 
   private drawPart(ctx: CanvasRenderingContext2D, p: PlacedPart, X: (x: number) => number, Y: (y: number) => number, S: number, alpha: number): void {
@@ -731,7 +828,10 @@ export class ReworkStation {
     const st = this.st;
     const pads = st.pads.filter((p) => !p.lifted);
     if (st.pads.some((p) => p.lifted)) return 'A pad has lifted. Finish up — you will need a jumper wire from that leg to its connection.';
-    if (st.bridges.length) return 'Solder bridge! Flux it, then wick the excess away.';
+    const seen = st.bridges.filter(([, , kind]) => bridgeVisible(kind, this.view));
+    if (seen.some(([, , kind]) => kind === 'ball')) return 'A solder ball under the chip! It cannot be wicked out from under the body: lift the chip (flux, hot air, tweezers), and it comes out with it.';
+    if (seen.some(([, , kind]) => kind === 'whisker')) return 'A fine solder whisker between pins! Flux it and touch the joint with the iron — it pulls back into the joints.';
+    if (seen.length) return 'Solder bridge! Flux it, then wick the excess away.';
     const liquid = st.kit.liquid;
     if (pads.some((p) => p.sludge > 0.05))
       return liquid === 'corrosion-cleaner'

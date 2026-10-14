@@ -233,11 +233,12 @@ function tools(s: Session): string {
   const card = (t: (typeof TOOLS)[number]) => {
     const owned = st.tools.includes(t.id);
     return `<div class="of-card ${owned ? 'hl' : ''}"><h3>${esc(t.name)}</h3><div class="price">${t.cost ? money(t.cost) : 'Stock'}</div>
-      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
+      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' || t.kind === 'microscope' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
       ${owned ? '<span class="pill">owned</span>' : `<button class="primary" data-act="buy-tool" data-id="${t.id}" ${st.cash < t.cost ? 'disabled title="Not enough cash"' : ''}>Buy ${money(t.cost)}</button>`}</div>`;
   };
   return `<p>Better tools give you capabilities, not stat boosts: a bigger tip melts ground pads quickly, a focused nozzle spares the neighbours. Pick what to use in the microscope's kit selectors.</p>
     <h3>Diagnostic instruments</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'instrument').map(card).join('')}</div>
+    <h3>Microscope upgrades</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'microscope').map(card).join('')}</div>
     <h3>Soldering iron tips</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'tip').map(card).join('')}</div>
     <h3>Hot-air nozzles</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'nozzle').map(card).join('')}</div>
     <p class="muted">Flux grades, wick widths, low-melt alloy, brushes and wipes are consumables — order them on the Supplies &amp; parts tab.</p>`;

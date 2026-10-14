@@ -148,7 +148,7 @@ export const WICKS: Record<WickDef['supply'], WickDef> = {
 
 export interface ToolDef {
   id: string;
-  kind: 'tip' | 'nozzle' | 'instrument';
+  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope';
   name: string;
   cost: number;
   blurb: string;
@@ -168,6 +168,10 @@ export const TOOLS: ToolDef[] = [
   { id: 'esr-meter', kind: 'instrument', name: 'ESR meter', cost: 45, heat: 0, radius: 0, blurb: 'Measures a capacitor\'s ESR in circuit. A dried-out cap still reads fine on a multimeter — this shows it at a glance. Adds an ESR mode to the meter.' },
   { id: 'oscilloscope', kind: 'instrument', name: 'Oscilloscope', cost: 140, heat: 0, radius: 0, blurb: 'See signals, not just voltages: is that chip putting out data? Is the rail rippling? Is the regulator switching? Adds the Scope tool (7).' },
   { id: 'thermal-cam', kind: 'instrument', name: 'Thermal camera', cost: 220, heat: 0, radius: 0, blurb: 'Watch the powered board in heat colours: shorted parts glow. Pairs well with injecting a low voltage from the bench supply. Dead parts that get no power stay cold, so it does not catch everything.' },
+  { id: 'objective-1x', kind: 'microscope', name: '1.0× objective', cost: 60, heat: 0, radius: 0, blurb: 'Swaps the stock 0.7× lens: zoom in up to 2.5× (mouse wheel at the microscope). Enough to spot fine solder whiskers between pins.' },
+  { id: 'objective-2x', kind: 'microscope', name: '2.0× objective', cost: 120, heat: 0, radius: 0, blurb: 'Zoom in up to 4×: tiny parts and hairline joint cracks fill the view.' },
+  { id: 'ring-light', kind: 'microscope', name: 'LED ring light', cost: 35, heat: 0, radius: 0, blurb: 'Even, shadow-free light (L at the microscope): fine whiskers glint even at low zoom.' },
+  { id: 'tilt-mount', kind: 'microscope', name: 'Tilting microscope arm', cost: 75, heat: 0, radius: 0, blurb: 'Look in at an angle (T at the microscope) to see under a chip: stray solder balls and hidden bridges.' },
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
 ];
 

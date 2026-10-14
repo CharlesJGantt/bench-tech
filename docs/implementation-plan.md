@@ -68,7 +68,8 @@ Small systems that make *every* existing board better right away.
 - If the sludge is left behind it dries back to a crust and still conducts a little (leakage in MΩ), creating a "clean it properly" fault mode.
 - New residue type **`unknown-flux`**: amber, glassy, from previous repairers. It resists IPA (×0.25) but responds to flux cleaner.
 
-### 1c. Microscope upgrades (Equipment tab)
+### 1c. Microscope upgrades (Equipment tab) — ✅ done
+- *As built:* wheel zoom (anchored at the cursor), right-drag pan, 0 resets. Max zoom: stock 1.5× of the fitted view, 1.0× objective 2.5×, 2.0× objective 4×. Ring light (L) and tilting arm (T) are Tools-tab purchases; tilt draws the part see-through. `bridgeVisible()` in the rework model is the visibility rule.
 | Item | Effect |
 |---|---|
 | Stock 0.7× objective | Today's view; 0603 is comfortable |
@@ -79,7 +80,8 @@ Small systems that make *every* existing board better right away.
 
 **Visibility rules:** each defect has a `visibility` (size and whether it's hidden). A defect is shown only if the current magnification, lighting and angle meet its threshold. This is the hook for "only visible under the microscope".
 
-### 1d. Solder-bridge faults (previous repairer)
+### 1d. Solder-bridge faults (previous repairer) — ✅ done
+- *As built:* `Jumper.hidden: 'whisker' | 'ball'`. Whiskers need zoom ≥ 2.5× (or ring light at ≥ 1.5×) and pull back with flux + a molten joint; balls show only tilted and leave when the chip is lifted. Hidden bridges are not drawn on the board and the inspect panel no longer lists bridges as removable wires. HDMI block faults: `prev-port-whisker` (tier 2), `retimer-ball` (tier 3).
 - **Visible blobs:** big bridges across HDMI or QFP pins, and solder splashed onto neighbouring parts. Seen on the bench or in the inspect view.
 - **Microscope-only bridges:** thin whiskers between fine-pitch pins, or a solder ball under a chip. The board inspect view says nothing; the microscope needs enough magnification, or tilt for under-chip balls.
 - Bridges are already real shorts in the sim (`bridge` jumpers). These variants just pre-seed them with the visibility rules. The fix is wick + flux, or drag soldering.

@@ -1131,7 +1131,7 @@ export class Hud {
       ${!sl.new && !sl.used ? `<p class="muted small">No spare ${esc(fp.label)} on the shelf — special-order one in the office or pull one off a donor in the store-room.</p>` : ''}
       <p class="muted small">Modules plug in — no soldering. Unplug one to measure it on its own.</p>`;
     }
-    const jumpers = s.board.jumpers.filter((j) => j.a.ref === ref || j.b.ref === ref);
+    const jumpers = s.board.jumpers.filter((j) => !j.bridge && (j.a.ref === ref || j.b.ref === ref));
     return `<div class="card-head"><h3>${ref}</h3><button class="x" data-act="deselect" aria-label="Close">×</button></div>
       <div class="muted">${esc(c.def.role)} · ${fp.pkg}</div>
       <div class="kv"><span>Fitted</span><b>${p ? esc(p.label) : '—'}</b></div>

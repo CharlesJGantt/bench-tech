@@ -375,6 +375,8 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
     const pb = pads.find((p) => p.ref === j.b.ref && p.pin === j.b.pin);
     if (!pa || !pb) continue;
     if (j.bridge) {
+      // Whiskers and balls under chips are too small / hidden to see on the board
+      if (j.hidden) continue;
       // A lump of solder spanning the two pads
       ctx.strokeStyle = '#d9dde0';
       ctx.lineCap = 'round';

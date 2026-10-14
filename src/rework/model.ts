@@ -128,8 +128,8 @@ export interface ReworkState {
   held: PlacedPart | null;
   ironTemp: number;
   hotAirTemp: number;
-  /** Pairs of pad indices joined by a solder bridge. */
-  bridges: [number, number][];
+  /** Pairs of pad indices joined by a solder bridge (and what kind: default a visible blob). */
+  bridges: [number, number, BridgeKind?][];
   removedOriginal: boolean;
   /** The part that was taken off this session, and whether it survived (for salvage). */
   removed: { spec: PartSpec; melted: boolean } | null;
@@ -160,7 +160,7 @@ export interface ReworkInput {
   move?: number;
 }
 
-const say = (st: ReworkState, msg: string) => {
+export const say = (st: ReworkState, msg: string) => {
   if (st.messages[st.messages.length - 1] !== msg) st.messages.push(msg);
   if (st.messages.length > 30) st.messages.shift();
 };
@@ -229,12 +229,12 @@ export function initRework(b: BoardState, ref: string, supplies: Supplies = {}, 
     };
   });
   // Existing solder bridges across this part's pins come into the session (and can be wicked away).
-  const bridges: [number, number][] = [];
+  const bridges: [number, number, BridgeKind?][] = [];
   for (const j of b.jumpers) {
     if (!j.bridge || j.a.ref !== ref || j.b.ref !== ref) continue;
     const i = names.indexOf(j.a.pin);
     const k = names.indexOf(j.b.pin);
-    if (i >= 0 && k >= 0) bridges.push([Math.min(i, k), Math.max(i, k)]);
+    if (i >= 0 && k >= 0) bridges.push(j.hidden ? [Math.min(i, k), Math.max(i, k), j.hidden] : [Math.min(i, k), Math.max(i, k)]);
   }
   return {
     ref,
@@ -650,6 +650,22 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
     st.part.angle *= k;
   }
 
+  // Hidden bridges: a whisker pulls back into the joints once fluxed and molten; a ball under
+  // a chip only comes out when the chip is lifted.
+  for (let k = st.bridges.length - 1; k >= 0; k--) {
+    const [i, j, kind] = st.bridges[k];
+    const a = st.pads[i];
+    const b = st.pads[j];
+    const hot = (p: PadState) => p.temp >= meltOf(p) && p.flux > 0.2;
+    if (kind === 'whisker' && (hot(a) || hot(b))) {
+      st.bridges.splice(k, 1);
+      say(st, `A fine solder whisker between ${a.pin} and ${b.pin} pulled back into the joints.`);
+    } else if (kind === 'ball' && !st.part) {
+      st.bridges.splice(k, 1);
+      say(st, `A stray solder ball was hiding under the chip between ${a.pin} and ${b.pin} — it is out now.`);
+    }
+  }
+
   // Solder bridges between close neighbours
   for (let i = 0; i < st.pads.length; i++)
     for (let j = i + 1; j < st.pads.length; j++) {
@@ -657,7 +673,7 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
       const b = st.pads[j];
       const gap = Math.max(Math.abs(a.x - b.x) - (a.w + b.w) / 2, Math.abs(a.y - b.y) - (a.h + b.h) / 2);
       if (gap > 0.8) continue;
-      const idx = st.bridges.findIndex(([x, y]) => x === i && y === j);
+      const idx = st.bridges.findIndex(([x, y, kind]) => x === i && y === j && kind !== 'ball');
       const amount = a.solder + b.solder;
       if (idx < 0 && a.temp >= meltOf(a) && b.temp >= meltOf(b) && amount > 2.6 + gap * 2) {
         st.bridges.push([i, j]);
@@ -667,6 +683,31 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
         say(st, `Bridge between ${a.pin} and ${b.pin} cleared.`);
       }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Microscope view: magnification, ring light, tilt
+// ---------------------------------------------------------------------------
+
+export type BridgeKind = 'blob' | 'whisker' | 'ball';
+
+export interface ScopeView {
+  /** Magnification relative to the fitted view. */
+  zoom: number;
+  ring: boolean;
+  tilt: boolean;
+}
+
+/** Highest magnification the owned objectives allow. */
+export function maxZoom(tools: readonly string[]): number {
+  return tools.includes('objective-2x') ? 4 : tools.includes('objective-1x') ? 2.5 : 1.5;
+}
+
+/** Can this bridge be seen with the current view? */
+export function bridgeVisible(kind: BridgeKind | undefined, v: ScopeView): boolean {
+  if (kind === 'whisker') return v.zoom >= 2.5 || (v.ring && v.zoom >= 1.5);
+  if (kind === 'ball') return v.tilt;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -757,10 +798,10 @@ export function applyRework(b: BoardState, st: ReworkState): string {
 
   // Solder bridges become real shorts on the board (replacing whatever bridges this part had).
   b.jumpers = b.jumpers.filter((j) => !(j.bridge && j.a.ref === st.ref && j.b.ref === st.ref));
-  for (const [i, j] of st.bridges) {
+  for (const [i, j, kind] of st.bridges) {
     const a: PointRef = { ref: st.ref, pin: names[i] };
     const z: PointRef = { ref: st.ref, pin: names[j] };
-    b.jumpers.push({ id: b.nextJumperId++, a, b: z, cold: false, bridge: true });
+    b.jumpers.push({ id: b.nextJumperId++, a, b: z, cold: false, bridge: true, ...(kind && kind !== 'blob' ? { hidden: kind } : {}) });
     notes.push(`solder bridge ${names[i]}–${names[j]}`);
   }
 

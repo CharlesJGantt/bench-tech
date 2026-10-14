@@ -172,6 +172,42 @@ export function hdmiOut(): BlockDef {
         },
       },
       {
+        id: 'prev-port-whisker',
+        family: 'Bad previous repair',
+        tier: 2,
+        weight: 0.6,
+        apply(b, _rng, ref) {
+          const r = ref('port');
+          addMark(b, r, 'rework-residue');
+          b.jumpers.push({ id: b.nextJumperId++, a: { ref: r, pin: 'HPD' }, b: { ref: r, pin: 'GND' }, cold: false, bridge: true, hidden: 'whisker' });
+          return {
+            summary: `Another shop replaced the HDMI port ${r} and left a hair-thin solder whisker from HPD to the GND pin next to it. It is invisible to the eye: zoom in (or use a ring light) at the microscope, then flux and touch it with the iron.`,
+            refs: [r],
+            hint: 'The port looks fine, but someone has soldered here. Is the hot-plug line stuck at 0 V? Check it for continuity to ground — then look very closely between the pins.',
+            flavor: 'A shop replaced the HDMI port for me. It worked for a day, now no picture again.',
+            previousRepair: true,
+          };
+        },
+      },
+      {
+        id: 'retimer-ball',
+        family: 'Bad previous repair',
+        tier: 3,
+        weight: 0.4,
+        apply(b, _rng, ref) {
+          const r = ref('rt');
+          addMark(b, r, 'rework-residue');
+          b.jumpers.push({ id: b.nextJumperId++, a: { ref: r, pin: 'EN' }, b: { ref: r, pin: 'GND' }, cold: false, bridge: true, hidden: 'ball' });
+          return {
+            summary: `Someone reflowed the retimer ${r} and a stray solder ball under its body shorts EN to ground, so it never switches on. Only a tilted microscope view shows it; lift the chip and it comes out — refit the same chip.`,
+            refs: [r],
+            hint: `The retimer has power but its enable pin reads 0 V — and EN shows continuity to ground with nothing visible on the board. What could be hiding under ${r}?`,
+            flavor: 'Another shop "reflowed the HDMI chip". Still no picture.',
+            previousRepair: true,
+          };
+        },
+      },
+      {
         id: 'hpd-shifter-dead',
         family: 'Failed level shifter',
         tier: 2,
