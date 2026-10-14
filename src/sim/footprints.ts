@@ -214,6 +214,8 @@ export const FOOTPRINTS: Record<Pkg, Footprint> = {
   SPK: { w: 22, h: 22, height: 7, pads: two(3, 2, 2).map((p) => ({ ...p, y: -8.5 })) },
   LEDBAR: { w: 60, h: 6, height: 2, pads: two(27, 2, 2.2) },
   AA2: { w: 52, h: 30, height: 14, pads: two(26, 2, 2) },
+  SLIDE: { w: 9, h: 4, height: 5, pads: rowOf(2, 4, 0, 1.6, 1.6) },
+  PAK: { w: 24, h: 10, height: 30, pads: two(1, 1.4, 1.4).map((p) => ({ ...p, y: 4 })) },
   SCREEN_S: { w: 46, h: 40, height: 4, pads: rowOf(3, 1.2, 18, 0.8, 1.4, false) },
 };
 

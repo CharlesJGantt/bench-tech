@@ -557,6 +557,7 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
     }
     case 'module': {
       if (p.partNo === 'M-SPK4') add(E.resistor(...two(), f?.type === 'short' ? f.r : p.value, ref));
+      else if (p.partNo === 'M-JUMPERPAK') add(E.resistor(...two(), p.value, ref));
       else if (DIODES[p.partNo]) {
         if (f?.type === 'short') add(E.resistor(...two(), f.r, ref));
         else add(E.diode(pinNode(pins[0]), pinNode(pins[1]), DIODES[p.partNo], ref));
@@ -564,6 +565,12 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
       return;
     }
     case 'button': {
+      if (p.latched) {
+        // A latched switch is closed; oxide on its contacts adds resistance (or opens it).
+        const r = oxideR(c.oxide?.['1'] ?? 0); // (an 'open' fault never gets here)
+        if (Number.isFinite(r)) add(E.resistor(...two(), r, ref));
+        return;
+      }
       if (b.pressed.includes(ref) || f?.type === 'short') add(E.resistor(...two(), 0.1, ref));
       return;
     }
@@ -872,6 +879,8 @@ const THETA: Record<string, number> = {
   AA2: 10,
   SCREEN_S: 15,
   FPC3: 100,
+  SLIDE: 60,
+  PAK: 20,
   '0603': 250,
   '1206': 120,
   SMA: 90,

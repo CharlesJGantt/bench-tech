@@ -28,6 +28,98 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       { id: 'top', kind: 'shell', label: 'Top shell', at: [75, 50], size: [150, 100], needs: ['s1', 's2', 's3', 's4', 's5', 's6'], covers: true },
     ],
   },
+  b64: {
+    color: '#2c2c30',
+    items: [
+      ...[[6, 6], [144, 6], [6, 94], [144, 94]].map(([x, y], i) => ({ ...screw(`s${i + 1}`, `Security screw ${i + 1}`, [x, y] as [number, number], 12, 12), security: true })),
+      { id: 'top', kind: 'shell', label: 'Top shell', at: [75, 50], size: [150, 100], needs: ['s1', 's2', 's3', 's4'], covers: true },
+      { id: 'shield', kind: 'shield', label: 'Heat-spreader shield', at: [75, 52], size: [140, 90], needs: ['top'], covers: true },
+    ],
+  },
+  'b64-cart': {
+    color: '#55575c',
+    items: [
+      { ...screw('s1', 'Security screw', [45, 30], 10, 10), security: true },
+      { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
+    ],
+  },
+  vega: {
+    color: '#1b1b1d',
+    items: [
+      ...[[6, 6], [144, 6], [6, 94], [144, 94], [70, 6]].map(([x, y], i) => screw(`s${i + 1}`, `Bottom screw ${i + 1}`, [x, y] as [number, number], 10, 10)),
+      screw('s6', 'Bottom screw (short) 6', [70, 94], 6, 6, [], ['5V', 'GND']),
+      { id: 'top', kind: 'shell', label: 'Top shell', at: [75, 50], size: [150, 100], needs: ['s1', 's2', 's3', 's4', 's5', 's6'], covers: true },
+    ],
+  },
+  'vega-cart': {
+    color: '#202022',
+    items: [
+      screw('s1', 'Cartridge screw', [45, 30], 8, 8),
+      { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
+    ],
+  },
+  paltari: {
+    color: '#6b4a2b',
+    items: [
+      ...[[6, 6], [144, 6], [6, 94], [144, 94]].map(([x, y], i) => screw(`s${i + 1}`, `Bottom screw ${i + 1}`, [x, y] as [number, number], 14, 14)),
+      { id: 'top', kind: 'shell', label: 'Woodgrain top', at: [75, 50], size: [150, 100], needs: ['s1', 's2', 's3', 's4'], covers: true },
+      { id: 'shield', kind: 'shield', label: 'RF shield', at: [75, 55], size: [130, 70], needs: ['top'], covers: true },
+    ],
+  },
+  'paltari-cart': {
+    color: '#1e1e1e',
+    items: [{ id: 'shell', kind: 'clips', label: 'Cartridge shell (snap-together)', at: [45, 32], size: [90, 64], covers: true }],
+  },
+  ...Object.fromEntries(
+    (['db', 'db-pocket', 'db-color', 'dba'] as const).map((id) => [
+      id,
+      {
+        color: id === 'db' ? '#c9c7bd' : id === 'db-color' ? '#6c3fa8' : id === 'dba' ? '#4c3a8f' : '#b9b9b9',
+        items: [
+          { id: 'cover', kind: 'clips', label: 'Battery cover', at: [75, 66], size: [56, 26] },
+          { ...screw('s1', 'Back screw (top left)', [6, 6], 6, 6), security: true },
+          { ...screw('s2', 'Back screw (top right)', [124, 6], 6, 6), security: true },
+          screw('s3', 'Back screw (bottom left)', [6, 74], 6, 6),
+          screw('s4', 'Back screw (bottom right)', [124, 74], 6, 6),
+          { id: 'back', kind: 'shell', label: 'Back shell', at: [65, 40], size: [130, 80], needs: ['cover', 's1', 's2', 's3', 's4'], covers: true },
+          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [25, 40], module: 'LCD1', latch: true, needs: ['back'] },
+          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 46], module: 'SPK1', needs: ['back'] },
+        ],
+      } satisfies EnclosureDef,
+    ]),
+  ),
+  ...Object.fromEntries(
+    (['dba-sp', 'dba-micro'] as const).map((id) => [
+      id,
+      {
+        color: id === 'dba-sp' ? '#2b4d8f' : '#9a9a9a',
+        items: [
+          { ...screw('s1', 'Tri-wing screw 1', [6, 6], 4, 4, [], ['VCC', 'GND']), security: true },
+          { ...screw('s2', 'Tri-wing screw 2', [124, 6], 4, 4), security: true },
+          screw('s3', 'Back screw 3', [6, 74], 6, 6),
+          screw('s4', 'Back screw 4', [124, 74], 6, 6),
+          { id: 'back', kind: 'shell', label: 'Back shell', at: [65, 40], size: [130, 80], needs: ['s1', 's2', 's3', 's4'], covers: true },
+          { id: 'bat', kind: 'cable', label: 'Battery plug', at: [72, 50], module: 'BT1', needs: ['back'] },
+          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [25, 40], module: 'LCD1', latch: true, needs: ['back'] },
+          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 46], module: 'SPK1', needs: ['back'] },
+        ],
+      } satisfies EnclosureDef,
+    ]),
+  ),
+  'db-cart': {
+    color: '#8e8d87',
+    items: [
+      { ...screw('s1', 'Security screw', [45, 30], 6, 6), security: true },
+      { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
+    ],
+  },
+  'dba-cart': {
+    color: '#3a3a3c',
+    items: [
+      { ...screw('s1', 'Tri-wing screw', [45, 30], 5, 5), security: true },
+      { id: 'shell', kind: 'clips', label: 'Cartridge shell', at: [45, 32], size: [90, 64], needs: ['s1'], covers: true },
+    ],
+  },
   'bes-cart': {
     color: '#8d8c88',
     items: [

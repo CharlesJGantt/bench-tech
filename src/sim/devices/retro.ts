@@ -27,13 +27,13 @@ export function cx(ref: string, partNo: string, block: string, x: number, y: num
 }
 
 /** A known-good cartridge in a console's slot: answers the lockout and serves game data. */
-export function testCart(slot: string, label = '🎮 Test cartridge (known good)'): External {
+export function testCart(slot: string, label = '🎮 Test cartridge (known good)', vmin = 4.2): External {
   return {
     id: 'cart',
     label,
     attach(api) {
       const m = (p: string) => api.mate(slot, p);
-      api.add(logic(m('5V'), m('GND'), [{ high: [m('CE')], low: [], outs: [m('D0')] }, { high: [m('LKI')], low: [], outs: [m('LKO')] }], 4.2, 0.02, 'test-cart'));
+      api.add(logic(m('5V'), m('GND'), [{ high: [m('CE')], low: [], outs: [m('D0')] }, { high: [m('LKI')], low: [], outs: [m('LKO')] }], vmin, 0.02, 'test-cart'));
     },
   };
 }

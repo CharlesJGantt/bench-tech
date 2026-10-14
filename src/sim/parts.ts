@@ -76,7 +76,9 @@ export type Pkg =
   | 'SPRING2'
   | 'AA2'
   | 'SCREEN_S'
-  | 'FPC3';
+  | 'FPC3'
+  | 'SLIDE'
+  | 'PAK';
 
 export interface PartSpec {
   partNo: string;
@@ -114,6 +116,8 @@ export interface PartSpec {
   /** Linear regulators: dropout (V) and current limit (A); the output is `value`. */
   dropout?: number;
   ilim?: number;
+  /** Buttons: a latching switch (slide / toggle) that stays closed — its contacts can oxidise. */
+  latched?: boolean;
   /** Generic logic chip (kind 'logic'): see LogicSpec. */
   logic?: LogicSpec;
 }
@@ -444,6 +448,8 @@ export const PARTS: Record<string, PartSpec> = {
     description: 'Turns composite video into a TV channel (RF out to the aerial socket). Dead modulator: picture on AV, none on RF.',
   },
 
+  ...retroChips(),
+
   'J-EDGE6': { partNo: 'J-EDGE6', kind: 'connector', pkg: 'EDGE6', value: 0, label: 'Cartridge edge fingers', marking: '', cost: 0, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Gold-plated fingers along the cartridge board edge. They dull and oxidise with age: scrub them with an eraser, then treat with Pad-Bright.' },
   'J-SLOT6': { partNo: 'J-SLOT6', kind: 'connector', pkg: 'CARTSLOT6', value: 0, label: 'Cartridge slot', marking: '', cost: 6, heatLimit: 280, pins: ['5V', 'GND', 'CE', 'D0', 'LKI', 'LKO'], description: 'Cartridge slot connector. Its springy contacts tarnish and lose their grip over the years.' },
   'J-RCA': { partNo: 'J-RCA', kind: 'connector', pkg: 'RCA2', value: 0, label: 'RCA jack', marking: '', cost: 0.6, pins: ['SIG', 'GND'], description: 'Panel RCA (phono) jack: composite video or RF out.' },
@@ -454,6 +460,9 @@ export const PARTS: Record<string, PartSpec> = {
   'J-AA2': { partNo: 'J-AA2', kind: 'connector', pkg: 'SPRING2', value: 0, label: 'Battery springs', marking: '', cost: 1, pins: ['+', '-'], description: 'Battery compartment spring and plate contacts (2 × AA). Leaky batteries rust them.' },
   'M-AA2': { partNo: 'M-AA2', kind: 'battery', pkg: 'AA2', value: 3.0, label: '2 × AA batteries', marking: 'AA', cost: 2, plugIn: true, pins: ['+', '-'], description: 'Two fresh AA cells (3 V).' },
 
+  'SW-SLIDE': { partNo: 'SW-SLIDE', kind: 'button', pkg: 'SLIDE', value: 0, label: 'Power switch (slide)', marking: '', cost: 1.2, latched: true, pins: ['1', '2'], description: 'Latching slide power switch. Its contacts oxidise with age: the console then powers on only now and then. Clean the contacts.' },
+  'M-JUMPERPAK': { partNo: 'M-JUMPERPAK', kind: 'module', pkg: 'PAK', value: 0.05, label: 'Jumper pak', marking: 'JUMPER', cost: 8, plugIn: true, pins: ['A', 'B'], description: 'Plug-in terminator for the memory expansion slot. Without it (or an expansion pak) the console shows a black screen.' },
+  'J-EXP2': { partNo: 'J-EXP2', kind: 'connector', pkg: 'JST2', value: 0, label: 'Expansion slot', marking: '', cost: 3, pins: ['A', 'B'], description: 'Memory expansion slot: needs a jumper pak or expansion pak plugged in.' },
   'SW-TACT': { partNo: 'SW-TACT', kind: 'button', pkg: 'TACT6', value: 0, label: 'Tact switch', marking: '', cost: 0.15, description: '6 × 6 mm tactile switch' },
   TP: { partNo: 'TP', kind: 'testpoint', pkg: 'TP', value: 0, label: 'Test point', marking: '', cost: 0, description: 'Test pad' },
 };
@@ -503,3 +512,98 @@ export function pinsOf(p: PartSpec): string[] {
 
 /** Kinds whose orientation matters when installing. */
 export const POLARIZED: Kind[] = ['electrolytic', 'diode', 'tvs', 'zener', 'led', 'cob'];
+
+/** Processors, video/audio chips and game ROMs of the retro consoles (built from three templates). */
+function handheldCpu(partNo: string, label: string, marking: string, cost: number): PartSpec {
+  return {
+    partNo,
+    kind: 'mcu',
+    pkg: 'QFP16',
+    value: 3,
+    label,
+    marking,
+    cost,
+    pins: ['VDD', 'RST', 'CE', 'DIN', 'LED', 'VEN', 'SND', 'NC8', 'NC9', 'NC10', 'NC11', 'NC12', 'NC13', 'NC14', 'NC15', 'GND'],
+    description: `${label}: reads the cartridge (DIN), sends the picture to the screen (VEN) and turns the speaker amp on (SND).`,
+  };
+}
+
+function retroChips(): Record<string, PartSpec> {
+  const cpu = (partNo: string, label: string, marking: string, cost: number, extraIn: string[] = []): PartSpec => ({
+    partNo,
+    kind: 'mcu',
+    pkg: 'DIP40',
+    value: 5,
+    rating: 6,
+    label,
+    marking,
+    cost,
+    pins: dipPins(40, { 1: 'RST', 2: 'CE', 3: 'DIN', 4: 'LED', 5: 'VEN', ...Object.fromEntries(extraIn.map((n, i) => [6 + i, n])), 20: 'GND', 40: 'VDD' }),
+    description: `${label}: runs the console. Reads the game from the cartridge (DIN) and tells the video chip to draw (VEN)${extraIn.length ? ` — but only once ${extraIn.join(', ')} is high` : ''}.`,
+  });
+  const video = (partNo: string, label: string, marking: string, cost: number, vmin = 4.2): PartSpec => ({
+    partNo,
+    kind: 'logic',
+    pkg: 'DIP40',
+    value: 5,
+    label,
+    marking,
+    cost,
+    pins: dipPins(40, { 1: 'VEN', 2: 'VID', 20: 'GND', 40: 'VCC' }),
+    logic: { vcc: 'VCC', vmin, iq: 0.05, ch: [{ needHigh: ['VEN'], outs: ['VID'] }] },
+    description: `${label}: draws the picture (VID) when the CPU says so (VEN).`,
+  });
+  const rom = (partNo: string, label: string, vmin = 4.2): PartSpec => ({
+    partNo,
+    kind: 'logic',
+    pkg: 'DIP28',
+    value: 5,
+    label,
+    marking: label.toUpperCase().replace(/[^A-Z0-9]+/g, '-'),
+    cost: 0,
+    pins: dipPins(28, { 1: 'CE', 2: 'DO', 14: 'GND', 28: 'VCC' }),
+    logic: { vcc: 'VCC', vmin, iq: 0.02, ch: [{ needHigh: ['CE'], outs: ['DO'] }] },
+    description: 'The game itself, burned in at the factory. Nobody sells these: a dead one only comes from a donor cartridge of the same game.',
+  });
+  return {
+    'U-B64-CPU': cpu('U-B64-CPU', 'B64 CPU', 'NUS-CPU-ish', 22, ['RAMOK']),
+    'U-B64-RCP': video('U-B64-RCP', 'B64 reality chip', 'RCP-NUS', 26, 3.0),
+    'U-VGA-CPU': cpu('U-VGA-CPU', 'Vega CPU', 'VG68000', 14),
+    'U-VGA-VDP': video('U-VGA-VDP', 'Vega video chip (VDP)', 'VG-VDP', 15),
+    'U-VGA-AUD': {
+      partNo: 'U-VGA-AUD',
+      kind: 'logic',
+      pkg: 'DIP16',
+      value: 5,
+      label: 'Vega sound chip + amp',
+      marking: 'VG-FM',
+      cost: 6,
+      pins: dipPins(16, { 1: 'AEN', 2: 'AOUT', 8: 'GND', 16: 'VCC' }),
+      logic: { vcc: 'VCC', vmin: 4.2, iq: 0.02, ch: [{ needHigh: ['AEN'], outs: ['AOUT'] }] },
+      description: 'Makes the music and sound effects (AOUT to the audio jack) while a game runs.',
+    },
+    'U-PAL-CPU': cpu('U-PAL-CPU', 'Paltari CPU', 'PL6507', 9),
+    'U-PAL-TIA': video('U-PAL-TIA', 'Paltari TIA video chip', 'PL-TIA', 12),
+    'U-ROM-B64': rom('U-ROM-B64', 'B64 game ROM'),
+    'U-ROM-VGA': rom('U-ROM-VGA', 'Vega game ROM'),
+    'U-ROM-PAL': rom('U-ROM-PAL', 'Paltari game ROM'),
+    'U-ROM-DB': rom('U-ROM-DB', 'Dream Boy game ROM', 2.4),
+    'U-ROM-DBA': rom('U-ROM-DBA', 'Dream Boy Advance game ROM', 2.4),
+    'U-DB-CPU': handheldCpu('U-DB-CPU', 'Dream Boy CPU', 'DMG-CPU', 12),
+    'U-DBC-CPU': handheldCpu('U-DBC-CPU', 'Dream Boy Color CPU', 'CGB-CPU', 16),
+    'U-DBA-CPU': handheldCpu('U-DBA-CPU', 'Dream Boy Advance CPU', 'AGB-CPU', 20),
+    'M-DBLCD': {
+      partNo: 'M-DBLCD',
+      kind: 'logic',
+      pkg: 'SCREEN_S',
+      value: 3,
+      label: 'Handheld LCD module',
+      marking: '',
+      cost: 14,
+      plugIn: true,
+      pins: ['VCC', 'DATA', 'GND'],
+      logic: { vcc: 'VCC', vmin: 2.4, iq: 0.012, ch: [] },
+      description: 'Reflective LCD with its ribbon. Needs its supply (VCC) and the picture data (DATA) from the CPU.',
+    },
+  };
+}

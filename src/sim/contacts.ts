@@ -9,7 +9,7 @@ import type { BoardState, CompState } from './circuit';
 import { part, pinsOf } from './parts';
 
 /** Packages whose contacts can be scrubbed. */
-export const SCRUBBABLE = ['EDGE6', 'CARTSLOT6', 'SPRING2'];
+export const SCRUBBABLE = ['EDGE6', 'CARTSLOT6', 'SPRING2', 'SLIDE'];
 
 export type Scrubber = 'pink-eraser' | 'magic-sponge';
 

@@ -827,6 +827,22 @@ def fpc3():
     box(f"{n}_latch", e, M["blackplastic"], 0, -1.4, 1.2, 9, 1.2, 0.3)
 
 
+def slide():
+    n = "pkg_SLIDE"
+    e = item(n)
+    box(f"{n}_body", e, M["steel"], 0, 0, 0, 9, 4, 4, bevel=0.2)
+    box(f"{n}_knob", e, M["blackplastic"], -1.2, 0, 4, 2.6, 2.2, 2.4, bevel=0.2)
+
+
+def pak():
+    n = "pkg_PAK"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 24, 10, 30, bevel=0.8)
+    box(f"{n}_label", e, M["sticker"], 0, -5.05, 12, 18, 0.1, 14)
+
+
+slide()
+pak()
 to220()
 for _p, _r in ((40, 15.24), (28, 15.24), (16, 7.62), (14, 7.62)):
     dip_pkg(_p, _r)
