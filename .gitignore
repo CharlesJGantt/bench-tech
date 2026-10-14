@@ -9,3 +9,4 @@ Repair Video Transcripts/
 .claude/settings.local.json
 *.log
 .DS_Store
+screenshots/
