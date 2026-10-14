@@ -1,0 +1,193 @@
+import { describe, expect, it } from 'vitest';
+import { delivery, ELECTRICITY, RENT, SUPPLIES } from '../src/business/economy';
+import {
+  availableDevices,
+  buyListing,
+  completeCustomerJob,
+  harvestPart,
+  resaleValue,
+  storeProject,
+  createShop,
+  endDay,
+  listProject,
+  placeOrder,
+  profitAndLoss,
+  rushBuy,
+  scrapProject,
+  stockOf,
+  takePart,
+} from '../src/business/shop';
+import { cloneBoard, functionalTest } from '../src/sim/circuit';
+import { generateJob } from '../src/sim/faults';
+import { DL12, FS5 } from '../src/sim/devices';
+import { loadJob, saveJob } from '../src/sim/persist';
+import { part } from '../src/sim/parts';
+
+describe('shop economy', () => {
+  it('starts with customers, listings, supplies and stock', () => {
+    const st = createShop(1);
+    expect(st.queue.length).toBe(2);
+    expect(st.market.length).toBe(3);
+    expect(st.supplies.solder).toBe(SUPPLIES.solder.start);
+    expect(stockOf(st, 'R-10K').new).toBeGreaterThan(0);
+    expect(stockOf(st, 'U-PIC8').new).toBe(0); // programmed MCUs only come from donor boards
+  });
+
+  it('bills electricity and advertising daily, and rent weekly', () => {
+    const st = createShop(2);
+    st.ads = 'flyers';
+    const r1 = endDay(st);
+    expect(r1.bills.some((b) => b.cat === 'electricity' && b.amount === -ELECTRICITY.basePerDay)).toBe(true);
+    expect(r1.bills.some((b) => b.cat === 'advertising')).toBe(true);
+    expect(r1.bills.some((b) => b.cat === 'rent')).toBe(false);
+    while (st.day < RENT.everyDays) endDay(st);
+    const r7 = endDay(st);
+    expect(r7.bills.some((b) => b.cat === 'rent' && b.amount === -RENT.amount)).toBe(true);
+  });
+
+  it('express orders are paid now and delivered next morning', () => {
+    const st = createShop(3);
+    const cash = st.cash;
+    const before = stockOf(st, 'C-22U-10').new;
+    placeOrder(st, [
+      { kind: 'part', id: 'C-22U-10', qty: 5 },
+      { kind: 'supply', id: 'flux-noclean', qty: 1 },
+    ], 'express');
+    expect(st.cash).toBeCloseTo(cash - (part('C-22U-10').cost * 5 + SUPPLIES['flux-noclean'].pack.cost + delivery('express').cost), 2);
+    expect(stockOf(st, 'C-22U-10').new).toBe(before);
+    const flux = st.supplies['flux-noclean'];
+    endDay(st);
+    expect(stockOf(st, 'C-22U-10').new).toBe(before + 5);
+    expect(st.supplies['flux-noclean']).toBe(flux + SUPPLIES['flux-noclean'].pack.qty);
+  });
+
+  it('cannot order or rush-buy the factory-programmed MCU', () => {
+    const st = createShop(4);
+    expect(placeOrder(st, [{ kind: 'part', id: 'U-PIC8', qty: 1 }])).toBeNull();
+    expect(rushBuy(st, 'U-PIC8')).toBe(false);
+    expect(rushBuy(st, 'F-1A')).toBe(true);
+    expect(takePart(st, 'F-1A')).toBe('new');
+  });
+
+  it('comebacks walk back in as free warranty jobs with cracked joints', () => {
+    const st = createShop(5);
+    const job = generateJob(DL12, 9, { variant: 'fuse-blown' });
+    job.board.comps.F1.fault = null;
+    job.board.comps.F1.joints = { '1': { r: 0.5, cold: true }, '2': { r: 0 } };
+    completeCustomerJob(st, job, 'comeback', 45, -4);
+    for (let i = 0; i < 5; i++) endDay(st);
+    const w = st.queue.find((q) => q.kind === 'warranty');
+    expect(w).toBeDefined();
+    expect(w!.quote).toBe(0);
+    const back = loadJob(w!.job);
+    expect(back.board.comps.F1.joints['1'].cracked).toBe(true);
+    expect(functionalTest(back.board).passed).toBe(false);
+  });
+
+  it('flip projects: buy, repair, list, sell', () => {
+    const st = createShop(6);
+    const l = st.market.find((x) => !x.unrepairable)!;
+    const cash = st.cash;
+    const p = buyListing(st, l.id)!;
+    expect(st.cash).toBe(cash - l.price);
+    // Pretend we repaired it perfectly: a brand-new board.
+    const job = loadJob(p.job);
+    const fresh = generateJob(DL12, 1, { variant: 'fuse-blown' });
+    fresh.board.comps.F1.fault = null;
+    job.board = fresh.board;
+    for (const c of Object.values(job.board.comps)) c.marks = [];
+    const res = listProject(st, p.id, job, 0);
+    expect(res.ok).toBe(true);
+    for (let i = 0; i < 4; i++) endDay(st);
+    expect(st.projects.find((x) => x.id === p.id)!.status).toBe('sold');
+    expect(profitAndLoss(st, 1, st.day).byCat.sale).toBeGreaterThan(l.price);
+  });
+
+  it('a broken project cannot be listed', () => {
+    const st = createShop(7);
+    const p = buyListing(st, st.market[0].id)!;
+    const res = listProject(st, p.id, loadJob(p.job), 0);
+    expect(res.ok).toBe(false);
+  });
+
+  it('carbonised boards cannot be fixed by swapping parts, but can be scrapped for parts', () => {
+    const job = generateJob(DL12, 11, { variant: 'fuse-blown', unrepairable: true });
+    job.board.comps.F1.fault = null;
+    expect(functionalTest(cloneBoard(job.board)).passed).toBe(false);
+    const st = createShop(8);
+    st.projects.push({ id: 99, title: 'donor', paid: 20, status: 'owned', job: saveJob(job) });
+    const parts = scrapProject(st, 99, job);
+    expect(parts).toContain('U-PIC8');
+    expect(stockOf(st, 'U-PIC8').used).toBe(1);
+  });
+
+  it('missing-parts listings arrive with empty footprints', () => {
+    const job = generateJob(DL12, 21, { missingParts: 2 });
+    expect(Object.values(job.board.comps).filter((c) => !c.part).length).toBe(2);
+    expect(job.faults.some((f) => f.family === 'Missing parts')).toBe(true);
+  });
+
+  it('jobs survive a save/load round trip', () => {
+    const job = generateJob(DL12, 33, { variant: 'joint-cracked' });
+    const back = loadJob(JSON.parse(JSON.stringify(saveJob(job))));
+    expect(functionalTest(cloneBoard(back.board))).toEqual(functionalTest(cloneBoard(job.board)));
+  });
+
+  it('slower delivery is cheaper but takes longer', () => {
+    const st = createShop(30);
+    const o = placeOrder(st, [{ kind: 'part', id: 'U-LX9201', qty: 1 }], 'economy')!;
+    expect(o.arrives).toBe(st.day + delivery('economy').days);
+    endDay(st);
+    expect(stockOf(st, 'U-LX9201').new).toBe(0);
+    endDay(st);
+    endDay(st);
+    expect(stockOf(st, 'U-LX9201').new).toBe(1);
+  });
+
+  it('expensive chips are special order: no local rush buy', () => {
+    const st = createShop(31);
+    expect(rushBuy(st, 'U-LX9201')).toBe(false);
+    expect(rushBuy(st, 'U-APU-F5')).toBe(false);
+    expect(stockOf(st, 'U-LX9201').new).toBe(0);
+  });
+
+  it('better devices come in as reputation grows', () => {
+    const st = createShop(32);
+    expect(availableDevices(st).every((d) => d.minReputation === 0)).toBe(true);
+    st.reputation = 80;
+    expect(availableDevices(st).some((d) => d.id === 'fs5')).toBe(true);
+    const seen = new Set<string>();
+    for (let i = 0; i < 12; i++) {
+      endDay(st);
+      for (const q of st.queue) seen.add(q.job.deviceId);
+      for (const l of st.market) seen.add(l.device);
+      st.queue = [];
+    }
+    expect(seen.size).toBeGreaterThan(3);
+  });
+
+  it('a craze raises resale value and sells overnight', () => {
+    const st = createShop(33);
+    const board = generateJob(FS5, 1, { variant: FS5.variants[0].id }).board;
+    const base = resaleValue(board, st);
+    st.trend.fs5 = { mult: 1.5, until: st.day + 3, label: 'Test hype' };
+    expect(resaleValue(board, st)).toBeCloseTo(base * 1.5, 1);
+    // Crazes end on their own.
+    for (let i = 0; i < 5; i++) endDay(st);
+    expect(st.trend.fs5).toBeUndefined();
+  });
+
+  it('store-room donors: pull parts one at a time; dead parts are binned', () => {
+    const st = createShop(34);
+    const job = generateJob(FS5, 5, { kind: 'project' });
+    st.projects.push({ id: 77, title: 'donor', paid: 40, status: 'owned', job: saveJob(job) });
+    expect(storeProject(st, 77, job)).toBe(true);
+    const healthy = Object.values(job.board.comps).find((c) => c.part?.partNo === 'U-APU-F5' && !c.fault)!;
+    const res = harvestPart(st, 77, healthy.ref);
+    expect(res.ok).toBe(true);
+    expect(stockOf(st, 'U-APU-F5').used).toBe(1);
+    expect(harvestPart(st, 77, healthy.ref).ok).toBe(false); // already gone
+    const dead = job.faults.flatMap((f) => f.refs ?? []).find((r) => job.board.comps[r]?.fault);
+    if (dead) expect(harvestPart(st, 77, dead).ok).toBe(false);
+  });
+});
