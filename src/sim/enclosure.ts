@@ -60,6 +60,15 @@ export interface EnclosureState {
   stickerBroken: boolean;
   /** Screw holes that were already empty when it came in (not your fault). */
   missingAtIntake?: string[];
+  /** Screws a previous repairer chewed up: a screwdriver just spins in them. */
+  stripped?: string[];
+  /** Which hole each screw on the mat came out of (a magnetic screw mat keeps them in place). */
+  matFrom?: Record<string, number>;
+}
+
+export interface EncOptions {
+  /** Owns a screw extractor (gets stripped screws out). */
+  extractor?: boolean;
 }
 
 export interface EncResult {
@@ -147,7 +156,7 @@ function hurt(st: EnclosureState, kind: EncDamageKind, it: EncItem, text: string
  * Take an item off (or a step towards it: heating adhesive, opening a latch). Cables
  * unplug their module on the board; damage is written to the board where it is electrical.
  */
-export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState, id: string, tool: EncTool): EncResult {
+export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState, id: string, tool: EncTool, opts: EncOptions = {}): EncResult {
   const it = item(def, id);
   if (st.removed.includes(id)) return { ok: false, text: `${it.label} is already off.` };
   if (!canRemove(def, st, id)) {
@@ -164,9 +173,18 @@ export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState,
       return off(`You cut through the ${it.label}. (A torn sticker on a device that comes in tells you someone has been inside before.)`);
     case 'screw': {
       if (tool !== 'screwdriver') return { ok: false, text: `${it.label} needs a ${TOOL_NAME.screwdriver}.` };
+      if (st.stripped?.includes(id)) {
+        if (!opts.extractor) return { ok: false, text: `${it.label}: the head is stripped — the bit just spins. A screw extractor (office, Tools tab) will bite into it.` };
+        st.stripped = st.stripped.filter((x) => x !== id);
+        delete st.screws[id];
+        return off(`${it.label}: the extractor bit into the chewed head and it came out — but that screw is ruined (binned). The hole needs another ${it.screw!.length} mm screw.`);
+      }
       const len = st.screws[id] ?? 0;
       delete st.screws[id];
-      if (len > 0) st.mat.push(len);
+      if (len > 0) {
+        st.mat.push(len);
+        (st.matFrom ??= {})[id] = len;
+      }
       return off(len > 0 ? `${it.label} out — ${len} mm long. It goes on the mat.` : `That hole is empty — the screw was already missing.`);
     }
     case 'clips':
@@ -234,7 +252,7 @@ export function removeItem(def: EnclosureDef, st: EnclosureState, b: BoardState,
  * Put an item back. Screws take one from the mat (`length`; 0 = leave the hole empty).
  * A screw much longer than its hole punches into the board's inner layers.
  */
-export function installItem(def: EnclosureDef, st: EnclosureState, b: BoardState, id: string, length?: number): EncResult {
+export function installItem(def: EnclosureDef, st: EnclosureState, b: BoardState, id: string, length?: number, spare = false): EncResult {
   const it = item(def, id);
   if (!st.removed.includes(id)) return { ok: false, text: `${it.label} is already in place.` };
   if (!canInstall(def, st, id)) {
@@ -247,13 +265,14 @@ export function installItem(def: EnclosureDef, st: EnclosureState, b: BoardState
   };
   switch (it.kind) {
     case 'screw': {
-      const len = length ?? 0;
-      if (len > 0) {
+      const len = spare ? it.screw!.length : (length ?? 0);
+      if (len > 0 && !spare) {
         const k = st.mat.indexOf(len);
         if (k < 0) return { ok: false, text: `There is no ${len} mm screw on the mat.` };
         st.mat.splice(k, 1);
       }
       st.screws[id] = len;
+      if (st.matFrom) delete st.matFrom[id];
       const hole = it.screw!.hole;
       if (len > hole + 1 && it.punch) {
         on('');
@@ -262,7 +281,7 @@ export function installItem(def: EnclosureDef, st: EnclosureState, b: BoardState
         return hurt(st, 'punch', it, `That ${len} mm screw is too long for a ${hole} mm hole — it bottomed out, then bit into the board. You felt it crunch.`);
       }
       if (len > hole + 1) return on(`The ${len} mm screw is too long for this hole and will not go all the way in.`);
-      return on(len ? `${it.label} in (${len} mm).` : `Left ${it.label.toLowerCase()} empty.`);
+      return on(len ? `${it.label} in (${len} mm${spare ? ', a new one from the spares box' : ''}).` : `Left ${it.label.toLowerCase()} empty.`);
     }
     case 'cable': {
       const mod = it.module ? b.comps[it.module] : null;
@@ -317,19 +336,22 @@ function dependsOn(def: EnclosureDef, target: string, id: string): boolean {
 }
 
 /** Open the device the right way (guided skip). */
-export function openForMe(def: EnclosureDef, st: EnclosureState, b: BoardState): string[] {
+export function openForMe(def: EnclosureDef, st: EnclosureState, b: BoardState, opts: EncOptions = {}): string[] {
   const log: string[] = [];
   for (let guard = 0; guard < 200; guard++) {
     const s = nextOpenStep(def, st);
     if (!s) break;
-    log.push(removeItem(def, st, b, s.id, s.tool).text);
+    const r = removeItem(def, st, b, s.id, s.tool, opts);
+    log.push(r.text);
+    if (!r.ok) break;
   }
   return log;
 }
 
 /** Put everything back the right way, matching screws to holes (guided skip). */
-export function closeForMe(def: EnclosureDef, st: EnclosureState, b: BoardState): string[] {
-  const log: string[] = [];
+export function closeForMe(def: EnclosureDef, st: EnclosureState, b: BoardState, spares = 0): string[] & { sparesUsed?: number } {
+  const log: string[] & { sparesUsed?: number } = [];
+  log.sparesUsed = 0;
   for (const it of def.items) if (it.kind === 'heatsink' && st.removed.includes(it.id) && !st.paste[it.id]) log.push(applyPaste(def, st, it.id).text);
   for (let guard = 0; guard < 200 && st.removed.length; guard++) {
     const it = def.items.find((x) => canInstall(def, st, x.id));
@@ -339,6 +361,11 @@ export function closeForMe(def: EnclosureDef, st: EnclosureState, b: BoardState)
       // The longest screw on the mat that still fits the hole; none left → leave it empty
       const fits = st.mat.filter((l) => l <= it.screw!.hole + 1).sort((a, z) => z - a);
       len = fits.includes(it.screw.length) ? it.screw.length : (fits[0] ?? 0);
+      if (!len && log.sparesUsed! < spares) {
+        log.sparesUsed!++;
+        log.push(installItem(def, st, b, it.id, undefined, true).text);
+        continue;
+      }
     }
     log.push(installItem(def, st, b, it.id, len).text);
   }

@@ -93,7 +93,8 @@ Small systems that make *every* existing board better right away.
 ## Phase 2 — Disassembly and reassembly
 
 **Step 1 — ✅ done:** `src/sim/enclosure.ts` (model) + `src/sim/enclosures.ts` (all six devices) + `src/ui/teardown.ts` (top-down teardown station: tools 1–4, Put back 5, screw mat, paste, drill-out; guided "Open it for me / Close it up for me" and warnings before mistakes). Jobs arrive closed (`Job.enclosure`); probing/soldering/flipping need the case open; the closed case shows as a smoked shell in 3D. Mistakes: snapped clips, cracked cold-pried panels, torn ribbons/wires (module fault), broken latches, long screws punching inner layers (`pcbDamage.screw`, fixed by drilling the via out with the micro drill), heatsinks back on old paste. Torn warranty stickers on intake are a clue. The tutorial lamp arrives open.
-**Still to do:** Blender models for shells/screws/shields/heatsinks/fans and a 3D teardown; stripped screws; battery-connected sparks; liquid metal; magnetic screw-map mat; thermal paste affecting temperatures in the sim (today it is a comeback).
+**Also done:** stripped screws from previous repairers (screw extractor, $14; the screw is ruined), spare screw box supply, magnetic screw mat ($12: each screw returns to its own hole).
+**Still to do:** Blender models for shells/screws/shields/heatsinks/fans and a 3D teardown; battery-connected sparks; liquid metal; thermal paste affecting temperatures in the sim (today it is a comeback).
 
 ### Model
 - Each device gets an **enclosure graph**: parts (shells, screws, clips, adhesive panels, shields, heatsink, fan, battery, ribbon cables, daughterboards, thermal compound) with **prerequisites**. For example: shield needs its 6 screws out → heatsink needs the shield off → board lifts once the cables are unplugged.

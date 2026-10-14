@@ -158,4 +158,38 @@ describe('enclosures', () => {
     }
     throw new Error('no job with a missing screw');
   });
+
+  it('a stripped screw needs an extractor; it is ruined, and a spare fills its hole', () => {
+    const def = BUTTON.enclosure!;
+    const b = createBoard(BUTTON);
+    const st = newEnclosure(def);
+    st.stripped = ['s1'];
+    const r = removeItem(def, st, b, 's1', 'screwdriver');
+    expect(r.ok).toBe(false);
+    expect(r.text).toMatch(/stripped/);
+    expect(openForMe(def, st, b).at(-1)).toMatch(/stripped/);
+    expect(removeItem(def, st, b, 's1', 'screwdriver', { extractor: true }).ok).toBe(true);
+    expect(st.mat).toEqual([]); // the extracted screw is binned
+    openForMe(def, st, b, { extractor: true });
+    expect(boardReachable(def, st)).toBe(true);
+    // One 6 mm screw short: without spares the hole stays empty, with one it is filled
+    const noSpare = structuredClone(st);
+    closeForMe(def, noSpare, createBoard(BUTTON), 0);
+    expect(enclosureIssues(def, noSpare).notes.join()).toMatch(/missing/);
+    const log = closeForMe(def, st, b, 3);
+    expect(log.sparesUsed).toBe(1);
+    expect(enclosureIssues(def, st).notes).toEqual([]);
+  });
+
+  it('screws remember the hole they came out of (for the magnetic mat)', () => {
+    const def = SBOX.enclosure!;
+    const b = createBoard(SBOX);
+    const st = newEnclosure(def);
+    openForMe(def, st, b);
+    expect(st.matFrom).toMatchObject({ s1: 5, s3: 12, c1: 12 });
+    installItem(def, st, b, 'shield');
+    installItem(def, st, b, 's1', st.matFrom!.s1);
+    expect(st.damage).toEqual([]);
+    expect(st.matFrom!.s1).toBeUndefined();
+  });
 });

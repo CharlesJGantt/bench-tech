@@ -13,6 +13,7 @@ export type SupplyId =
   | 'flux-cleaner'
   | 'corrosion-cleaner'
   | 'thermal-paste'
+  | 'spare-screws'
   | 'wipes'
   | 'brushes';
 
@@ -79,6 +80,15 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     start: 2,
     low: 0.6,
     blurb: 'A pea of fresh paste every time a heatsink comes off — putting it back on the old, broken paste cooks the chip.',
+  },
+  'spare-screws': {
+    id: 'spare-screws',
+    name: 'Assorted case screws',
+    unit: 'pcs',
+    pack: { qty: 50, cost: 6, label: 'box of 50 (all common lengths)' },
+    start: 10,
+    low: 4,
+    blurb: 'For holes that came in empty or screws you had to drill or extract. Always the right length.',
   },
   'corrosion-cleaner': {
     id: 'corrosion-cleaner',
@@ -184,6 +194,8 @@ export const TOOLS: ToolDef[] = [
   { id: 'objective-2x', kind: 'microscope', name: '2.0× objective', cost: 120, heat: 0, radius: 0, blurb: 'Zoom in up to 4×: tiny parts and hairline joint cracks fill the view.' },
   { id: 'ring-light', kind: 'microscope', name: 'LED ring light', cost: 35, heat: 0, radius: 0, blurb: 'Even, shadow-free light (L at the microscope): fine whiskers glint even at low zoom.' },
   { id: 'tilt-mount', kind: 'microscope', name: 'Tilting microscope arm', cost: 75, heat: 0, radius: 0, blurb: 'Look in at an angle (T at the microscope) to see under a chip: stray solder balls and hidden bridges.' },
+  { id: 'screw-extractor', kind: 'instrument', name: 'Screw extractor bits', cost: 14, heat: 0, radius: 0, blurb: 'Reverse-cut bits that bite into a stripped screw head and back it out. The screw is ruined, but the case opens.' },
+  { id: 'screw-mat', kind: 'instrument', name: 'Magnetic screw mat', cost: 12, heat: 0, radius: 0, blurb: 'A whiteboard mat with magnets: every screw stays where it came out, so each one goes back in its own hole — no more long screws in short holes.' },
   { id: 'micro-drill', kind: 'instrument', name: 'Micro drill & carbide bits', cost: 25, heat: 0, radius: 0, blurb: 'For boards a long screw has bitten into: drill the damaged via out under the microscope to separate the shorted inner layers again.' },
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
 ];

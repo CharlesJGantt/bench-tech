@@ -659,14 +659,17 @@ export class Session {
     const st = this.enc;
     if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
     if (this.powerMode !== 'off') this.setPowerMode('off');
-    return this.encDone(removeItem(def, st, this.board, id, tool));
+    return this.encDone(removeItem(def, st, this.board, id, tool, { extractor: this.owns('screw-extractor') }));
   }
 
-  encInstall(id: string, length?: number): EncResult {
+  encInstall(id: string, length?: number, spare = false): EncResult {
     const def = this.encDef;
     const st = this.enc;
     if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
-    return this.encDone(installItem(def, st, this.board, id, length));
+    if (spare && this.shop.supplies['spare-screws'] < 1) return { ok: false, text: 'The spare screw box is empty — order more from the office.' };
+    const r = installItem(def, st, this.board, id, length, spare);
+    if (r.ok && spare) useSupply(this.shop, 'spare-screws', 1);
+    return this.encDone(r);
   }
 
   encPaste(id: string): EncResult {
@@ -693,7 +696,7 @@ export class Session {
     const st = this.enc;
     if (!def || !st) return [];
     if (this.powerMode !== 'off') this.setPowerMode('off');
-    const log = openForMe(def, st, this.board);
+    const log = openForMe(def, st, this.board, { extractor: this.owns('screw-extractor') });
     this.encDone({ ok: true, text: log.length ? `Opened it up: ${log.length} steps.` : '' });
     return log;
   }
@@ -706,7 +709,8 @@ export class Session {
     const needPaste = def.items.filter((i) => i.kind === 'heatsink' && st.removed.includes(i.id) && !st.paste[i.id]).length;
     if (needPaste && this.shop.supplies['thermal-paste'] < needPaste * USAGE.pastePerChip) return ['Out of thermal paste — order a syringe before closing it up.'];
     if (needPaste) useSupply(this.shop, 'thermal-paste', needPaste * USAGE.pastePerChip);
-    const log = closeForMe(def, st, this.board);
+    const log = closeForMe(def, st, this.board, Math.floor(this.shop.supplies['spare-screws']));
+    if (log.sparesUsed) useSupply(this.shop, 'spare-screws', log.sparesUsed);
     this.encDone({ ok: true, text: log.length ? `Closed it up: ${log.length} steps.` : '' });
     return log;
   }

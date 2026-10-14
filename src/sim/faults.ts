@@ -99,6 +99,9 @@ function intakeEnclosure(def: EnclosureDef, previousRepair: Job['previousRepair'
     st.screws[s.id] = 0;
     st.missingAtIntake = [s.id];
   }
+  // A chewed-up screw head from someone using the wrong bit
+  const left = screws.filter((s) => st.screws[s.id]);
+  if (left.length && rng.next() < 0.3) st.stripped = [rng.pick(left).id];
   return st;
 }
 

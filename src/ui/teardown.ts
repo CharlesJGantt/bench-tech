@@ -165,8 +165,14 @@ export class TeardownStation {
       if (!it) return;
       let len: number | undefined;
       if (it.screw) {
-        len = this.st.mat.includes(this.pick) ? this.pick : 0;
-        if (!len && this.st.mat.length && !confirm('No screw picked on the mat — leave this hole empty?')) return;
+        // A magnetic screw mat remembers which hole each screw came from
+        const own = this.session.owns('screw-mat') ? this.st.matFrom?.[it.id] : undefined;
+        if (this.pick === -1) {
+          this.say([s.encInstall(it.id, undefined, true).text]);
+          return;
+        }
+        len = own && this.st.mat.includes(own) ? own : this.st.mat.includes(this.pick) ? this.pick : 0;
+        if (!len && !confirm('No screw picked — leave this hole empty? (Pick one from the mat, or a spare from the box.)')) return;
         if (len && s.guided && len > it.screw.hole + 1 && !confirm(`That ${len} mm screw looks too long for this hole — long screws can bite into the board. Use it anyway?`)) return;
       }
       this.say([s.encInstall(it.id, len).text]);
@@ -186,10 +192,18 @@ export class TeardownStation {
     const mat = this.host.querySelector('#td-mat') as HTMLElement;
     const lens = [...new Set(st.mat)].sort((a, b) => a - b);
     const count = (l: number) => st.mat.filter((x) => x === l).length;
-    mat.innerHTML = lens.length
+    const magnetic = s.owns('screw-mat');
+    if (magnetic && lens.length) {
+      mat.innerHTML = `<p class="small muted">Magnetic mat: each screw goes back in its own hole automatically.</p>${def.items
+        .filter((i) => st.matFrom?.[i.id])
+        .map((i) => `<div class="kv small"><span>${esc(i.label)}</span><b>${st.matFrom![i.id]} mm</b></div>`)
+        .join('')}`;
+    } else mat.innerHTML = lens.length
       ? `<div class="row" style="flex-wrap:wrap;margin:0">${lens.map((l) => `<button data-td-len="${l}" class="${l === this.pick && this.mode === 'install' ? 'on primary' : ''}" title="Pick one to put back">🔩 ${l} mm × ${count(l)}</button>`).join('')}</div>`
       : '<span class="muted">empty</span>';
     const extra: string[] = [];
+    if (st.removed.some((id) => def.items.find((i) => i.id === id)?.screw))
+      extra.push(`<button data-td-len="-1" class="${this.pick === -1 && this.mode === 'install' ? 'on primary' : ''}" title="A new screw of the right length">📦 Spare screw from the box (${Math.floor(s.shop.supplies['spare-screws'])} left)</button>`);
     for (const it of def.items)
       if (it.kind === 'heatsink' && st.removed.includes(it.id))
         extra.push(st.paste[it.id] ? `<p class="small">✓ Fresh paste on ${esc(it.chip ?? 'the chip')}.</p>` : `<button data-td-paste="${it.id}">Fresh thermal paste on ${esc(it.chip ?? 'the chip')} (${s.shop.supplies['thermal-paste'].toFixed(1)} g left)</button>`);
@@ -362,7 +376,16 @@ export class TeardownStation {
           ctx.beginPath();
           ctx.arc(cx, cy, 1.6 * S, 0, Math.PI * 2);
           ctx.fill();
-          if (len) {
+          if (len && st.stripped?.includes(it.id)) {
+            ctx.fillStyle = '#6d7277';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 1.4 * S, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2b2f33';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 0.7 * S, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (len) {
             const g = ctx.createRadialGradient(cx - 0.4 * S, cy - 0.4 * S, 0.2, cx, cy, 1.4 * S);
             g.addColorStop(0, '#f2f4f5');
             g.addColorStop(1, '#7d848a');
