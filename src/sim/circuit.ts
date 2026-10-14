@@ -24,7 +24,9 @@ export type CompFault =
   /** Capacitor dried out: capacitance and DC readings look fine, but its ESR is high (Ω). */
   | { type: 'esr'; esr: number }
   /** Big chip: one supply rail shorted to ground inside the package (Ω). */
-  | { type: 'rail-short'; pin: string; r: number };
+  | { type: 'rail-short'; pin: string; r: number }
+  /** Analog stick: a worn potentiometer track — the wiper rests off-centre on one axis (0..1). */
+  | { type: 'drift'; axis: 'X' | 'Y'; pos: number };
 
 export interface Joint {
   /** Extra series resistance (Ω). 0 = good, Infinity = open. */
@@ -47,7 +49,8 @@ export type Mark =
   | 'bent-pin'
   | 'corrosion'
   | 'cracked-screen'
-  | 'swollen';
+  | 'swollen'
+  | 'tarnish';
 
 export interface CompState {
   ref: string;
@@ -458,10 +461,10 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
       return;
     }
     case 'ldo': {
-      const [inN, out, gnd, tab] = ['IN', 'OUT', 'GND', 'TAB'].map(pinNode);
-      add(E.resistor(out, tab, 0.002, ref));
+      const [inN, out, gnd] = ['IN', 'OUT', 'GND'].map(pinNode);
+      if (pins.includes('TAB')) add(E.resistor(out, pinNode('TAB'), 0.002, ref));
       if (f?.type === 'blown') add(E.resistor(inN, out, 0.4, ref));
-      else if (f?.type !== 'dead') add(E.ldo(inN, out, gnd, { vout: 3.3 * esrSag(b, c.def.pins.OUT, 0.72), dropout: 0.3, ilim: 0.4, iq: 60e-6 }, ref));
+      else if (f?.type !== 'dead') add(E.ldo(inN, out, gnd, { vout: p.value * esrSag(b, c.def.pins.OUT, 0.72), dropout: p.dropout ?? 0.3, ilim: p.ilim ?? 0.4, iq: 60e-6 }, ref));
       if (f?.type === 'short') add(E.resistor(out, gnd, f.r, ref));
       add(E.resistor(out, gnd, 120e3, ref));
       add(E.resistor(inN, gnd, 1e6, ref));
@@ -555,6 +558,28 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
     }
     case 'button': {
       if (b.pressed.includes(ref) || f?.type === 'short') add(E.resistor(...two(), 0.1, ref));
+      return;
+    }
+    case 'logic': {
+      const L = p.logic!;
+      const vcc = pinNode(L.vcc);
+      const gnd = pinNode('GND');
+      if (f?.type === 'short') add(E.resistor(vcc, gnd, f.r, ref));
+      else if (f?.type !== 'dead')
+        add(E.logic(vcc, gnd, L.ch.map((ch) => ({ high: (ch.needHigh ?? []).map(pinNode), low: (ch.needLow ?? []).map(pinNode), outs: ch.outs.map(pinNode) })), L.vmin, L.iq, ref));
+      else add(E.resistor(vcc, gnd, 5e3, ref));
+      add(E.resistor(vcc, gnd, 200e3, ref));
+      for (const pin of pins) if (pin !== L.vcc && pin !== 'GND' && !pin.startsWith('NC')) add(E.diode(gnd, pinNode(pin), ESD, ref));
+      add(E.diode(gnd, vcc, ESD, ref));
+      return;
+    }
+    case 'stick': {
+      const [vcc, gnd, x, y] = ['VCC', 'GND', 'X', 'Y'].map(pinNode);
+      for (const [axis, n] of [['X', x], ['Y', y]] as const) {
+        const pos = f?.type === 'drift' && f.axis === axis ? f.pos : 0.5;
+        add(E.resistor(vcc, n, Math.max(1, p.value * (1 - pos)), ref));
+        add(E.resistor(n, gnd, Math.max(1, p.value * pos), ref));
+      }
       return;
     }
     case 'shifter': {
@@ -824,6 +849,22 @@ export function measure(
 // ---------------------------------------------------------------------------
 
 const THETA: Record<string, number> = {
+  TO220: 50,
+  DIP40: 45,
+  DIP28: 50,
+  DIP16: 70,
+  DIP14: 75,
+  COIN: 40,
+  EDGE6: 30,
+  CARTSLOT6: 30,
+  RFMOD: 25,
+  RCA2: 40,
+  HDR3: 60,
+  STICK: 50,
+  SPRING2: 20,
+  AA2: 10,
+  SCREEN_S: 15,
+  FPC3: 100,
   '0603': 250,
   '1206': 120,
   SMA: 90,

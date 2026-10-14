@@ -258,6 +258,46 @@ export function retimer(vcc: number, gnd: number, en: number, inN: number, outs:
   };
 }
 
+/**
+ * Generic logic chip: powered from VCC (above vmin), each channel drives its outputs high
+ * (through ~200 Ω, from VCC) while its inputs are in the required state.
+ */
+export function logic(vcc: number, gnd: number, chans: { high: number[]; low: number[]; outs: number[] }[], vmin: number, iq: number, owner?: string): Element {
+  const nodes = [vcc, gnd];
+  const idx = (n: number) => {
+    nodes.push(n);
+    return nodes.length - 1;
+  };
+  const chs = chans.map((c) => ({ high: c.high.map(idx), low: c.low.map(idx), outs: c.outs.map(idx) }));
+  return {
+    nodes,
+    owner,
+    eval(v) {
+      const res = new Array(nodes.length).fill(0);
+      const supply = v[0] - v[1];
+      const pw = sig((supply - vmin) / 0.05);
+      const half = 0.5 * Math.max(supply, 0.6);
+      let src = iq * pw;
+      for (const c of chs) {
+        let act = pw;
+        for (const k of c.high) act *= sig((v[k] - v[1] - half) / 0.05);
+        for (const k of c.low) act *= sig((half - (v[k] - v[1])) / 0.05);
+        const target = v[1] + supply * act;
+        const g = pw / 200 + 1e-9;
+        for (const k of c.outs) {
+          const i = (v[k] - target) * g;
+          res[k] += i;
+          if (i < 0) src -= i;
+        }
+      }
+      res[0] += src;
+      // Conservation: everything that flows in leaves through GND.
+      res[1] = -res.reduce((a, x, k) => (k === 1 ? a : a + x), 0);
+      return res;
+    },
+  };
+}
+
 /** Single-channel level shifter. Nodes: VA, VB, GND, EN, A (input), B (output, powered from VB). */
 export function shifter(va: number, vb: number, gnd: number, en: number, a: number, bOut: number, owner?: string): Element {
   return {

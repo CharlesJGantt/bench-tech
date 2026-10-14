@@ -18,7 +18,46 @@ const two = (d: number, pw: number, ph: number) => [
   { x: d, y: 0, w: pw, h: ph },
 ];
 
+/** Through-hole DIP: pin 1 bottom-left, counter-clockwise (bottom row left→right, top row right→left). */
+const dip = (n: number, row: number): Footprint => {
+  const k = n / 2;
+  const x0 = (-(k - 1) * 2.54) / 2;
+  const pad = (x: number, y: number) => ({ x, y, w: 1.6, h: 1.6, round: true });
+  return {
+    w: k * 2.54 + 1.2,
+    h: row - 1.6,
+    height: 4,
+    pads: [...Array.from({ length: k }, (_, i) => pad(x0 + i * 2.54, row / 2)), ...Array.from({ length: k }, (_, i) => pad(-x0 - i * 2.54, -row / 2))],
+  };
+};
+const rowOf = (n: number, pitch: number, y: number, w: number, h: number, round = true) =>
+  Array.from({ length: n }, (_, i) => ({ x: (-(n - 1) * pitch) / 2 + i * pitch, y, w, h, round }));
+
 export const FOOTPRINTS: Record<Pkg, Footprint> = {
+  TO220: { w: 10.2, h: 4.6, height: 16, pads: rowOf(3, 2.54, 0, 1.8, 1.8) },
+  DIP40: dip(40, 15.24),
+  DIP28: dip(28, 15.24),
+  DIP16: dip(16, 7.62),
+  DIP14: dip(14, 7.62),
+  COIN: { w: 20, h: 20, height: 3.4, pads: [{ x: 12.5, y: 0, w: 2.2, h: 2.2, round: true }, { x: -12.5, y: 0, w: 2.2, h: 2.2, round: true }] },
+  EDGE6: { w: 30, h: 8, height: 0, pads: rowOf(6, 5, 0, 3.2, 8, false) },
+  CARTSLOT6: { w: 44, h: 10, height: 11, pads: rowOf(6, 5, 6.5, 1.8, 1.8) },
+  RFMOD: { w: 22, h: 16, height: 11, pads: rowOf(4, 3, 9.2, 1.6, 1.6) },
+  RCA2: { w: 10, h: 12, height: 11, pads: [{ x: 0, y: 4.5, w: 2, h: 2, round: true }, { x: 0, y: -2.5, w: 2.4, h: 2.4, round: true }] },
+  HDR3: { w: 8.6, h: 3.2, height: 8.5, pads: rowOf(3, 2.54, 0, 1.6, 1.6) },
+  STICK: {
+    w: 16,
+    h: 16,
+    height: 14,
+    pads: [
+      { x: -9, y: -6, w: 1.6, h: 1.6, round: true },
+      { x: -9, y: 6, w: 1.6, h: 1.6, round: true },
+      { x: 9, y: -6, w: 1.6, h: 1.6, round: true },
+      { x: 9, y: 6, w: 1.6, h: 1.6, round: true },
+    ],
+  },
+  SPRING2: { w: 58, h: 8, height: 6, pads: [{ x: -27, y: 0, w: 3, h: 3, round: true }, { x: 27, y: 0, w: 3, h: 3, round: true }] },
+  FPC3: { w: 9, h: 4, height: 1.5, pads: rowOf(3, 1.2, 2.6, 0.6, 1.4, false) },
   '0603': { w: 1.6, h: 0.8, height: 0.45, pads: two(0.8, 0.8, 0.9) },
   '1206': { w: 3.2, h: 1.6, height: 0.6, pads: two(1.5, 1.1, 1.8) },
   LED0805: { w: 2.0, h: 1.25, height: 0.8, pads: two(1.0, 1.0, 1.4) },
@@ -174,6 +213,8 @@ export const FOOTPRINTS: Record<Pkg, Footprint> = {
   SCREEN: { w: 44, h: 28, height: 3, pads: two(3, 2, 2).map((p) => ({ ...p, y: 12 })) },
   SPK: { w: 22, h: 22, height: 7, pads: two(3, 2, 2).map((p) => ({ ...p, y: -8.5 })) },
   LEDBAR: { w: 60, h: 6, height: 2, pads: two(27, 2, 2.2) },
+  AA2: { w: 52, h: 30, height: 14, pads: two(26, 2, 2) },
+  SCREEN_S: { w: 46, h: 40, height: 4, pads: rowOf(3, 1.2, 18, 0.8, 1.4, false) },
 };
 
 export function rotate(x: number, y: number, rot: number): [number, number] {

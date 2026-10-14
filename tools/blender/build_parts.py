@@ -709,6 +709,139 @@ def enc_sticker():
     box(f"{n}_text", e, M["recess"], 0, 0, 0.05, 7, 1, 0.01)
 
 
+# ---------------------------------------------------------------------------
+# Retro / through-hole packages and new modules (src/sim/footprints.ts)
+# ---------------------------------------------------------------------------
+
+
+def to220():
+    n = "pkg_TO220"
+    e = item(n)
+    box(f"{n}_body", e, M["black"], 0, 0, 1.5, 10.2, 4.6, 9, bevel=0.2)
+    box(f"{n}_tab", e, M["steel"], 0, 1.0, 10.5, 10.2, 1.3, 6.5)
+    cyl(f"{n}_hole", e, M["recess"], 0, 1.0, 13.5, 1.8, 0.05, n=20, axis="y")
+    for i in range(3):
+        box(f"{n}_leg{i}", e, M["tin"], -2.54 + i * 2.54, 0, 0, 0.8, 0.5, 1.6)
+
+
+def dip_pkg(pins, row):
+    n = f"pkg_DIP{pins}"
+    e = item(n)
+    k = pins // 2
+    w = k * 2.54 + 1.2
+    h = row - 1.6
+    box(f"{n}_body", e, M["black"], 0, 0, 0.6, w, h, 3.2, bevel=0.15)
+    cyl(f"{n}_notch", e, M["recess"], -w / 2, 0, 3.8, 0.9, 0.02, n=16)
+    cyl(f"{n}_dot", e, M["band"], -w / 2 + 1.6, h / 2 - 1.4, 3.8, 0.4, 0.01, n=12)
+    for i in range(k):
+        x = -(k - 1) * 2.54 / 2 + i * 2.54
+        for sy in (-1, 1):
+            box(f"{n}_l{i}{sy}", e, M["tin"], x, sy * (row / 2), 0, 0.5, 0.6, 1.8)
+
+
+def coin():
+    n = "pkg_COIN"
+    e = item(n)
+    cyl(f"{n}_cell", e, M["steel"], 0, 0, 0.3, 10, 3.2, n=48)
+    cyl(f"{n}_top", e, M["tin"], 0, 0, 3.5, 9.3, 0.02, n=48)
+    box(f"{n}_tabp", e, M["tin"], 11, 0, 0, 5, 3, 0.3)
+    box(f"{n}_tabn", e, M["tin"], -11, 0, 0, 5, 3, 0.3)
+
+
+def edge6():
+    n = "pkg_EDGE6"
+    e = item(n)  # gold fingers are drawn by the board art; nothing stands on the board
+
+
+def cartslot6():
+    n = "pkg_CARTSLOT6"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 44, 10, 11, bevel=0.4)
+    box(f"{n}_mouth", e, M["recess"], 0, 0, 10.9, 40, 2.4, 0.15)
+    for i in range(18):
+        box(f"{n}_c{i}", e, M["gold"], -19 + i * 2.25, 0, 10.95, 0.8, 1.6, 0.06)
+
+
+def rfmod():
+    n = "pkg_RFMOD"
+    e = item(n)
+    box(f"{n}_can", e, M["shieldsteel"], 0, 0, 0, 22, 16, 11, bevel=0.2)
+    cyl(f"{n}_jack", e, M["tin"], 0, -8, 5.5, 3, 5, n=24, axis="y", r2=3)
+    cyl(f"{n}_pin", e, M["gold"], 0, -10, 5.5, 0.6, 3, n=12, axis="y")
+
+
+def rca2():
+    n = "pkg_RCA2"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 10, 12, 9, bevel=0.3)
+    cyl(f"{n}_ring", e, M["gold"], 0, -6, 5, 4, 5, n=28, axis="y")
+    cyl(f"{n}_hole", e, M["recess"], 0, -11.05, 5, 1.1, 0.1, n=16, axis="y")
+
+
+def hdr3():
+    n = "pkg_HDR3"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 8.6, 3.2, 8.5, bevel=0.2)
+    for i in range(3):
+        box(f"{n}_p{i}", e, M["recess"], -2.54 + i * 2.54, 0, 8.45, 1.1, 1.1, 0.1)
+
+
+def stick():
+    n = "pkg_STICK"
+    e = item(n)
+    box(f"{n}_frame", e, M["steel"], 0, 0, 0, 16, 16, 7, bevel=0.3)
+    box(f"{n}_potx", e, M["blackplastic"], 9, 0, 0, 2.4, 9, 6)
+    box(f"{n}_poty", e, M["blackplastic"], 0, 9, 0, 9, 2.4, 6)
+    cyl(f"{n}_shaft", e, M["blackplastic"], 0, 0, 7, 1.6, 4, n=16)
+    cyl(f"{n}_cap", e, M["rubber"], 0, 0, 11, 7.5, 2.5, n=40, r2=6.5)
+
+
+def spring2():
+    n = "pkg_SPRING2"
+    e = item(n)
+    box(f"{n}_plate", e, M["tin"], -27, 0, 0, 1, 8, 6)
+    for k in range(5):
+        cyl(f"{n}_coil{k}", e, M["steel"], 27 - k * 0.9, 0, 3, 3 - k * 0.3, 0.5, n=20, axis="x")
+
+
+def aa2():
+    n = "pkg_AA2"
+    e = item(n)
+    for sy in (-1, 1):
+        cyl(f"{n}_cell{sy}", e, M["battwrap"], -25, sy * 7.2, 7, 7, 48, n=32, axis="x")
+        cyl(f"{n}_nip{sy}", e, M["steel"], 23, sy * 7.2, 7, 2.2, 1.6, n=16, axis="x")
+
+
+def screen_s():
+    n = "pkg_SCREEN_S"
+    e = item(n)
+    box(f"{n}_frame", e, M["bezel"], 0, 0, 0, 46, 40, 2.8, bevel=0.6, segments=3)
+    box(f"{n}_lens", e, M["lcd"], 0, -2, 2.8, 36, 30, 0.15)
+    box(f"{n}_ribbon", e, M["fpc"], 0, 19, 0, 6, 3, 0.2)
+
+
+def fpc3():
+    n = "pkg_FPC3"
+    e = item(n)
+    box(f"{n}_body", e, M["nylon"], 0, 0, 0, 9, 4, 1.2, bevel=0.1)
+    box(f"{n}_latch", e, M["blackplastic"], 0, -1.4, 1.2, 9, 1.2, 0.3)
+
+
+to220()
+for _p, _r in ((40, 15.24), (28, 15.24), (16, 7.62), (14, 7.62)):
+    dip_pkg(_p, _r)
+coin()
+edge6()
+cartslot6()
+rfmod()
+rca2()
+hdr3()
+stick()
+spring2()
+aa2()
+screen_s()
+fpc3()
+
 enc_shell()
 enc_screw()
 enc_shield()

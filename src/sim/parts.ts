@@ -28,7 +28,9 @@ export type Kind =
   | 'battery'
   | 'module'
   | 'button'
-  | 'testpoint';
+  | 'testpoint'
+  | 'logic'
+  | 'stick';
 
 export type Pkg =
   | '0603'
@@ -58,7 +60,23 @@ export type Pkg =
   | 'SCREEN'
   | 'SPK'
   | 'LEDBAR'
-  | 'TP';
+  | 'TP'
+  | 'TO220'
+  | 'DIP40'
+  | 'DIP28'
+  | 'DIP16'
+  | 'DIP14'
+  | 'COIN'
+  | 'EDGE6'
+  | 'CARTSLOT6'
+  | 'RFMOD'
+  | 'RCA2'
+  | 'HDR3'
+  | 'STICK'
+  | 'SPRING2'
+  | 'AA2'
+  | 'SCREEN_S'
+  | 'FPC3';
 
 export interface PartSpec {
   partNo: string;
@@ -93,6 +111,25 @@ export interface PartSpec {
    * above its UVLO; each rail draws `amps` while the chip runs and `standbyAmps` otherwise.
    */
   rails?: ChipRail[];
+  /** Linear regulators: dropout (V) and current limit (A); the output is `value`. */
+  dropout?: number;
+  ilim?: number;
+  /** Generic logic chip (kind 'logic'): see LogicSpec. */
+  logic?: LogicSpec;
+}
+
+/**
+ * A chip modelled by what it does, not how: once its supply is up, each channel drives its
+ * outputs high while its conditions hold (inputs high / low). ROMs, lockout chips, video
+ * chips, modulators, wireless chips, counters…
+ */
+export interface LogicSpec {
+  vcc: string;
+  /** Minimum supply to work (V). */
+  vmin: number;
+  /** Supply current while powered (A). */
+  iq: number;
+  ch: { needHigh?: string[]; needLow?: string[]; outs: string[] }[];
 }
 
 export interface ChipRail {
@@ -299,6 +336,31 @@ export const PARTS: Record<string, PartSpec> = {
   'M-LEDBAR': { partNo: 'M-LEDBAR', kind: 'module', pkg: 'LEDBAR', value: 30, label: 'Backlight LED strip', marking: '', cost: 15, plugIn: true, pins: ['A', 'K'], description: 'ViewMax 24 backlight LED strip: 10 white LEDs in series (~30 V at 100 mA).' },
 
   // ---------------------------------------------------------------- mechanical
+  // ---------------------------------------------------------------- retro / through-hole
+  'U-7805T': {
+    partNo: 'U-7805T',
+    kind: 'ldo',
+    pkg: 'TO220',
+    value: 5,
+    dropout: 2,
+    ilim: 1,
+    label: '7805 5V regulator',
+    marking: 'KA7805',
+    rating: 35,
+    cost: 0.5,
+    pins: ['IN', 'GND', 'OUT'],
+    description: 'Classic 5 V 1 A linear regulator in a TO-220 can. Needs about 7 V in; burns the difference as heat. Pinout: IN, GND, OUT.',
+  },
+  'C-470U-16': cap('C-470U-16', 'CAP_EL10', 470e-6, '470µF 16V', 16, 0.5, 'electrolytic'),
+  'C-10U-16E': cap('C-10U-16E', 'CAP_EL', 10e-6, '10µF 16V', 16, 0.2, 'electrolytic'),
+  'J-RCA': { partNo: 'J-RCA', kind: 'connector', pkg: 'RCA2', value: 0, label: 'RCA jack', marking: '', cost: 0.6, pins: ['SIG', 'GND'], description: 'Panel RCA (phono) jack: composite video or RF out.' },
+  'J-HDR3': { partNo: 'J-HDR3', kind: 'connector', pkg: 'HDR3', value: 0, label: '3-pin port', marking: '', cost: 0.4, pins: ['5V', 'DATA', 'GND'], description: '3-pin controller / accessory port.' },
+  'J-FPC3': { partNo: 'J-FPC3', kind: 'connector', pkg: 'FPC3', value: 0, label: '3-pin FPC connector', marking: '', cost: 0.5, heatLimit: 260, pins: ['VCC', 'DATA', 'GND'], description: '3-pin flip-latch ribbon connector (screen).' },
+  'BT-CR2032T': { partNo: 'BT-CR2032T', kind: 'battery', pkg: 'COIN', value: 3.0, label: 'CR2032 with solder tabs', marking: 'CR2032', cost: 1.5, pins: ['+', '-'], description: 'Tabbed 3 V lithium coin cell for save memory. Solder the tabs, never the cell itself — heat ruins it.' },
+  'M-STICK': { partNo: 'M-STICK', kind: 'stick', pkg: 'STICK', value: 10e3, label: 'Analog stick module', marking: 'ALPS-ish', cost: 4, description: 'Thumbstick with two 10 kΩ potentiometers (X and Y). Centre = half the supply on each wiper.' },
+  'J-AA2': { partNo: 'J-AA2', kind: 'connector', pkg: 'SPRING2', value: 0, label: 'Battery springs', marking: '', cost: 1, pins: ['+', '-'], description: 'Battery compartment spring and plate contacts (2 × AA). Leaky batteries rust them.' },
+  'M-AA2': { partNo: 'M-AA2', kind: 'battery', pkg: 'AA2', value: 3.0, label: '2 × AA batteries', marking: 'AA', cost: 2, plugIn: true, pins: ['+', '-'], description: 'Two fresh AA cells (3 V).' },
+
   'SW-TACT': { partNo: 'SW-TACT', kind: 'button', pkg: 'TACT6', value: 0, label: 'Tact switch', marking: '', cost: 0.15, description: '6 × 6 mm tactile switch' },
   TP: { partNo: 'TP', kind: 'testpoint', pkg: 'TP', value: 0, label: 'Test point', marking: '', cost: 0, description: 'Test pad' },
 };
@@ -337,6 +399,8 @@ export const PIN_NAMES: Record<Kind, string[]> = {
   module: ['1', '2'],
   button: ['1', '2'],
   testpoint: ['1'],
+  logic: ['VCC', 'GND'],
+  stick: ['VCC', 'GND', 'X', 'Y'],
 };
 
 /** Pin names of a part in footprint pad order. */

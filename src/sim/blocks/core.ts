@@ -85,6 +85,8 @@ export const place = (
 
 
 const PREFIX: Record<Kind, string> = {
+  logic: 'U',
+  stick: 'J',
   resistor: 'R',
   capacitor: 'C',
   electrolytic: 'C',
