@@ -2,6 +2,7 @@ import type { DeviceDef } from '../sim/board';
 import type { BoardState } from '../sim/circuit';
 import { bodyRect, padsOf, type PadWorld } from '../sim/footprints';
 import { part } from '../sim/parts';
+import { cachedRoute, routeKey } from './routeCache';
 import { routeBoard, type Segment, type TraceGeom } from './router';
 
 export const PX = 20; // texture pixels per millimetre
@@ -53,8 +54,16 @@ export interface BoardGeometry {
   failures: string[];
 }
 
-export function buildGeometry(device: DeviceDef): BoardGeometry {
-  return routeBoard(device, (net) => (POWER_NETS.has(net) ? 0.8 : 0.35));
+/** Trace width per net (mm): power nets are wide. */
+export const traceWidth = (net: string) => (POWER_NETS.has(net) ? 0.8 : 0.35);
+
+/** Copper for a device: from the pre-routed cache when it is current, else routed live. */
+export function buildGeometry(device: DeviceDef, opts: { live?: boolean } = {}): BoardGeometry {
+  if (!opts.live) {
+    const hit = cachedRoute(device, routeKey(device, traceWidth));
+    if (hit) return hit;
+  }
+  return routeBoard(device, traceWidth);
 }
 
 // ---------------------------------------------------------------------------

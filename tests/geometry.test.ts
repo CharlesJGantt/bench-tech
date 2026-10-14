@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildGeometry, type Segment } from '../src/render/boardArt';
+import { buildGeometry, traceWidth, type Segment } from '../src/render/boardArt';
+import { cachedRoute, routeKey } from '../src/render/routeCache';
 import { DEVICE_LIST, DL12 } from '../src/sim/devices';
 
 /**
@@ -132,4 +133,11 @@ describe('design rules on every board', () => {
       expect(minGap(d, true)).toBeGreaterThanOrEqual(0.4);
     });
   }
+});
+
+describe('pre-routed copper cache', () => {
+  for (const d of DEVICE_LIST)
+    it(`${d.name}: cached route is up to date (run \`npm run routes\` if this fails)`, () => {
+      expect(cachedRoute(d, routeKey(d, traceWidth))).not.toBeNull();
+    });
 });

@@ -6,6 +6,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `npm run dev` — dev server (http://localhost:5173)
 - `npm test` — vitest (sim + fault generator invariants)
 - `npm run typecheck` / `npm run build`
+- `npm run routes` — re-route every board into `src/render/routes/*.json` (required after changing a device layout, footprint or the router; a geometry test fails while the cache is stale)
 - `npm run models` — rebuild `public/models/parts.glb` from `tools/blender/*.py` via headless Blender 5.2 (override path with `BLENDER`)
 
 ## Architecture
@@ -20,7 +21,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `src/sim/persist.ts` — JSON save format for boards/jobs (devices by id, Infinity joints as -1). Whole game saves to localStorage `benchtech.save.v2`.
 - `src/game/` — `Session` (active work on the bench or idle; start/pause/return/give-up/list/scrap; bench power, instruments, lagged temps, IPA, log; supplies + electricity usage) and `explain.ts` (guided plain-language readings).
 - `src/rework/model.ts` — hands-on rework physics per pad (temperature, solder, flux, IPA/dissolved/white residue, heat damage, bridges); `applyRework()` writes joints, lifted pads and solder bridges (as `bridge` jumpers = real shorts) back to the board. No DOM.
-- `src/render/` — PlayCanvas scene (`scene.ts`, board flip, net highlight), procedural PCB textures (`boardArt.ts`, top + bottom), and `router.ts` (two-layer grid A* autorouter: Steiner trees, 45°, rip-up-and-retry). Copper is generated from the same netlist the sim solves; `tests/geometry.test.ts` proves connectivity and no foreign contact.
+- `src/render/` — PlayCanvas scene (`scene.ts`, board flip, net highlight), procedural PCB textures (`boardArt.ts`, top + bottom), and `router.ts` (two-layer grid A* autorouter: Steiner trees, 45°, rip-up-and-retry). Routes are pre-built and cached by layout hash (`routeCache.ts`; bump `ROUTER_VERSION` when router rules change). Copper is generated from the same netlist the sim solves; `tests/geometry.test.ts` proves connectivity and no foreign contact.
 - `src/ui/` — DOM HUD, shop office (`office.ts`), rework microscope station (`rework.ts`, stock-backed parts tray), jumper heat-bar minigame, modals, schematic, audio.
 - `?debug` URL flag shows live net voltages on hover and the hidden fault on the ticket.
 
