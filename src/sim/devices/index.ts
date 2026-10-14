@@ -6,6 +6,7 @@ import { FS5 } from './fs5';
 import { SBOX } from './sbox';
 import { VIEWMAX } from './viewmax';
 import { BES, BES_CART } from './bes';
+import { GALAXY_RAID } from './galaxyraid';
 import { CRITTER_MINI, GAME_CLOCK } from './lcdgames';
 import { BUTTON_LITE, DUO_3DXL, DUO_IXL, DUO_LITE, RB35, ROGUE_PAL } from './handhelds';
 import { BUTTON_GRIP, DUALPULSE, SBOX_PAD } from './controllers';
@@ -48,6 +49,7 @@ export const DEVICES: Record<string, DeviceDef> = {
   [DUO_LITE.id]: DUO_LITE,
   [GAME_CLOCK.id]: GAME_CLOCK,
   [CRITTER_MINI.id]: CRITTER_MINI,
+  [GALAXY_RAID.id]: GALAXY_RAID,
 };
 
 export const DEVICE_LIST: DeviceDef[] = Object.values(DEVICES);

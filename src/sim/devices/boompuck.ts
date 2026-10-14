@@ -12,6 +12,21 @@ import { addMark, type Rng, type Variant } from '../faults';
 
 const VARIANTS: Variant[] = [
   {
+    id: 'bt-chip-dead',
+    family: 'Failed wireless chip',
+    tier: 2,
+    weight: 0.9,
+    apply(b) {
+      b.comps.U5.fault = { type: 'dead' };
+      return {
+        summary: 'The Bluetooth chip U5 has died: it powers on but never pairs, so nothing plays. Replace U5 (small-chip rework: flux, hot air, tweezers).',
+        refs: ['U5'],
+        hint: 'Blue power light on, link light never. Is the Bluetooth chip powered and enabled? Does it ever signal a link?',
+        flavor: 'It turns on but my phone cannot find it any more.',
+      };
+    },
+  },
+  {
     id: 'musb-loose',
     family: 'Damaged connector',
     tier: 1,
@@ -187,7 +202,10 @@ export const BOOMPUCK = device({
   ],
   parts: [
     c('TP4', 'TP', 'USB', 4, 26, 0, { '1': 'GND' }, 'Ground'),
-    c('U3', 'U-PIC8-SPK', 'MCU', 17, 54, 0, { VDD: '3V3', LED: 'LED_IO', AMPEN: 'AMP_EN', BTN: 'BTN', CHG: 'CHG', NC6: 'U3_NC6', NC7: 'U3_NC7', GND: 'GND' }, 'Speaker controller'),
+    c('U3', 'U-PIC8-SPK', 'MCU', 17, 54, 0, { VDD: '3V3', LED: 'LED_IO', AMPEN: 'AMP_EN', BTN: 'BTN', CHG: 'CHG', BTEN: 'BT_EN', NC7: 'U3_NC7', GND: 'GND' }, 'Speaker controller'),
+    c('U5', 'U-BT', 'AMP', 68, 36, 0, { VCC: '3V3', GND: 'GND', EN: 'BT_EN', LINK: 'BT_LINK', NC5: 'U5_NC5', NC6: 'U5_NC6' }, 'Bluetooth chip'),
+    c('R7', 'R-1K', 'AMP', 76, 36, 0, { '1': 'BT_LINK', '2': 'BT_LED_A' }, 'Link light resistor'),
+    c('D4', 'LED-BLU', 'AMP', 84, 36, 90, { A: 'BT_LED_A', K: 'GND' }, 'Bluetooth link light'),
     c('R3', 'R-220R', 'MCU', 6, 49, 90, { '1': 'LED_IO', '2': 'PWR_LED_A' }, 'Power LED resistor'),
     c('D3', 'LED-BLU', 'MCU', 6, 57, 90, { A: 'PWR_LED_A', K: 'GND' }, 'Power LED (blue)'),
     c('R4', 'R-10K', 'MCU', 28, 47, 90, { '1': '3V3', '2': 'BTN' }, 'Button pull-up'),
@@ -222,6 +240,8 @@ export const BOOMPUCK = device({
     PWR_LED_A: { desc: 'Power LED anode' },
     BTN: { desc: 'Power button — high normally, low while pressed', expected: 3.3 },
     AMP_EN: { desc: 'Amp enable from the MCU (high when switched on)' },
+    BT_EN: { desc: 'Bluetooth chip enable from the MCU' },
+    BT_LINK: { desc: 'Bluetooth linked to a phone (drives the link light)' },
     SPK_P: { desc: 'Amp output + (about half the battery voltage while playing)' },
     SPK_N: { desc: 'Amp output − (about half the battery voltage while playing)' },
     USB_DM: { desc: 'USB data (unused for charging)' },
@@ -245,7 +265,7 @@ export const BOOMPUCK = device({
     boot: () => ({ on: 0 }),
     step(state, inputs, prev) {
       if (!inputs.BTN && prev.BTN) state.on = state.on ? 0 : 1;
-      return { LED: state.on === 1, AMPEN: state.on === 1 };
+      return { LED: state.on === 1, AMPEN: state.on === 1, BTEN: state.on === 1 };
     },
   },
   functional,
@@ -281,6 +301,7 @@ function functional(b: BoardState): FunctionalReport {
   const op1 = s.press('SW1');
   const powersOn = on(op1, 'D3', 5e-4);
   const sound = on(op1, 'SPK1', 0.04);
+  const paired = on(op1, 'D4', 3e-4);
   s.press('SW1');
   const op3 = s.setPower({ kind: 'adapter' });
   const charging = on(op3, 'D2', 5e-4);
@@ -290,12 +311,13 @@ function functional(b: BoardState): FunctionalReport {
   s.end();
   const checks = [
     { label: 'Switches on with the power button (on battery)', ok: powersOn },
+    { label: 'Pairs with a phone (link light)', ok: paired },
     { label: 'Plays sound through the speaker', ok: sound },
     { label: 'Charges when plugged in (red light on)', ok: charging },
   ];
   return {
     checks,
-    facts: { powersOn, sound, charging, worksPlugged },
+    facts: { powersOn, sound, charging, worksPlugged, paired },
     inputCurrent,
     events: s.events,
     passed: checks.every((x) => x.ok) && !s.events.length,
@@ -307,6 +329,7 @@ function complain(r: FunctionalReport, events: DamageEvent[], rng: Rng): string 
   const hot = events.length ? ' It got hot before it died.' : '';
   if (!f.powersOn && f.worksPlugged) return 'It only works when it is plugged in.' + hot;
   if (!f.powersOn && !f.charging) return rng.pick(['Completely dead — will not turn on or charge.', 'Nothing. No lights, no sound, will not charge.']) + hot;
+  if (f.powersOn && !f.paired) return 'It turns on but my phone cannot find it.' + hot;
   if (f.powersOn && !f.sound) return rng.pick(['It turns on (blue light) but no sound comes out.', 'Connects to my phone but plays nothing.']) + hot;
   if (!f.charging) return 'It will not charge any more — the red light never comes on.' + hot;
   return 'Something is not right with it.' + hot;

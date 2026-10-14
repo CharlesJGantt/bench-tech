@@ -232,6 +232,16 @@ The generator picks a **cause** and applies a believable set:
 
 ## Phase 6 — Board catalog
 
+**Built so far (everything that did not need Phases 3–5):**
+- Retro consoles + carts with the Test Station: Bintendo Entertainment System, Bintendo 64, Vega Exodus, Paltari Family Console, Dream Boy / Pocket / Color / Advance / Advance SP / Micro; one cartridge board per console sold under four titles each. Test consoles in Tools; untested carts that fail at home come back next day for 10 %.
+- Contact cleaning: pink eraser (default), magic eraser sponge (faster), Pad-Bright (brightens + protects).
+- Controllers: DualPulse, Sbox Wireless Controller, Button Grip.
+- Handhelds: Button Lite, Retrobit RB35, Rogue Pal, DuoScreen i XL / 3D XL / Lite, Game & Clock, Critter Mini.
+- Galaxy Raid arcade logic board; BoomPuck Bluetooth chip.
+- Factories: `devices/retro.ts` (carts, externals), `retroconsole.ts`, `dreamboy.ts`, `controllers.ts`, `handhelds.ts`, `lcdgames.ts`.
+
+**Still waiting on systems:** SoundHalo, FS5 power board, VoltMax, Ding (Phase 5 mains); FS5 main / 5 Pro, Sbox One X main, Button main, Grapple + Venovo laptops, MyPhone 16–19 (Phase 4 BGA).
+
 Each board is built from Phase-0 blocks plus unique parts. Every board ships with:
 - tiered variants and **cause bundles**;
 - a service sheet (power tree + test points + the current signature);

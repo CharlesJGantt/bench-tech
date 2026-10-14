@@ -195,6 +195,13 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       } satisfies EnclosureDef,
     ]),
   ),
+  'galaxy-raid': {
+    color: '#3b3b3b',
+    items: [
+      ...[[6, 6], [154, 6], [6, 94], [154, 94]].map(([x, y], i) => screw(`s${i + 1}`, `Cage screw ${i + 1}`, [x, y] as [number, number], 8, 8)),
+      { id: 'cage', kind: 'shield', label: 'Board cage cover', at: [80, 50], size: [156, 96], needs: ['s1', 's2', 's3', 's4'], covers: true },
+    ],
+  },
   'bes-cart': {
     color: '#8d8c88',
     items: [
