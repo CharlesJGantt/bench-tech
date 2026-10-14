@@ -205,9 +205,9 @@ export class Session {
   private resetBench(): void {
     this.powerMode = 'off';
     this.psu.red = this.psu.black = null;
-    // Like a real tech, the black lead starts clipped to ground.
+    // Both meter leads start off the board (Black → GND clips the black one to ground).
     this.meter.red = null;
-    this.meter.black = { ref: this.job.device.ground, pin: '1' };
+    this.meter.black = null;
     this.activeProbe = 'red';
     this.selected = null;
     this.scopePoint = null;

@@ -70,42 +70,6 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
     color: '#1e1e1e',
     items: [{ id: 'shell', kind: 'clips', label: 'Cartridge shell (snap-together)', at: [45, 32], size: [90, 64], covers: true }],
   },
-  ...Object.fromEntries(
-    (['db', 'db-pocket', 'db-color', 'dba'] as const).map((id) => [
-      id,
-      {
-        color: id === 'db' ? '#c9c7bd' : id === 'db-color' ? '#6c3fa8' : id === 'dba' ? '#4c3a8f' : '#b9b9b9',
-        items: [
-          { id: 'cover', kind: 'clips', label: 'Battery cover', at: [75, 66], size: [56, 26] },
-          { ...screw('s1', 'Back screw (top left)', [6, 6], 6, 6), security: true },
-          { ...screw('s2', 'Back screw (top right)', [124, 6], 6, 6), security: true },
-          screw('s3', 'Back screw (bottom left)', [6, 74], 6, 6),
-          screw('s4', 'Back screw (bottom right)', [124, 74], 6, 6),
-          { id: 'back', kind: 'shell', label: 'Back shell', at: [65, 40], size: [130, 80], needs: ['cover', 's1', 's2', 's3', 's4'], covers: true },
-          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [25, 40], module: 'LCD1', latch: true, needs: ['back'] },
-          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 46], module: 'SPK1', needs: ['back'] },
-        ],
-      } satisfies EnclosureDef,
-    ]),
-  ),
-  ...Object.fromEntries(
-    (['dba-sp', 'dba-micro'] as const).map((id) => [
-      id,
-      {
-        color: id === 'dba-sp' ? '#2b4d8f' : '#9a9a9a',
-        items: [
-          { ...screw('s1', 'Tri-wing screw 1', [6, 6], 4, 4, [], ['VCC', 'GND']), security: true },
-          { ...screw('s2', 'Tri-wing screw 2', [124, 6], 4, 4), security: true },
-          screw('s3', 'Back screw 3', [6, 74], 6, 6),
-          screw('s4', 'Back screw 4', [124, 74], 6, 6),
-          { id: 'back', kind: 'shell', label: 'Back shell', at: [65, 40], size: [130, 80], needs: ['s1', 's2', 's3', 's4'], covers: true },
-          { id: 'bat', kind: 'cable', label: 'Battery plug', at: [72, 50], module: 'BT1', needs: ['back'] },
-          { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: [25, 40], module: 'LCD1', latch: true, needs: ['back'] },
-          { id: 'spk', kind: 'cable', label: 'Speaker plug', at: [116, 46], module: 'SPK1', needs: ['back'] },
-        ],
-      } satisfies EnclosureDef,
-    ]),
-  ),
   'db-cart': {
     color: '#8e8d87',
     items: [

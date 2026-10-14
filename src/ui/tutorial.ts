@@ -229,11 +229,12 @@ export class Tutorial {
         title: 'Measure where power comes in',
         target: '#meter',
         points: [{ ref: 'TP1', pin: '1' }],
-        body: `<p>The multimeter is set to <b>volts</b>, and its black probe is already clipped to ground (TP5).</p><p><b>Left-click the flashing test point TP1</b> to put the red probe on the raw input, where the adapter's power arrives.</p>`,
+        body: `<p>The multimeter is set to <b>volts</b>, and we have clipped its black probe to ground (TP5) for you — the <b>Black → GND</b> button does that any time.</p><p><b>Left-click the flashing test point TP1</b> to put the red probe on the raw input, where the adapter's power arrives.</p>`,
         enter: (s) => {
           s.tool = 'probe';
           s.activeProbe = 'red';
           s.setMeterMode('dcv');
+          if (!s.meter.black) s.setProbe('black', { ref: s.board.device.ground, pin: '1' });
           host.focusOn(25, 30, 95);
         },
         done: (s) => s.powerMode !== 'off' && netOf(s, s.meter.red) === 'IN_VIN' && (s.reading?.value ?? 0) > 9,

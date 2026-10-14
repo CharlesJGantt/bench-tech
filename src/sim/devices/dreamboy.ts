@@ -6,13 +6,86 @@
  */
 import { device, place } from '../blocks/core';
 import { liIonCharger, usbInput } from '../blocks/usb';
-import { c, type ComponentDef, type DeviceDef } from '../board';
+import { c, type ComponentDef, type DeviceDef, type FaceSpec } from '../board';
+import type { EncItem, EnclosureDef } from '../enclosure';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
 import { cartridge, cx, testCart } from './retro';
 
+type At = Record<string, [number, number, number?]>;
+
+/** A Dream Boy shape: board size, part positions, block layouts and the front face. */
+interface DbForm {
+  width: number;
+  height: number;
+  layout: At;
+  usb?: At;
+  chg?: At;
+  face: FaceSpec;
+  /** Case colour. */
+  color: string;
+}
+
+/** The brick (Dream Boy / Pocket / Color): screen up top, slot on the top edge, D-pad left, A/B right, 2 × AA at the bottom. */
+const BRICK = (color: string): DbForm => ({
+  width: 90,
+  height: 148,
+  color,
+  layout: {
+    J2: [45, 7], R3: [72, 16, 90], SW1: [12, 8], F1: [12, 18], C1: [20, 24, 90], TP2: [8, 26], TP1: [8, 64],
+    LCD1: [45, 36], J3: [45, 60], U2: [45, 32], R5: [32, 28, 90], R1: [14, 32, 90], D1: [14, 40, 90],
+    U4: [70, 70], R6: [60, 70, 90], J4: [78, 82], SPK1: [78, 104], BT1: [40, 124], J1: [40, 142],
+  },
+  face: { windows: [[45, 36, 40, 30]], dpad: [20, 84], buttons: [[64, 86], [76, 78]], pills: [[36, 104], [52, 104]], grille: [78, 104], height: 16 },
+});
+
+/** The wide Advance: screen in the middle, D-pad left, A/B right, batteries under the bottom. */
+const WIDE_ADV: DbForm = {
+  width: 144,
+  height: 82,
+  color: '#4c3a8f',
+  layout: {
+    J2: [72, 6], R3: [100, 10, 90], SW1: [14, 8], F1: [26, 8], C1: [32, 14, 90], TP2: [38, 8], TP1: [6, 74],
+    LCD1: [72, 34], J3: [36, 58], U2: [72, 32], R5: [60, 28, 90], R1: [100, 20, 90], D1: [106, 20, 90],
+    U4: [110, 46], R6: [120, 46, 90], J4: [110, 58], SPK1: [124, 66], BT1: [72, 66], J1: [72, 78],
+  },
+  face: { windows: [[72, 34, 40, 30]], dpad: [22, 40], buttons: [[122, 30], [110, 40]], pills: [[36, 66], [50, 66]], grille: [124, 66], height: 16 },
+};
+
+/** The SP clamshell, opened flat: screen in the top half, controls + battery in the bottom half. */
+const CLAM_SP: DbForm = {
+  width: 84,
+  height: 170,
+  color: '#2b4d8f',
+  layout: {
+    LCD1: [42, 40], J3: [42, 78], U2: [42, 36], R5: [30, 30, 90],
+    J2: [42, 163], R3: [70, 164, 90], SW1: [78, 112], D1: [78, 98, 90], R1: [78, 104, 90],
+    F1: [14, 96], C1: [20, 100, 90], TP2: [8, 104], TP1: [8, 164],
+    U4: [30, 134], R6: [36, 140, 90], J4: [18, 134], SPK1: [18, 150],
+  },
+  usb: { conn: [78, 140, 90], tvs: [70, 130, 270], tp: [70, 146] },
+  chg: { chg: [56, 140], ledRes: [48, 148, 90], led: [48, 154, 90], cbat: [62, 148, 90], conn: [42, 100], pack: [42, 118], tp: [40, 146] },
+  face: { windows: [[42, 40, 40, 30]], dpad: [18, 110], buttons: [[66, 106], [56, 114]], pills: [[34, 130], [50, 130]], grille: [18, 150], height: 10 },
+};
+
+/** The tiny Micro: small wide body, battery behind the D-pad. */
+const MICRO: DbForm = {
+  width: 120,
+  height: 60,
+  color: '#9a9a9a',
+  layout: {
+    LCD1: [60, 22], J3: [44, 44], U2: [60, 20], R5: [48, 14, 90],
+    J2: [60, 52], R3: [88, 40, 90], SW1: [8, 6], F1: [20, 6], C1: [28, 8, 90], TP2: [34, 4], TP1: [90, 6],
+    R1: [88, 8, 90], D1: [94, 8, 90], U4: [72, 14], R6: [78, 14, 90], J4: [86, 34], SPK1: [104, 46],
+  },
+  usb: { conn: [8, 50, 90], tvs: [16, 54, 270], tp: [4, 44] },
+  chg: { chg: [26, 44], ledRes: [32, 50, 90], led: [38, 50, 90], cbat: [32, 40, 90], conn: [18, 40], pack: [18, 24], tp: [24, 54] },
+  face: { windows: [[60, 22, 40, 30]], dpad: [18, 26], buttons: [[106, 20], [96, 28]], pills: [[46, 46], [74, 46]], grille: [104, 46], height: 9 },
+};
+
 interface Model {
+  form: DbForm;
   id: string;
   name: string;
   tagline: string;
@@ -51,6 +124,13 @@ function dreamBoy(m: Model): DeviceDef {
       c('J1', 'J-AA2', 'BATT', 75, 74, 0, { '+': 'BATT_P', '-': 'GND' }, 'Battery springs'),
       c('BT1', 'M-AA2', 'BATT', 75, 58, 0, { '+': 'BT1_P', '-': 'BT1_N' }, '2 × AA batteries', 'J1'),
     );
+  for (const p of parts) {
+    const at = m.form.layout[p.ref];
+    if (!at) throw new Error(`${m.id}: no position for ${p.ref}`);
+    p.x = at[0];
+    p.y = at[1];
+    p.rot = (at[2] ?? 0) as ComponentDef['rot'];
+  }
 
   const variants: Variant[] = [
     {
@@ -182,32 +262,29 @@ function dreamBoy(m: Model): DeviceDef {
     return 'Something is wrong with it.' + hot;
   }
 
-  return device({
+  const dev = device({
     id: m.id,
     name: m.name,
     category: 'Retro handheld',
     tagline: m.tagline,
-    width: 130,
-    height: 80,
+    width: m.form.width,
+    height: m.form.height,
+    face: m.form.face,
     blocks: m.liion
       ? [
           place('USB', usbInput({ connector: 'micro', tvs: 'D-TVS5' }), [96, 2], { out: 'VBUS' }, { conn: 'J6', tvs: 'D6', tp: 'TP6' }, {
             faults: true,
             outline: null,
-            layout: { conn: [124, 30, 90], tvs: [118, 20, 270], tp: [114, 26] },
+            layout: m.form.usb as never,
           }),
           place('CHG', liIonCharger({ led: true, battery: true }), [40, 44], { vin: 'VBUS', bat: 'BAT', stat: 'CHG' }, { chg: 'U5', ledRes: 'R7', led: 'D2', cbat: 'C5', conn: 'J1', pack: 'BT1', tp: 'TP5' }, {
             faults: true,
             outline: null,
-            layout: { chg: [96, 22], ledRes: [86, 40], led: [92, 46, 90], cbat: [104, 22, 90], conn: [72, 50], pack: [75, 66], tp: [64, 38] },
+            layout: m.form.chg as never,
           }),
         ]
       : [],
-    outlines: [
-      { name: 'POWER', x: 2, y: 2, w: 36, h: 18 },
-      { name: 'CPU', x: 30, y: 14, w: 30, h: 22 },
-      { name: 'CARTRIDGE', x: 60, y: 2, w: 48, h: 30 },
-    ],
+    outlines: [],
     parts,
     traces: [],
     testPoints: [
@@ -266,14 +343,40 @@ function dreamBoy(m: Model): DeviceDef {
     quoteBase: m.quoteBase,
     minReputation: m.minReputation,
   });
+  dev.enclosure = dbCase(dev, m);
+  return dev;
 }
 
-export const DREAMBOY = dreamBoy({ id: 'db', name: 'Dream Boy', tagline: 'The brick: green screen, four buttons, indestructible (mostly).', cpu: 'U-DB-CPU', liion: false, marketValue: 55, quoteBase: 25, minReputation: 0 });
-export const DREAMBOY_POCKET = dreamBoy({ id: 'db-pocket', name: 'Dream Boy Pocket', tagline: 'Slimmer Dream Boy on two AA cells.', cpu: 'U-DB-CPU', liion: false, marketValue: 45, quoteBase: 25, minReputation: 0 });
-export const DREAMBOY_COLOR = dreamBoy({ id: 'db-color', name: 'Dream Boy Color', tagline: 'Colour screen — and the classic leaked-battery restoration.', cpu: 'U-DBC-CPU', liion: false, marketValue: 60, quoteBase: 30, minReputation: 0, eatenPads: true });
-export const DREAMBOY_ADVANCE = dreamBoy({ id: 'dba', name: 'Dream Boy Advance', tagline: 'Wide-screen 32-bit Dream Boy on AA cells.', cpu: 'U-DBA-CPU', liion: false, marketValue: 55, quoteBase: 30, minReputation: 3 });
-export const DREAMBOY_SP = dreamBoy({ id: 'dba-sp', name: 'Dream Boy Advance SP', tagline: 'Clamshell with a rechargeable pack (and a habit of bulging it).', cpu: 'U-DBA-CPU', liion: true, marketValue: 75, quoteBase: 35, minReputation: 3 });
-export const DREAMBOY_MICRO = dreamBoy({ id: 'dba-micro', name: 'Dream Boy Micro', tagline: 'Tiny, rare, rechargeable.', cpu: 'U-DBA-CPU', liion: true, marketValue: 110, quoteBase: 40, minReputation: 8 });
+/** The case, from the board: battery door (AA models), tri-wing screws, back, cables on their connectors. */
+function dbCase(dev: DeviceDef, m: Model): EnclosureDef {
+  const at = (ref: string): [number, number] => {
+    const c = dev.components.find((x) => x.ref === ref)!;
+    return [c.x, c.y];
+  };
+  const W = dev.width;
+  const H = dev.height;
+  const sc = (id: string, label: string, p: [number, number], len: number, security: boolean, punch?: [string, string]): EncItem => ({ id, kind: 'screw', label, at: p, screw: { length: len, hole: len }, security, ...(punch ? { punch } : {}) });
+  const items: EncItem[] = [];
+  if (!m.liion) items.push({ id: 'cover', kind: 'clips', label: 'Battery door', at: at('BT1'), size: [56, 32] });
+  items.push(
+    sc('s1', 'Back screw (top left)', [4, 4], 6, true),
+    sc('s2', 'Back screw (top right)', [W - 4, 4], 6, true),
+    sc('s3', 'Back screw (bottom left)', [4, H - 4], 6, false),
+    sc('s4', 'Back screw (bottom right)', [W - 4, H - 4], m.liion ? 4 : 6, false, m.liion ? ['VCC', 'GND'] : undefined),
+    { id: 'back', kind: 'shell', label: 'Back shell', at: [W / 2, H / 2], size: [W, H], needs: [...(m.liion ? [] : ['cover']), 's1', 's2', 's3', 's4'], covers: true },
+    ...(m.liion ? [{ id: 'bat', kind: 'cable', label: 'Battery plug', at: at('J1'), module: 'BT1', needs: ['back'] } as EncItem] : []),
+    { id: 'lcd', kind: 'cable', label: 'Screen ribbon', at: at('J3'), module: 'LCD1', latch: true, needs: ['back'] },
+    { id: 'spk', kind: 'cable', label: 'Speaker plug', at: at('J4'), module: 'SPK1', needs: ['back'] },
+  );
+  return { color: m.form.color, items };
+}
+
+export const DREAMBOY = dreamBoy({ form: BRICK('#c9c7bd'), id: 'db', name: 'Dream Boy', tagline: 'The brick: green screen, four buttons, indestructible (mostly).', cpu: 'U-DB-CPU', liion: false, marketValue: 55, quoteBase: 25, minReputation: 0 });
+export const DREAMBOY_POCKET = dreamBoy({ form: BRICK('#b9b9b9'), id: 'db-pocket', name: 'Dream Boy Pocket', tagline: 'Slimmer Dream Boy on two AA cells.', cpu: 'U-DB-CPU', liion: false, marketValue: 45, quoteBase: 25, minReputation: 0 });
+export const DREAMBOY_COLOR = dreamBoy({ form: BRICK('#6c3fa8'), id: 'db-color', name: 'Dream Boy Color', tagline: 'Colour screen — and the classic leaked-battery restoration.', cpu: 'U-DBC-CPU', liion: false, marketValue: 60, quoteBase: 30, minReputation: 0, eatenPads: true });
+export const DREAMBOY_ADVANCE = dreamBoy({ form: WIDE_ADV, id: 'dba', name: 'Dream Boy Advance', tagline: 'Wide-screen 32-bit Dream Boy on AA cells.', cpu: 'U-DBA-CPU', liion: false, marketValue: 55, quoteBase: 30, minReputation: 3 });
+export const DREAMBOY_SP = dreamBoy({ form: CLAM_SP, id: 'dba-sp', name: 'Dream Boy Advance SP', tagline: 'Clamshell with a rechargeable pack (and a habit of bulging it).', cpu: 'U-DBA-CPU', liion: true, marketValue: 75, quoteBase: 35, minReputation: 3 });
+export const DREAMBOY_MICRO = dreamBoy({ form: MICRO, id: 'dba-micro', name: 'Dream Boy Micro', tagline: 'Tiny, rare, rechargeable.', cpu: 'U-DBA-CPU', liion: true, marketValue: 110, quoteBase: 40, minReputation: 8 });
 
 export const DB_CART = cartridge({
   id: 'db-cart',
