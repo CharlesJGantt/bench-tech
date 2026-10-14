@@ -12,7 +12,11 @@ import type { BoardState, Joint, PointRef } from '../sim/circuit';
 import { padNames } from '../sim/circuit';
 import { FOOTPRINTS, padsOf } from '../sim/footprints';
 import { part, pinsOf, type PartSpec } from '../sim/parts';
-import { FLUX_GRADES, USAGE, WICKS, type FluxGrade, type WickDef } from '../business/economy';
+import { FLUX_GRADES, UNKNOWN_FLUX, USAGE, WICKS, type FluxGrade, type Liquid, type WickDef } from '../business/economy';
+
+import { CLEAN_CRUST, NO_WET_CRUST, crustAt, syncMark } from '../sim/corrosion';
+
+const LIQUID_NAME: Record<Liquid, string> = { ipa: 'IPA', 'flux-cleaner': 'flux remover', 'corrosion-cleaner': 'corrosion cleaner' };
 
 export type ReworkTool = 'iron' | 'wick' | 'flux' | 'tweezers' | 'hotair' | 'ipa' | 'brush' | 'wipe';
 export type FluxSupply = keyof typeof FLUX_GRADES;
@@ -40,13 +44,19 @@ export interface PadState {
   /** Sticky flux on the pad, 0..1. */
   flux: number;
   /** Grade of the flux last applied here. */
-  fluxGrade: FluxSupply;
-  /** IPA wetness, 0..1 (evaporates). */
+  fluxGrade: FluxSupply | 'flux-unknown';
+  /** Cleaning-liquid wetness, 0..1 (evaporates). */
   ipa: number;
+  /** Which liquid the pad is wet with. */
+  solvent: Liquid;
   /** Flux dissolved/loosened in the IPA, ready to be wiped up. */
   dissolved: number;
   /** White residue left when dissolved flux dries without being wiped. */
   white: number;
+  /** Corrosion crust on the pad, 0..1 (solder will not wet it). */
+  crust: number;
+  /** Crust fizzed loose by corrosion cleaner: scrub, rinse with IPA and wipe it off before it dries. */
+  sludge: number;
   lifted: boolean;
   /** Accumulated heat damage; ≥ 1 lifts the pad. */
   damage: number;
@@ -86,6 +96,8 @@ export interface Kit {
   wick: WickDef;
   flux: FluxSupply;
   solder: 'solder' | 'lowmelt';
+  /** Liquid the IPA tool applies. */
+  liquid: Liquid;
   /** Current brush wear, 0 (new) .. 1 (worn out). */
   brushWear: number;
   /** How full of solder the end of the wick braid is, 0 (fresh copper) .. 1 (silver, saturated). */
@@ -98,6 +110,7 @@ export const DEFAULT_KIT: Kit = {
   wick: WICKS['wick-2'],
   flux: 'flux-noclean',
   solder: 'solder',
+  liquid: 'ipa',
   brushWear: 0,
   wickLoad: 0,
 };
@@ -129,6 +142,8 @@ export interface ReworkState {
   used: Record<string, number> & { heatSeconds: number };
   /** Dissolved flux soaked into the current wipe. */
   wipeLoad: number;
+  /** Corrosion cleaner fizzing on crust (0..1, for the view). */
+  fizz: number;
   messages: string[];
   time: number;
 }
@@ -194,11 +209,15 @@ export function initRework(b: BoardState, ref: string, supplies: Supplies = {}, 
       solder: has ? (j?.r === Infinity && j.cracked ? 0.8 : 1) : 0.35,
       lowmelt: 0,
       dirty: true,
-      flux: c.marks.includes('rework-residue') ? 0.15 : 0,
-      fluxGrade: 'flux-rosin',
+      // Someone else's leftover flux: thicker, and of unknown (stubborn) type.
+      flux: c.marks.includes('rework-residue') ? 0.35 : 0,
+      fluxGrade: c.marks.includes('rework-residue') ? 'flux-unknown' : 'flux-rosin',
       ipa: 0,
+      solvent: 'ipa',
       dissolved: 0,
       white: 0,
+      crust: crustAt(c, pin),
+      sludge: 0,
       lifted: lifted.has(`${ref}.${pin}`),
       damage: 0,
       molten: 0,
@@ -233,6 +252,7 @@ export function initRework(b: BoardState, ref: string, supplies: Supplies = {}, 
     supplies: { ...supplies },
     used: { heatSeconds: 0 },
     wipeLoad: 0,
+    fizz: 0,
     messages: [],
     time: 0,
   };
@@ -390,6 +410,7 @@ export function cutWick(st: ReworkState): boolean {
 /** Advance the simulation by dt seconds with the current input. */
 export function step(st: ReworkState, dt: number, input: ReworkInput): void {
   st.time += dt;
+  st.fizz = Math.max(0, st.fizz - dt * 2);
   const kit = st.kit;
   const pos = input.pos;
   const active = !!(input.down && pos);
@@ -411,7 +432,7 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
   if (active) {
     const need: Partial<Record<ReworkTool, [string, number, string]>> = {
       flux: [kit.flux, USAGE.fluxPerSec * dt, 'that flux'],
-      ipa: ['ipa', USAGE.ipaPerSec * dt, 'IPA'],
+      ipa: [kit.liquid, USAGE.ipaPerSec * dt, LIQUID_NAME[kit.liquid]],
     };
     const n = need[input.tool];
     if (n) {
@@ -434,7 +455,11 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
       p.temp += (AMBIENT - p.temp) * (1 - Math.exp(-dt * 0.6));
       return;
     }
-    const grade: FluxGrade = FLUX_GRADES[p.fluxGrade];
+    const grade: FluxGrade = p.fluxGrade === 'flux-unknown' ? UNKNOWN_FLUX : FLUX_GRADES[p.fluxGrade];
+    // How well the liquid on this pad dissolves its flux: flux remover is stronger, and the
+    // only thing that really shifts unknown baked-on flux; corrosion cleaner is a poor solvent.
+    const solvency =
+      p.solvent === 'flux-cleaner' ? (p.fluxGrade === 'flux-unknown' ? 5 : 1.5) : p.solvent === 'corrosion-cleaner' ? 0.6 : 1;
     // Heat-transfer efficiency: flux and a bit of solder make a good thermal bridge; ground pads sink heat.
     const contact = (0.45 + 0.35 * p.flux * grade.wet + 0.4 * Math.min(1, p.solder + (legs.has(i) ? 0.2 : 0))) * (p.gnd ? 0.45 : 1);
     let heat = 0;
@@ -465,31 +490,56 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
     const near = (r: number) => active && Math.hypot(pos!.x - p.x, pos!.y - p.y) < r + Math.max(p.w, p.h) / 2;
     if (near(1.5) && tool === 'ipa') {
       p.ipa = Math.min(1, p.ipa + 2 * dt);
-      // IPA alone slowly softens flux and re-dissolves dried residue
-      const soak = Math.min(p.flux, dt * 0.15 * grade.clean);
+      p.solvent = kit.liquid;
+      // The liquid alone slowly softens flux and re-dissolves dried residue
+      const soak = Math.min(p.flux, dt * 0.15 * grade.clean * solvency);
       p.flux -= soak;
       p.dissolved += soak;
       const redissolve = Math.min(p.white, dt * 0.5);
       p.white -= redissolve;
       p.dissolved += redissolve;
+      // Corrosion cleaner fizzes crust into a sludge; other liquids barely touch it.
+      if (p.crust > 0) {
+        const eat = Math.min(p.crust, dt * (kit.liquid === 'corrosion-cleaner' ? 0.35 : 0.01));
+        p.crust -= eat;
+        p.sludge += eat;
+        if (kit.liquid === 'corrosion-cleaner') st.fizz = 1;
+      }
     }
     if (near(1.2) && tool === 'brush') {
       if (p.ipa > 0.1) {
         const eff = 1 - 0.7 * Math.min(1, kit.brushWear);
-        const loosened = Math.min(p.flux, move * 0.04 * grade.clean * eff);
+        const loosened = Math.min(p.flux, move * 0.04 * grade.clean * eff * solvency);
         p.flux -= loosened;
         p.dissolved += loosened;
+        // Scrubbing breaks up crust the cleaner has started on
+        if (p.crust > 0 && p.solvent === 'corrosion-cleaner') {
+          const broke = Math.min(p.crust, move * 0.06 * eff);
+          p.crust -= broke;
+          p.sludge += broke;
+        }
       } else if (move > 0 && p.flux > 0.05) say(st, 'Scrubbing dry just smears the flux around — apply IPA first.');
     }
     if (near(2) && tool === 'wipe' && move > 0) {
       const lifted = Math.min(p.dissolved, move * 0.3 * (p.ipa > 0.05 ? 1 : 0.5));
       p.dissolved -= lifted;
       st.wipeLoad += lifted;
+      // Sludge comes away cleanly once it is rinsed in IPA; wiping it in the cleaner just smears it.
+      const rinsed = p.ipa > 0.05 && p.solvent !== 'corrosion-cleaner';
+      const gone = Math.min(p.sludge, move * 0.3 * (rinsed ? 1 : 0.25));
+      p.sludge -= gone;
+      st.wipeLoad += gone;
+      if (p.sludge > 0.05 && !rinsed) say(st, 'The sludge just smears around — rinse it with IPA, then wipe.');
       p.ipa = Math.max(0, p.ipa - move * 0.25);
       if (p.flux > 0.1 && p.dissolved < 0.02 && p.ipa < 0.05) say(st, 'The wipe just drags sticky flux around — dissolve it with IPA and the brush first.');
     }
     if (p.ipa > 0) {
       p.ipa = Math.max(0, p.ipa - dt * (0.1 + Math.max(0, p.temp - 30) * 0.004));
+      if (p.ipa === 0 && p.sludge > 0.02) {
+        p.crust = Math.min(1, p.crust + p.sludge * 0.8);
+        p.sludge = 0;
+        say(st, 'The sludge dried before you wiped it — it is crust again. Cleaner, scrub, IPA, wipe.');
+      }
       if (p.ipa === 0 && p.dissolved > 0.03) {
         p.white += p.dissolved * grade.residue;
         p.dissolved = 0;
@@ -529,7 +579,9 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
       }
       // Fresh flux lets old solder flow and clean itself
       if (p.flux > 0.4 && p.molten > 0.6) p.dirty = false;
-      if (legs.has(i) && p.solder >= 0.25) {
+      if (legs.has(i) && p.solder >= 0.25 && p.crust > NO_WET_CRUST) {
+        if (share === 1 && tool === 'iron') say(st, 'The solder balls up and will not stick — the pad is crusted with corrosion. Clean it first.');
+      } else if (legs.has(i) && p.solder >= 0.25) {
         if (!p.wetted || p.meltTime === 0) {
           p.meltFlux = p.flux;
           p.meltDirty = p.dirty;
@@ -661,7 +713,7 @@ export function applyRework(b: BoardState, st: ReworkState): string {
       c.fault = null;
       c.reversed = false;
       c.burnt = false;
-      c.marks = c.marks.filter((m) => !['crooked', 'loose', 'bent-pin', 'bulged', 'discolored', 'corrosion'].includes(m));
+      c.marks = c.marks.filter((m) => !['crooked', 'loose', 'bent-pin', 'bulged', 'discolored'].includes(m));
       notes.push(`${st.ref} removed`);
     }
     for (const pin of Object.keys(c.joints)) c.joints[pin] = { r: 0 };
@@ -672,7 +724,7 @@ export function applyRework(b: BoardState, st: ReworkState): string {
       c.fault = null;
       c.burnt = false;
       c.replaced = true;
-      c.marks = c.marks.filter((m) => !['crooked', 'loose', 'bent-pin', 'bulged', 'discolored', 'corrosion'].includes(m));
+      c.marks = c.marks.filter((m) => !['crooked', 'loose', 'bent-pin', 'bulged', 'discolored'].includes(m));
       notes.push(`fitted ${st.part.spec.label}${st.part.reversed ? ' (turned round)' : ''}`);
     }
     if (st.part.melted) {
@@ -710,6 +762,15 @@ export function applyRework(b: BoardState, st: ReworkState): string {
     const z: PointRef = { ref: st.ref, pin: names[j] };
     b.jumpers.push({ id: b.nextJumperId++, a, b: z, cold: false, bridge: true });
     notes.push(`solder bridge ${names[i]}–${names[j]}`);
+  }
+
+  // Crust (and any sludge left to dry) goes back onto the board.
+  if (c.corr || st.pads.some((p) => p.crust + p.sludge > 0)) {
+    c.corr ??= { color: 'green', pins: {} };
+    for (const p of st.pads) c.corr.pins[p.pin] = Math.min(1, p.crust + p.sludge * 0.8);
+    syncMark(c);
+    const left = st.pads.filter((p) => p.crust + p.sludge > CLEAN_CRUST).length;
+    if (left) notes.push(`corrosion left on ${left} pad${left > 1 ? 's' : ''}`);
   }
 
   const residue = st.pads.some((p) => p.flux > 0.05 || p.dissolved > 0.05 || p.white > 0.05);

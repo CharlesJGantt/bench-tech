@@ -1,4 +1,5 @@
 import { FOOTPRINTS } from '../sim/footprints';
+import { crustSpeckles, hashStr } from '../sim/corrosion';
 import { PARTS, POLARIZED, type PartSpec } from '../sim/parts';
 import {
   cutWick,
@@ -28,7 +29,7 @@ const TOOLS: { id: ReworkTool; key: string; name: string; tip: string }[] = [
   { id: 'flux', key: '3', name: 'Flux', tip: 'Paint flux on the pads. Helps heat flow, cleans old solder, stops cold joints.' },
   { id: 'tweezers', key: '4', name: 'Tweezers', tip: 'Click a part to lift it (all joints must be molten). Click to place a held part. R rotates.' },
   { id: 'hotair', key: '5', name: 'Hot air', tip: 'Hold over the part to heat every joint at once. Slower, but even.' },
-  { id: 'ipa', key: '6', name: 'IPA', tip: 'Hold to apply isopropyl alcohol. It softens flux and evaporates in a few seconds.' },
+  { id: 'ipa', key: '6', name: 'Liquid', tip: 'Hold to apply the cleaning liquid chosen in the kit (IPA, flux remover or corrosion cleaner). It evaporates in a few seconds.' },
   { id: 'brush', key: '7', name: 'Brush', tip: 'Anti-static scrub brush: scrub back and forth on wet IPA to loosen the flux.' },
   { id: 'wipe', key: '8', name: 'Wipe', tip: 'Lint-free wipe: drag across to lift the dissolved flux before the IPA dries.' },
 ];
@@ -124,7 +125,7 @@ export class ReworkStation {
     });
     (this.host.querySelector('#rw-kit') as HTMLElement).addEventListener('change', (e) => {
       const sel = e.target as HTMLSelectElement;
-      this.chooseKit(sel.dataset.kit as 'tip' | 'nozzle' | 'wick' | 'flux' | 'solder', sel.value);
+      this.chooseKit(sel.dataset.kit as 'tip' | 'nozzle' | 'wick' | 'flux' | 'solder' | 'liquid', sel.value);
     });
     (this.host.querySelector('#rw-done') as HTMLElement).addEventListener('click', () => this.finish(true));
     (this.host.querySelector('#rw-cancel') as HTMLElement).addEventListener('click', () => {
@@ -194,10 +195,11 @@ export class ReworkStation {
       sel('wick', 'Wick', stocked(Object.keys(WICKS) as SupplyId[]), k.wick),
       sel('flux', 'Flux', stocked(Object.keys(FLUX_GRADES) as SupplyId[]), k.flux),
       sel('solder', 'Solder', stocked(['solder', 'lowmelt']), k.solder),
+      sel('liquid', 'Cleaning liquid', stocked(['ipa', 'flux-cleaner', 'corrosion-cleaner']), k.liquid ?? 'ipa'),
     ].join('');
   }
 
-  private chooseKit(key: 'tip' | 'nozzle' | 'wick' | 'flux' | 'solder', value: string): void {
+  private chooseKit(key: 'tip' | 'nozzle' | 'wick' | 'flux' | 'solder' | 'liquid', value: string): void {
     const shop = this.session.shop;
     // Each wick roll keeps its own (possibly silver) end.
     shop.wickLoad[this.st.kit.wick.supply] = this.st.kit.wickLoad;
@@ -376,6 +378,7 @@ export class ReworkStation {
     });
     if (st.part) this.drawPart(ctx, st.part, X, Y, S, 1);
 
+    const color = this.session.board.comps[st.ref].corr?.color ?? 'green';
     // Solder: copper → tinned → blob; dull when old/oxidised, bright when molten
     st.pads.forEach((p) => {
       const x0 = X(p.x - p.w / 2);
@@ -423,6 +426,24 @@ export class ReworkStation {
         ctx.fill();
         if (p.temp > 180 && Math.random() < dt * 25) this.bubbles.push({ x: p.x + (Math.random() - 0.5) * p.w, y: p.y + (Math.random() - 0.5) * p.h, t: 0 });
       }
+      // Corrosion crust: mottled speckles (same pattern as on the board); sludge is a wet grey-green smear
+      if (p.crust > 0.02) {
+        for (const sp of crustSpeckles(hashStr(`${st.ref}.${p.pin}`), p.crust, Math.max(p.w, p.h) / 2, color)) {
+          // Finer, denser grain under magnification
+          ctx.fillStyle = `rgba(${sp.rgb[0]},${sp.rgb[1]},${sp.rgb[2]},${Math.min(0.95, sp.a + 0.2)})`;
+          ctx.beginPath();
+          ctx.arc(X(p.x + sp.x), Y(p.y + sp.y), sp.r * S * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (st.fizz > 0 && p.ipa > 0.1 && Math.random() < dt * 40)
+          this.bubbles.push({ x: p.x + (Math.random() - 0.5) * (p.w + 1.5), y: p.y + (Math.random() - 0.5) * (p.h + 1.5), t: 0 });
+      }
+      if (p.sludge > 0.02) {
+        ctx.fillStyle = `rgba(118,130,96,${Math.min(0.7, 0.2 + p.sludge * 0.8)})`;
+        ctx.beginPath();
+        ctx.ellipse(X(p.x), Y(p.y), (p.w / 2 + 0.9) * S, (p.h / 2 + 0.9) * S, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       // Dried white residue
       if (p.white > 0.02) {
         ctx.fillStyle = `rgba(235,235,225,${Math.min(0.75, 0.2 + p.white * 0.6)})`;
@@ -435,7 +456,8 @@ export class ReworkStation {
       }
       // Wet IPA sheen, cloudy where flux is dissolved in it
       if (p.ipa > 0.02) {
-        ctx.fillStyle = p.dissolved > 0.05 ? `rgba(225,200,150,${0.15 + p.ipa * 0.3})` : `rgba(200,225,255,${p.ipa * 0.35})`;
+        const tint = p.solvent === 'corrosion-cleaner' ? '235,200,215' : p.solvent === 'flux-cleaner' ? '230,235,200' : '200,225,255';
+        ctx.fillStyle = p.dissolved > 0.05 ? `rgba(225,200,150,${0.15 + p.ipa * 0.3})` : `rgba(${tint},${p.ipa * 0.35})`;
         ctx.beginPath();
         ctx.ellipse(X(p.x), Y(p.y), (p.w / 2 + 1) * S, (p.h / 2 + 1) * S, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -710,6 +732,15 @@ export class ReworkStation {
     const pads = st.pads.filter((p) => !p.lifted);
     if (st.pads.some((p) => p.lifted)) return 'A pad has lifted. Finish up — you will need a jumper wire from that leg to its connection.';
     if (st.bridges.length) return 'Solder bridge! Flux it, then wick the excess away.';
+    const liquid = st.kit.liquid;
+    if (pads.some((p) => p.sludge > 0.05))
+      return liquid === 'corrosion-cleaner'
+        ? 'The crust is fizzing into sludge. Scrub it with the brush (7), then switch the kit liquid to IPA, rinse (6) and wipe (8) before it dries.'
+        : 'Rinse the sludge with IPA (6) and wipe it up (8) before it dries back into crust.';
+    if (pads.some((p) => p.crust > 0.05))
+      return liquid === 'corrosion-cleaner'
+        ? 'Corrosion crust on the pads — solder will not stick to it. Apply the corrosion cleaner (6) and let it fizz, then scrub (7).'
+        : 'Corrosion crust on the pads — solder will not stick to it. Pick <b>Corrosion cleaner</b> as the cleaning liquid in the kit, apply it (6), scrub (7), then rinse with IPA and wipe.';
     if (st.held) return st.part ? 'Put that part somewhere (Delete to bin it).' : `Click the footprint to place the part.${rotatable(st.held) && POLARIZED.includes(st.held.spec.kind) ? ' Match the band/stripe to the silkscreen mark (R rotates).' : ''}`;
     if (st.part?.original) {
       if (st.footprint.heatLimit && !st.pads.some((p) => p.lowmelt > 0.15))

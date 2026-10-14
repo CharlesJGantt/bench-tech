@@ -6,6 +6,7 @@
 import { createBoard, type BoardState, type CompFault, type Jumper, type Mark } from './circuit';
 import type { AppliedFault, Job } from './faults';
 import { part } from './parts';
+import { migrateCorrosion, type Corrosion } from './corrosion';
 import { DEVICES } from './devices';
 
 export { DEVICES };
@@ -23,6 +24,7 @@ export interface SavedBoard {
       marks: Mark[];
       replaced: boolean;
       unplugged?: boolean;
+      corr?: Corrosion;
     }
   >;
   traces: Record<string, { broken: boolean }>;
@@ -46,7 +48,7 @@ export function saveBoard(b: BoardState): SavedBoard {
     const joints: SavedBoard['comps'][string]['joints'] = {};
     for (const [pin, j] of Object.entries(c.joints)) joints[pin] = { ...j, r: encR(j.r) };
     const fault = c.fault?.type === 'short' ? { ...c.fault } : c.fault;
-    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged };
+    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}) };
   }
   return {
     deviceId: b.device.id,
@@ -75,6 +77,8 @@ export function loadBoard(s: SavedBoard): BoardState {
     comp.marks = [...c.marks];
     comp.replaced = c.replaced;
     comp.unplugged = c.unplugged;
+    if (c.corr) comp.corr = structuredClone(c.corr);
+    migrateCorrosion(comp);
   }
   b.traces = structuredClone(s.traces);
   b.liftedPads = [...s.liftedPads];

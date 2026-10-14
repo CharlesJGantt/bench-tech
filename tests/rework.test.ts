@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DL12 } from '../src/sim/devices';
 import { cloneBoard, createBoard, functionalTest, type BoardState } from '../src/sim/circuit';
-import { generateJob } from '../src/sim/faults';
+import { addMark, generateJob } from '../src/sim/faults';
 import { evaluate } from '../src/sim/repair';
 import { DEFAULT_KIT, applyRework, click, cutWick, initRework, jointResults, meltOf, pickFromTray, step, type ReworkState, type ReworkTool } from '../src/rework/model';
 import { WICKS } from '../src/business/economy';
@@ -284,5 +284,29 @@ describe('rework station', () => {
       cutWick(st);
     }
     expect(st.bridges).toEqual([]);
+  });
+
+  it('unknown flux left by a previous repairer barely shifts with IPA, but flux remover strips it', () => {
+    const left = (liquid: 'ipa' | 'flux-cleaner') => {
+      const b = createBoard(DL12);
+      addMark(b, 'R10', 'rework-residue');
+      const st = initRework(b, 'R10', { 'flux-cleaner': 100 }, { ...DEFAULT_KIT, liquid });
+      expect(st.pads[0].fluxGrade).toBe('flux-unknown');
+      hold(st, 'ipa', 0, 0, 1);
+      scrub(st, 'brush', 0, 0, 2);
+      return st.pads.reduce((s, p) => s + p.flux, 0);
+    };
+    const ipa = left('ipa');
+    const remover = left('flux-cleaner');
+    expect(ipa).toBeGreaterThan(0.4);
+    expect(remover).toBeLessThan(ipa * 0.4);
+  });
+
+  it('the liquid tool uses up the selected liquid, and stops when it runs out', () => {
+    const st = initRework(createBoard(DL12), 'R10', { 'flux-cleaner': 2, ipa: 100 }, { ...DEFAULT_KIT, liquid: 'flux-cleaner' });
+    hold(st, 'ipa', 0, 0, 2);
+    expect(st.used['flux-cleaner'] ?? 0).toBeGreaterThan(1.9);
+    expect(st.used.ipa ?? 0).toBe(0);
+    expect(st.pads[0].solvent).toBe('flux-cleaner');
   });
 });

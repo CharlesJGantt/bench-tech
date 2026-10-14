@@ -47,7 +47,8 @@ The current engine is fine for the ~40-part boards we have. It will not scale to
 
 Small systems that make *every* existing board better right away.
 
-### 1a. Corrosion as a physical layer
+### 1a. Corrosion as a physical layer — ✅ done (`src/sim/corrosion.ts`)
+- *As built:* crust is per pad (`CompState.corr`), dominant colour per spill, mottled with the other four. Series R above 0.25 crust, open at 0.95; leakage between neighbouring crusted pins; solder won't wet above 0.25; spreads +0.04/day and creeps onto pads within 5 mm while the job waits in the queue. Evaluation: crust > 0.2 is a comeback. New fault `input-corroded` (cleaning alone fixes it). Bench Liquid tool floods with the kit liquid (corrosion cleaner takes 70% per pass).
 - **Data:**
   - Per-pad and per-area `corrosion` (0–1) with a **type mix**: green (copper salts), yellow/white (electrolyte/sulfates), purple-blue (cobalt/oxide tint), black (burnt/sulfide).
   - Corrosion adds series resistance to joints and can **eat traces** (open) or **bridge pins** (leaky short, a few kΩ down to Ω).
@@ -56,7 +57,8 @@ Small systems that make *every* existing board better right away.
   - It gets duller as it's dissolved and leaves a grey **sludge** until scrubbed off.
 - **Spreading (progressive damage):** an un-cleaned liquid-damaged board gains corrosion each in-game day, so leaving a job to wait has a cost.
 
-### 1b. New consumables
+### 1b. New consumables — ✅ done
+- *As built:* the microscope Liquid tool (6) applies the kit's cleaning liquid. Unknown flux: IPA ×0.08 clean rate; flux remover ×5 on it (×1.5 on normal flux); corrosion cleaner is a poor flux solvent (×0.6).
 | Supply | Use | Rate | Price |
 |---|---|---|---|
 | **Corrosion cleaner** | Dissolves corrosion → sludge | Same as IPA | IPA × 1.4 |

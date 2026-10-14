@@ -2,6 +2,7 @@ import type { ComponentDef, DeviceDef } from './board';
 import * as E from './elements';
 import { part, pinsOf, type Kind, type PartSpec } from './parts';
 import { elementPower, solveDC, type Element } from './solver';
+import { corrosionLeakR, corrosionSeriesR, crustAt, type Corrosion } from './corrosion';
 
 // ---------------------------------------------------------------------------
 // Board state
@@ -63,6 +64,8 @@ export interface CompState {
   replaced: boolean;
   /** Plug-in module (battery, screen...) disconnected from its connector. */
   unplugged?: boolean;
+  /** Liquid-damage crust on the pads (see corrosion.ts). */
+  corr?: Corrosion;
 }
 
 export interface PointRef {
@@ -251,10 +254,12 @@ export function compile(b: BoardState, power: PowerConfig, meter?: { red: PointR
     if (n !== undefined) return n;
     const pad = getPad(c, pin);
     const j = c.joints[pin];
-    if (!c.part || !j || j.r === 0) n = pad;
+    // Crust on the pad adds to the joint's resistance (eaten through = open).
+    const r = (j?.r ?? 0) + corrosionSeriesR(crustAt(c, pin));
+    if (!c.part || r === 0) n = pad;
     else {
       n = count++;
-      if (Number.isFinite(j.r)) add(E.resistor(n, pad, j.r));
+      if (Number.isFinite(r)) add(E.resistor(n, pad, r));
     }
     leadNode.set(key, n);
     return n;
@@ -286,6 +291,16 @@ export function compile(b: BoardState, power: PowerConfig, meter?: { red: PointR
     if (c.def.mates) return c.part && !c.unplugged ? modulePin(c, p.pin) : getPad(c, p.pin);
     return c.part ? getLead(c, p.pin) : getPad(c, p.pin);
   };
+
+  // Corrosion leaks current between neighbouring crusted pins of a part.
+  for (const c of Object.values(b.comps)) {
+    if (!c.corr) continue;
+    const names = padNames(c);
+    for (let i = 0; i + 1 < names.length; i++) {
+      const leak = corrosionLeakR(crustAt(c, names[i]), crustAt(c, names[i + 1]));
+      if (leak && c.def.pins[names[i]] !== c.def.pins[names[i + 1]]) add(E.resistor(getPad(c, names[i]), getPad(c, names[i + 1]), leak));
+    }
+  }
 
   for (const t of b.device.traces) {
     netNode(t.a);

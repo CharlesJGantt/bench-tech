@@ -4,6 +4,7 @@
  * lets the owner keep using it (so damage propagates), and writes the ticket.
  */
 import type { DeviceDef } from './board';
+import { CORROSION_COLORS, corrode } from './corrosion';
 import { createBoard, functionalTest, type BoardState, type DamageEvent, type Mark } from './circuit';
 
 // ---------------------------------------------------------------------------
@@ -78,6 +79,12 @@ export const addMark = (b: BoardState, ref: string, m: Mark) => {
   const marks = b.comps[ref].marks;
   if (!marks.includes(m)) marks.push(m);
 };
+
+/** Liquid damage: crust on these parts' pads, in one dominant colour per spill. */
+export function liquidDamage(b: BoardState, rng: Rng, refs: string[], lo = 0.35, hi = 0.6): void {
+  const color = rng.pick(CORROSION_COLORS);
+  for (const ref of refs) corrode(b, ref, rng.range(lo, hi), color, () => rng.next());
+}
 
 const RED_HERRINGS: Mark[] = ['residue', 'crooked', 'discolored', 'scratch'];
 

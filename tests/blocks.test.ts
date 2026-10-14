@@ -53,7 +53,7 @@ describe('circuit blocks', () => {
 
   it('collects block variants with their refs resolved', () => {
     const d = tiny();
-    expect(d.variants.map((v) => v.id)).toEqual(['psu-conn-joint', 'fuse-blown', 'buck-dead', 'inductor-open', 'esr-out', 'ldo-dead']);
+    expect(d.variants.map((v) => v.id)).toEqual(['psu-conn-joint', 'fuse-blown', 'input-corroded', 'buck-dead', 'inductor-open', 'esr-out', 'ldo-dead']);
   });
 
   it('rejects unwired ports and duplicate refs', () => {

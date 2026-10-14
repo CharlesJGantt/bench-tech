@@ -9,7 +9,7 @@ import { device, place } from '../blocks/core';
 import { ldoRail } from '../blocks/power';
 import { liIonCharger, usbInput } from '../blocks/usb';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
-import { addMark, type Rng, type Variant } from '../faults';
+import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
 
 const VARIANTS: Variant[] = [
   {
@@ -33,13 +33,13 @@ const VARIANTS: Variant[] = [
     family: 'Liquid damage',
     tier: 1,
     weight: 0.8,
-    apply(b) {
+    apply(b, rng) {
       b.comps.J1.fault = { type: 'pins-open', pins: ['VBUS'] };
-      addMark(b, 'J1', 'corrosion');
+      liquidDamage(b, rng, ['J1']);
       return {
         summary: 'Liquid got into the USB-C port and corroded its VBUS contacts. Replace the port and clean up the board.',
         refs: ['J1'],
-        hint: 'Green crust around the port is a giveaway. Is 5 V getting past it?',
+        hint: 'Crusty green-white deposits around the port are a giveaway. Is 5 V getting past it?',
         flavor: 'My little brother spilled juice on it. Now it will not charge.',
       };
     },
@@ -115,10 +115,9 @@ const VARIANTS: Variant[] = [
     family: 'Liquid damage',
     tier: 2,
     weight: 0.8,
-    apply(b) {
+    apply(b, rng) {
       b.traces.T1.broken = true;
-      addMark(b, 'C6', 'corrosion');
-      addMark(b, 'R4', 'corrosion');
+      liquidDamage(b, rng, ['C6', 'R4']);
       return {
         summary: 'Corrosion near the screen connector ate through trace T1, cutting the backlight supply. Clean it and bridge it with a jumper wire.',
         refs: ['T1'],

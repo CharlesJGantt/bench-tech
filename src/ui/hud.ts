@@ -21,7 +21,7 @@ const TOOLS: { id: Tool; key: string; name: string; hint: string }[] = [
   { id: 'iron', key: '3', name: 'Soldering', hint: 'Click a part to reflow it, remove it or fit a new one.' },
   { id: 'jumper', key: '4', name: 'Jumper wire', hint: 'Click two pads to bridge them with a wire (for broken traces and lifted pads).' },
   { id: 'clip', key: '5', name: 'PSU probes', hint: 'Inject voltage straight from the bench supply: left-click places the RED probe, right-click the BLACK. Then set Power to "PSU probes". Tip: 1 V at 1–2 A into a shorted rail makes the shorted part warm up — find it by touch or with a thermal camera.' },
-  { id: 'ipa', key: '6', name: 'IPA', hint: 'Click the board to flood it with isopropyl alcohol: cleans flux, and dries fastest on hot parts.' },
+  { id: 'ipa', key: '6', name: 'Liquid', hint: 'Click the board to flood it with the cleaning liquid picked in the rework kit: IPA or flux remover clean flux; corrosion cleaner (rinsed with IPA) eats corrosion crust.' },
   { id: 'scope', key: '7', name: 'Scope', hint: 'Click a pad to see its signal on the oscilloscope (ground clip is on board ground).' },
 ];
 
@@ -35,6 +35,7 @@ const MARK_TEXT: Record<string, string> = {
   bulged: 'The top of the can is bulging.',
   loose: 'The connector wobbles when you push it.',
   'bent-pin': 'Looking into the socket, the centre pin looks bent and cracked.',
+  corrosion: 'Crusty corrosion (green, white, yellow and dark flecks) on its pads — liquid got in here. Solder will not stick to it: treat it with corrosion cleaner, scrub, rinse with IPA and wipe.',
 };
 
 /** `?debug` in the URL shows live net voltages on hover and the hidden fault on the ticket. */
@@ -285,8 +286,10 @@ export class Hud {
         }
         break;
       case 'ipa':
-        if (s.cleanWithIpa()) this.toast('Board flooded with IPA. Watch where it dries first if the board is powered.');
-        else this.toast('Not enough IPA left — order more from the office.', 'bad');
+        {
+          const r = s.cleanWithIpa();
+          this.toast(r.ok ? `${r.text} Watch where it dries first if the board is powered.` : r.text, r.ok ? undefined : 'bad');
+        }
         break;
       case 'inspect':
       case 'iron':

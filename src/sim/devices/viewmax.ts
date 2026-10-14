@@ -7,7 +7,7 @@ import { c } from '../board';
 import { device, place } from '../blocks/core';
 import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
-import { addMark, type Rng, type Variant } from '../faults';
+import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
 
 const VARIANTS: Variant[] = [
   {
@@ -115,14 +115,13 @@ const VARIANTS: Variant[] = [
     family: 'Liquid damage',
     tier: 2,
     weight: 0.7,
-    apply(b) {
+    apply(b, rng) {
       b.traces.T1.broken = true;
-      addMark(b, 'L2', 'corrosion');
-      addMark(b, 'C8', 'corrosion');
+      liquidDamage(b, rng, ['L2', 'C8']);
       return {
         summary: 'Liquid got onto the backlight section and corrosion ate through trace T1 (19 V to the boost converter). Clean it up and bridge it with a jumper wire.',
         refs: ['T1'],
-        hint: 'See the green crust? Clean it with IPA, then check that the 19 V reaches the boost converter.',
+        hint: 'See the crust? Treat it with corrosion cleaner, then check that the 19 V reaches the boost converter.',
         flavor: 'I knocked a drink over near it. Power light comes on but the screen is black.',
       };
     },

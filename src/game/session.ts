@@ -17,9 +17,10 @@ import {
 import { generateJob, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
+import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
-import { delivery, FLUX_GRADES, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
+import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
 import {
   completeCustomerJob,
   createShop,
@@ -636,6 +637,7 @@ export class Session {
       wick: WICKS[k.wick as keyof typeof WICKS] ?? WICKS['wick-2'],
       flux: (k.flux in FLUX_GRADES ? k.flux : 'flux-rosin') as Kit['flux'],
       solder: k.solder === 'lowmelt' ? 'lowmelt' : 'solder',
+      liquid: (LIQUIDS as readonly string[]).includes(k.liquid ?? '') ? (k.liquid as Kit['liquid']) : 'ipa',
       brushWear: this.shop.brushWear,
       wickLoad: this.shop.wickLoad[k.wick] ?? 0,
     };
@@ -695,16 +697,39 @@ export class Session {
     this.afterRepair(`Removed jumper ${id}`);
   }
 
-  /** Flood the whole board with IPA (cleans flux; dries fastest on hot parts). */
-  cleanWithIpa(): boolean {
-    if (this.shop.supplies.ipa < USAGE.ipaFlood) return false;
-    useSupply(this.shop, 'ipa', USAGE.ipaFlood);
+  /**
+   * Flood the whole board with the kit's cleaning liquid. IPA / flux remover clean flux;
+   * corrosion cleaner (then an IPA rinse) takes off most of the crust each pass.
+   */
+  cleanWithIpa(): { ok: boolean; text: string } {
+    const liquid = this.kit.liquid;
+    const sup = this.shop.supplies;
+    if (liquid === 'corrosion-cleaner') {
+      if (sup['corrosion-cleaner'] < USAGE.ipaFlood) return { ok: false, text: 'Not enough corrosion cleaner left — order more from the office.' };
+      if (sup.ipa < USAGE.ipaFlood) return { ok: false, text: 'You need IPA to rinse the cleaner off afterwards — order more from the office.' };
+      useSupply(this.shop, 'corrosion-cleaner', USAGE.ipaFlood);
+      useSupply(this.shop, 'ipa', USAGE.ipaFlood);
+      this.shop.brushWear = Math.min(1, this.shop.brushWear + 0.05);
+      const refs = treatCorrosion(this.board, 0.7);
+      for (const ref of Object.keys(this.board.comps)) this.wet[ref] = 1;
+      const left = corrodedRefs(this.board);
+      const text = !refs.length
+        ? 'Flooded the board with corrosion cleaner — it did not fizz anywhere: there is no corrosion.'
+        : `Cleaner fizzed on ${refs.join(', ')}; scrubbed and rinsed with IPA.${left.length ? ` Still some crust on ${left.join(', ')} — another pass, or finish it under the microscope.` : ' The pads look clean.'}`;
+      this.addLog('action', text);
+      this.save();
+      this.emit();
+      return { ok: true, text };
+    }
+    if (sup[liquid] < USAGE.ipaFlood) return { ok: false, text: `Not enough ${liquid === 'ipa' ? 'IPA' : 'flux remover'} left — order more from the office.` };
+    useSupply(this.shop, liquid, USAGE.ipaFlood);
     cleanBoard(this.board);
     for (const ref of Object.keys(this.board.comps)) this.wet[ref] = 1;
-    this.addLog('action', 'Flooded the board with IPA and scrubbed off the flux.');
+    const text = liquid === 'ipa' ? 'Flooded the board with IPA and scrubbed off the flux.' : 'Flooded the board with flux remover — even the old baked-on flux came off.';
+    this.addLog('action', text);
     this.save();
     this.emit();
-    return true;
+    return { ok: true, text };
   }
 }
 

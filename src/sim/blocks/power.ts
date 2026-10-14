@@ -2,7 +2,7 @@
  * Power blocks: the input stage, buck and LDO rails that most boards share.
  * Each brings its parts, test points, net descriptions and fault variants.
  */
-import { addMark } from '../faults';
+import { addMark, liquidDamage } from '../faults';
 import { part } from '../parts';
 import type { BlockDef } from './core';
 
@@ -95,6 +95,23 @@ export function powerInput(o: InputOpts): BlockDef {
             summary: `Main fuse ${r} blew from a one-off surge.`,
             refs: [r],
             hint: `Nothing at all. Follow the ${v} in from the connector: check the fuse ${r} with continuity mode.`,
+          };
+        },
+      },
+      {
+        id: 'input-corroded',
+        family: 'Liquid damage',
+        tier: 1,
+        weight: 0.7,
+        apply(b, rng, ref) {
+          const r = ref('conn');
+          liquidDamage(b, rng, [r, ref('fuse')], 0.3, 0.5);
+          b.comps[r].corr!.pins[plus] = 0.97;
+          return {
+            summary: `A spill left corrosion on the input connector ${r}; the crust has eaten right through its ${v} joint. No part is bad: treat it with corrosion cleaner, scrub, rinse with IPA and wipe.`,
+            refs: [r],
+            hint: `Dead. Look closely at the connector ${r} — is that crust on its pins? Does the ${v} get from the pin onto the board?`,
+            flavor: 'It was on the floor when the washing machine leaked. Dried it out for a week, still dead.',
           };
         },
       },

@@ -10,6 +10,7 @@ import { generateJob, Rng, type Job, type Tier } from '../sim/faults';
 import { part, PARTS } from '../sim/parts';
 import { loadJob, saveJob, type SavedJob } from '../sim/persist';
 import { removePart } from '../sim/repair';
+import { spreadCorrosion } from '../sim/corrosion';
 import {
   ADS,
   delivery,
@@ -135,7 +136,7 @@ export interface ShopState {
   /** Day each device was last searched for online (one search per device per day). */
   searched: Record<string, number>;
   /** Last kit chosen at the rework station. */
-  kit: { tip: string; nozzle: string; wick: string; flux: string; solder: string };
+  kit: { tip: string; nozzle: string; wick: string; flux: string; solder: string; liquid?: string };
   stock: Record<string, StockLevel>;
   orders: Order[];
   ledger: LedgerEntry[];
@@ -702,6 +703,14 @@ export function endDay(st: ShopState): DayReport {
     report.refunds.push(`${f.text} — refunded $${f.amount.toFixed(2)}`);
   }
   st.refundsPending = st.refundsPending.filter((x) => x.day > st.day);
+
+  // Corrosion keeps eating boards that sit waiting
+  for (const q of st.queue) {
+    if (!q.job.board.comps || !Object.values(q.job.board.comps).some((c) => c.corr || c.marks.includes('corrosion'))) continue;
+    const job = loadJob(q.job);
+    spreadCorrosion(job.board);
+    q.job = saveJob(job);
+  }
 
   // Customers who waited too long walk out
   const before2 = st.queue.length;

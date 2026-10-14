@@ -2,6 +2,7 @@ import type { DeviceDef } from '../sim/board';
 import type { BoardState } from '../sim/circuit';
 import { bodyRect, padsOf, type PadWorld } from '../sim/footprints';
 import { part } from '../sim/parts';
+import { CORROSION_RGB, crustSpeckles, hashStr } from '../sim/corrosion';
 import { cachedRoute, routeKey } from './routeCache';
 import { routeBoard, type Segment, type TraceGeom } from './router';
 
@@ -436,6 +437,23 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
           break;
         default:
           break;
+      }
+    }
+    // Liquid-damage crust: a haze plus mottled speckles around each crusted pad
+    if (c.corr) {
+      for (const [pin, v] of Object.entries(c.corr.pins)) {
+        if (v < 0.03) continue;
+        const pad = pads.find((p) => p.ref === c.ref && p.pin === pin);
+        if (!pad) continue;
+        const [r0, g0, b0] = CORROSION_RGB[c.corr.color];
+        const pr = Math.max(pad.w, pad.h) / 2;
+        blob(ctx, pad.x * PX, pad.y * PX, (pr + 0.5 + v * 1.6) * PX, `rgba(${r0},${g0},${b0},${0.25 + 0.35 * v})`, `rgba(${r0},${g0},${b0},0)`);
+        for (const sp of crustSpeckles(hashStr(`${c.ref}.${pin}`), v, pr, c.corr.color)) {
+          ctx.fillStyle = `rgba(${sp.rgb[0]},${sp.rgb[1]},${sp.rgb[2]},${sp.a})`;
+          ctx.beginPath();
+          ctx.arc((pad.x + sp.x) * PX, (pad.y + sp.y) * PX, sp.r * PX, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     for (const [pin, j] of Object.entries(c.joints)) {

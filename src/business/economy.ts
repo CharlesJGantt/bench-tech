@@ -10,6 +10,8 @@ export type SupplyId =
   | 'wick-2'
   | 'wick-3'
   | 'ipa'
+  | 'flux-cleaner'
+  | 'corrosion-cleaner'
   | 'wipes'
   | 'brushes';
 
@@ -59,6 +61,24 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
   'wick-2': { id: 'wick-2', name: 'Desoldering wick 2.0 mm', unit: 'cm', pack: { qty: 150, cost: 6, label: '1.5 m roll' }, start: 120, low: 25, blurb: 'The all-rounder.' },
   'wick-3': { id: 'wick-3', name: 'Desoldering wick 3.0 mm', unit: 'cm', pack: { qty: 150, cost: 8, label: '1.5 m roll' }, start: 0, low: 0, blurb: 'Wide: clears big pads and connector rows fast, but soaks up heat and covers neighbours.' },
   ipa: { id: 'ipa', name: 'Isopropyl alcohol 99%', unit: 'ml', pack: { qty: 500, cost: 9, label: '500 ml bottle' }, start: 300, low: 60, blurb: 'Dissolves flux. Evaporates quickly.' },
+  'flux-cleaner': {
+    id: 'flux-cleaner',
+    name: 'Flux remover',
+    unit: 'ml',
+    pack: { qty: 250, cost: 7.2, label: '250 ml can' },
+    start: 0,
+    low: 0,
+    blurb: 'Dissolves flux about 1.5× faster than IPA, and strips the baked-on "unknown" flux other repairers leave behind, which IPA barely touches.',
+  },
+  'corrosion-cleaner': {
+    id: 'corrosion-cleaner',
+    name: 'Corrosion cleaner',
+    unit: 'ml',
+    pack: { qty: 250, cost: 6.3, label: '250 ml bottle' },
+    start: 0,
+    low: 0,
+    blurb: 'Fizzes the green/white crust of liquid damage into a sludge. Scrub it with the brush, then rinse with IPA and wipe it away — leftover sludge dries back into crust.',
+  },
   wipes: { id: 'wipes', name: 'Lint-free wipes', unit: 'wipes', pack: { qty: 50, cost: 4, label: 'pack of 50' }, start: 20, low: 5, blurb: 'Each wipe soaks up a little dissolved flux before it is spent.' },
   brushes: { id: 'brushes', name: 'Anti-static scrub brushes', unit: 'brushes', pack: { qty: 3, cost: 5, label: 'pack of 3' }, start: 1, low: 1, blurb: 'Stiff ESD-safe bristles. They splay and wear out with scrubbing.' },
 };
@@ -96,6 +116,13 @@ export interface FluxGrade {
   /** How fast it burns off. */
   burn: number;
 }
+
+/** Baked-on flux of unknown origin left by a previous repairer: IPA barely shifts it. */
+export const UNKNOWN_FLUX: FluxGrade = { wet: 0.7, clean: 0.08, residue: 1.4, burn: 1 };
+
+/** Cleaning liquids the IPA tool can apply (selected in the kit). */
+export const LIQUIDS = ['ipa', 'flux-cleaner', 'corrosion-cleaner'] as const;
+export type Liquid = (typeof LIQUIDS)[number];
 
 export const FLUX_GRADES: Record<'flux-rosin' | 'flux-noclean' | 'flux-premium', FluxGrade> = {
   'flux-rosin': { wet: 0.8, clean: 0.45, residue: 1.6, burn: 1.3 },

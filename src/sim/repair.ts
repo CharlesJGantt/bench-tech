@@ -1,6 +1,7 @@
 import { cloneBoard, functionalTest, padNames, type BoardState, type FunctionalReport, type Mark, type PointRef } from './circuit';
 import type { Job } from './faults';
 import { PIN_NAMES, part } from './parts';
+import { CLEAN_CRUST, corrodedRefs } from './corrosion';
 
 /** Outcome of a soldering action, from the soldering minigame. */
 export type SolderQuality = 'good' | 'cold' | 'overheated';
@@ -130,6 +131,8 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
     if (j.bridge) hidden.push(`Solder bridge between ${j.a.ref}.${j.a.pin} and ${j.b.ref}.${j.b.pin}.`);
     else if (j.cold) hidden.push(`Jumper wire ${j.id} has cold joints.`);
   }
+  for (const ref of corrodedRefs(b, 0.2)) hidden.push(`Corrosion left on the pads of ${ref} — it keeps spreading and will come back.`);
+  for (const ref of corrodedRefs(b, CLEAN_CRUST)) if (!corrodedRefs(b, 0.2).includes(ref)) notes.push(`Traces of corrosion left around ${ref}.`);
   for (const ref of Object.keys(b.comps)) if (b.comps[ref].marks.includes('scorch') && b.comps[ref].burnt) hidden.push(`Scorched board around ${ref}.`);
 
   const uniqueNotes = [...new Set(notes)];
