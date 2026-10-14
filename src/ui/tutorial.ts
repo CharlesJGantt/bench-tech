@@ -236,7 +236,7 @@ export class Tutorial {
           s.setMeterMode('dcv');
           host.focusOn(25, 30, 95);
         },
-        done: (s) => s.powerMode !== 'off' && netOf(s, s.meter.red) === 'VIN_J' && (s.reading?.value ?? 0) > 9,
+        done: (s) => s.powerMode !== 'off' && netOf(s, s.meter.red) === 'IN_VIN' && (s.reading?.value ?? 0) > 9,
       },
       {
         id: 'tp2',

@@ -48,7 +48,7 @@ export interface BlockDef {
   ports: string[];
   parts: BlockPart[];
   /** Descriptions of local nets (ports and internals). */
-  nets: Record<string, { desc: string; expected?: number }>;
+  nets: Record<string, { desc: string; expected?: number; power?: boolean }>;
   testPoints?: { key: string; expected: string }[];
   rails?: { net: string; nominal: number; label: string }[];
   variants: BlockVariant[];
@@ -66,15 +66,23 @@ export interface PlacedBlock {
   wire: Record<string, string>;
   /** Optional fixed refs for some parts (key → ref), e.g. to keep refs stable in old saves. */
   refs?: Record<string, string>;
+  /** Optional absolute positions for some parts (key → [x, y, rot]), to keep an existing board's layout. */
+  layout?: Record<string, [number, number, ComponentDef['rot']?]>;
+  /** Include the block's fault variants (default), none, or all but these ids. */
+  faults?: boolean | { except: string[] };
+  /** Custom silkscreen outline for this block (default: the block's own rectangle and title). */
+  outline?: { name: string; x: number; y: number; w: number; h: number } | null;
 }
 
-export const place = (id: string, def: BlockDef, at: [number, number], wire: Record<string, string>, refs?: Record<string, string>): PlacedBlock => ({
-  id,
-  def,
-  at,
-  wire,
-  refs,
-});
+export const place = (
+  id: string,
+  def: BlockDef,
+  at: [number, number],
+  wire: Record<string, string>,
+  refs?: Record<string, string>,
+  extra: Pick<PlacedBlock, 'layout' | 'faults' | 'outline'> = {},
+): PlacedBlock => ({ id, def, at, wire, refs, ...extra });
+
 
 const PREFIX: Record<Kind, string> = {
   resistor: 'R',
@@ -168,31 +176,34 @@ export function device(spec: DeviceSpec): BuiltDevice {
       if (!r) throw new Error(`${spec.id}/${pb.id}: no part "${key}"`);
       return r;
     };
-    for (const bp of def.parts)
+    for (const bp of def.parts) {
+      const fixed = pb.layout?.[bp.key];
       components.push({
         ref: refs[bp.key],
         partNo: bp.partNo,
         block: def.title,
-        x: pb.at[0] + bp.at[0],
-        y: pb.at[1] + bp.at[1],
-        rot: bp.rot ?? 0,
+        x: fixed ? fixed[0] : pb.at[0] + bp.at[0],
+        y: fixed ? fixed[1] : pb.at[1] + bp.at[1],
+        rot: fixed ? (fixed[2] ?? 0) : (bp.rot ?? 0),
         pins: Object.fromEntries(Object.entries(bp.pins).map(([pin, local]) => [pin, netOf(local)])),
         role: bp.role,
         ...(bp.mates ? { mates: refOf(bp.mates) } : {}),
       });
-    outline.push({ name: def.title, x: pb.at[0], y: pb.at[1], w: def.size[0], h: def.size[1] });
+    }
+    if (pb.outline !== null) outline.push(pb.outline ?? { name: def.title, x: pb.at[0], y: pb.at[1], w: def.size[0], h: def.size[1] });
     for (const [local, info] of Object.entries(def.nets)) {
       const n = netOf(local);
       if (!(n in nets)) nets[n] = info;
     }
     for (const tp of def.testPoints ?? []) {
       const bp = def.parts.find((p) => p.key === tp.key)!;
-      testPoints.push({ ref: refOf(tp.key), net: netOf(Object.values(bp.pins)[0]), expected: tp.expected });
+      if (!testPoints.some((t) => t.ref === refOf(tp.key))) testPoints.push({ ref: refOf(tp.key), net: netOf(Object.values(bp.pins)[0]), expected: tp.expected });
     }
-    for (const r of def.rails ?? []) rails.push({ ...r, net: netOf(r.net) });
+    for (const r of def.rails ?? []) if (!rails.some((x) => x.net === netOf(r.net))) rails.push({ ...r, net: netOf(r.net) });
     for (const m of def.missable ?? []) missable.push(refOf(m));
     for (const [a, b2, k] of def.carbonise ?? []) carbonise.push([netOf(a), netOf(b2), refOf(k)]);
-    for (const v of def.variants)
+    const skip = pb.faults === false ? null : typeof pb.faults === 'object' ? new Set(pb.faults.except) : new Set<string>();
+    for (const v of skip ? def.variants.filter((x) => !skip.has(x.id)) : [])
       variants.push({
         id: placed.filter((x) => x.def === def || x.def.title === def.title).length > 1 ? `${pb.id}:${v.id}` : v.id,
         family: v.family,
@@ -201,8 +212,8 @@ export function device(spec: DeviceSpec): BuiltDevice {
         apply: (b, rng) => v.apply(b, rng, refOf, netOf),
       });
   }
-  // The device's own descriptions win over block defaults.
-  Object.assign(nets, spec.nets ?? {});
+  // The device's own descriptions win over block defaults (but keep the block's power flag).
+  for (const [n, info] of Object.entries(spec.nets ?? {})) nets[n] = { ...nets[n], ...info };
   variants.push(...(spec.variants ?? []));
 
   return {

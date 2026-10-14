@@ -2,7 +2,9 @@
  * Brightline DL-12 LED desk lamp main board. 12 V adapter in, 5 V buck, 3.3 V LDO,
  * a small MCU and a COB LED switched by a MOSFET.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { addMark, type Variant } from '../faults';
 import { part } from '../parts';
@@ -319,7 +321,7 @@ const VARIANTS: Variant[] = [
 ];
 
 
-export const DL12: DeviceDef = {
+export const DL12 = device({
   id: 'dl12',
   name: 'Brightline DL-12 LED Desk Lamp',
   category: 'Lighting',
@@ -327,44 +329,49 @@ export const DL12: DeviceDef = {
   width: 100,
   height: 64,
   blocks: [
-    { name: 'POWER INPUT / PROTECTION', x: 2, y: 12, w: 40, h: 30 },
-    { name: '5V BUCK', x: 42, y: 12, w: 30, h: 40 },
-    { name: '3V3 LDO', x: 66, y: 10, w: 22, h: 26 },
+    place(
+      'IN',
+      powerInput({ connector: 'barrel', volts: 12, fuse: 'F-1A', bulk: 'C-100U-25', source: 'the DC jack', tvs: 'D-TVS15', reverse: true }),
+      [2, 12],
+      { out: '12V_SYS' },
+      { conn: 'J1', tpIn: 'TP1', fuse: 'F1', tvs: 'D1', rpFet: 'Q1', rpRes: 'R1', rpZener: 'D2', bulk: 'C1', tpOut: 'TP2' },
+      {
+        faults: false,
+        outline: { name: 'POWER INPUT / PROTECTION', x: 2, y: 12, w: 40, h: 30 },
+        layout: { conn: [7, 28], tpIn: [16, 18], fuse: [19, 25], tvs: [24, 33, 270], rpFet: [29, 25], rpRes: [29, 33, 90], rpZener: [34, 31, 270], bulk: [37, 19], tpOut: [39, 28] },
+      },
+    ),
+    place(
+      '5V',
+      buckRail({ vout: 5, vin: 12, cin: 'C-10U-25', couts: 2, led: true }),
+      [42, 12],
+      { vin: '12V_BUCK', out: '5V' },
+      { cin: 'C2', reg: 'U1', boot: 'C5', enTop: 'R2', enBot: 'R3', ind: 'L1', fbTop: 'R4', fbBot: 'R5', cout: 'C3', cout2: 'C4', tp: 'TP3', ledRes: 'R8', led: 'D4' },
+      {
+        faults: false,
+        outline: { name: '5V BUCK', x: 42, y: 12, w: 30, h: 40 },
+        layout: {
+          cin: [46, 22, 90], reg: [52, 23], boot: [52, 17], enTop: [46, 31, 90], enBot: [46, 37, 90], ind: [59, 23],
+          fbTop: [53, 31, 90], fbBot: [53, 37, 90], cout: [65, 19, 90], cout2: [65, 27, 90], tp: [61, 33], ledRes: [60, 39], led: [60, 44],
+        },
+      },
+    ),
+    place(
+      '3V3',
+      ldoRail({ vin: 5, cin: 'C-1U' }),
+      [66, 10],
+      { vin: '5V_LDO', out: '3V3' },
+      { cin: 'C6', reg: 'U2', cout: 'C7', tp: 'TP4' },
+      { faults: false, outline: { name: '3V3 LDO', x: 66, y: 10, w: 22, h: 26 }, layout: { cin: [70, 15, 90], reg: [77, 19], cout: [84, 27, 90], tp: [78, 31] } },
+    ),
+  ],
+  outlines: [
     { name: 'MCU', x: 72, y: 36, w: 26, h: 26 },
     { name: 'LAMP DRIVER', x: 2, y: 42, w: 66, h: 20 },
   ],
-  components: [
-    // Power input / protection
-    c('J1', 'J-BARREL', 'POWER INPUT', 7, 28, 0, { TIP: 'VIN_J', SLEEVE: 'GND' }, '12 V DC input jack'),
-    c('TP1', 'TP', 'POWER INPUT', 16, 18, 0, { '1': 'VIN_J' }, 'Raw input'),
-    c('F1', 'F-1A', 'POWER INPUT', 19, 25, 0, { '1': 'VIN_J', '2': 'VIN_F' }, 'Input fuse'),
-    c('D1', 'D-TVS15', 'POWER INPUT', 24, 33, 270, { A: 'GND', K: 'VIN_F' }, 'Surge / over-voltage clamp'),
-    c('Q1', 'Q-PFET', 'POWER INPUT', 29, 25, 0, { D: 'VIN_F', S: '12V_SYS', G: 'Q1_G' }, 'Reverse-polarity protection'),
-    c('R1', 'R-100K', 'POWER INPUT', 29, 33, 90, { '1': 'Q1_G', '2': 'GND' }, 'Q1 gate pull-down'),
-    c('D2', 'D-Z10', 'POWER INPUT', 34, 31, 270, { A: 'Q1_G', K: '12V_SYS' }, 'Q1 gate-source clamp'),
-    c('C1', 'C-100U-25', 'POWER INPUT', 37, 19, 0, { '+': '12V_SYS', '-': 'GND' }, '12 V bulk capacitor'),
-    c('TP2', 'TP', 'POWER INPUT', 39, 28, 0, { '1': '12V_SYS' }, '12 V system rail'),
+  parts: [
 
-    // 5 V buck
-    c('C2', 'C-10U-25', '5V BUCK', 46, 22, 90, { '1': '12V_BUCK', '2': 'GND' }, 'Buck input capacitor'),
-    c('U1', 'U-VX2302', '5V BUCK', 52, 23, 0, { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN_BUCK', IN: '12V_BUCK', SW: 'SW' }, '5 V buck converter'),
-    c('C5', 'C-100N', '5V BUCK', 52, 17, 0, { '1': 'BST', '2': 'SW' }, 'Bootstrap capacitor'),
-    c('R2', 'R-100K', '5V BUCK', 46, 31, 90, { '1': '12V_BUCK', '2': 'EN_BUCK' }, 'Enable divider (top)'),
-    c('R3', 'R-47K', '5V BUCK', 46, 37, 90, { '1': 'EN_BUCK', '2': 'GND' }, 'Enable divider (bottom)'),
-    c('L1', 'L-10U', '5V BUCK', 59, 23, 0, { '1': 'SW', '2': '5V' }, 'Buck inductor'),
-    c('R4', 'R-52K3', '5V BUCK', 53, 31, 90, { '1': '5V', '2': 'FB' }, 'Feedback divider (top)'),
-    c('R5', 'R-10K', '5V BUCK', 53, 37, 90, { '1': 'FB', '2': 'GND' }, 'Feedback divider (bottom)'),
-    c('C3', 'C-22U-10', '5V BUCK', 65, 19, 90, { '1': '5V', '2': 'GND' }, '5 V output capacitor'),
-    c('C4', 'C-22U-10', '5V BUCK', 65, 27, 90, { '1': '5V', '2': 'GND' }, '5 V output capacitor'),
-    c('TP3', 'TP', '5V BUCK', 61, 33, 0, { '1': '5V' }, '5 V rail'),
-    c('R8', 'R-1K', '5V BUCK', 60, 39, 0, { '1': '5V', '2': 'PWR_LED' }, 'Power LED resistor'),
-    c('D4', 'LED-GRN', '5V BUCK', 60, 44, 0, { A: 'PWR_LED', K: 'GND' }, 'Power indicator LED'),
 
-    // 3.3 V LDO
-    c('C6', 'C-1U', '3V3 LDO', 70, 15, 90, { '1': '5V_LDO', '2': 'GND' }, 'LDO input capacitor'),
-    c('U2', 'U-HL33', '3V3 LDO', 77, 19, 0, { GND: 'GND', OUT: '3V3', IN: '5V_LDO', TAB: '3V3' }, '3.3 V regulator'),
-    c('C7', 'C-10U-6', '3V3 LDO', 84, 27, 90, { '1': '3V3', '2': 'GND' }, '3.3 V output capacitor'),
-    c('TP4', 'TP', '3V3 LDO', 78, 31, 0, { '1': '3V3' }, '3.3 V rail'),
 
     // MCU
     c('U3', 'U-PIC8', 'MCU', 85, 47, 0, { VDD: '3V3_MCU', STAT: 'STAT', LAMP: 'LAMP_IO', NRST: 'NRST', BTN: 'BTN', NC6: 'NC6', NC7: 'NC7', GND: 'GND' }, 'Lamp controller'),
@@ -391,7 +398,7 @@ export const DL12: DeviceDef = {
     { id: 'T4', a: '5V', b: '5V_LDO' },
   ],
   testPoints: [
-    { ref: 'TP1', net: 'VIN_J', expected: '12 V (input present)' },
+    { ref: 'TP1', net: 'IN_VIN', expected: '12 V (input present)' },
     { ref: 'TP2', net: '12V_SYS', expected: '≈12 V' },
     { ref: 'TP3', net: '5V', expected: '5.0 V' },
     { ref: 'TP4', net: '3V3', expected: '3.3 V' },
@@ -399,18 +406,18 @@ export const DL12: DeviceDef = {
   ],
   nets: {
     GND: { desc: 'Ground', expected: 0 },
-    VIN_J: { desc: 'Raw 12 V input straight from the DC jack', expected: 12 },
-    VIN_F: { desc: 'Input after the fuse', expected: 12 },
+    'IN_VIN': { desc: 'Raw 12 V input straight from the DC jack', expected: 12 },
+    'IN_VF': { desc: 'Input after the fuse', expected: 12 },
     '12V_SYS': { desc: '12 V system rail (after the protection MOSFET)', expected: 12 },
     '12V_BUCK': { desc: '12 V feed into the 5 V regulator U1', expected: 12 },
-    Q1_G: { desc: 'Gate of protection MOSFET Q1 (sits ~10 V below the rail when on)', expected: 2.2 },
-    EN_BUCK: { desc: 'Enable pin of U1 — must be above 1.2 V for U1 to run', expected: 3.9 },
-    SW: { desc: 'U1 switch node (a meter shows the average, about 5 V)', expected: 5 },
-    BST: { desc: 'U1 bootstrap pin' },
-    FB: { desc: 'U1 feedback — U1 regulates this to 0.8 V', expected: 0.8 },
+    'IN_G': { desc: 'Gate of protection MOSFET Q1 (sits ~10 V below the rail when on)', expected: 2.2 },
+    '5V_EN': { desc: 'Enable pin of U1 — must be above 1.2 V for U1 to run', expected: 3.9 },
+    '5V_SW': { desc: 'U1 switch node (a meter shows the average, about 5 V)', expected: 5 },
+    '5V_BST': { desc: 'U1 bootstrap pin' },
+    '5V_FB': { desc: 'U1 feedback — U1 regulates this to 0.8 V', expected: 0.8 },
     '5V': { desc: '5 V rail', expected: 5 },
     '5V_LDO': { desc: '5 V feed into the 3.3 V regulator U2', expected: 5 },
-    PWR_LED: { desc: 'Power LED D4 anode', expected: 2.1 },
+    '5V_LED': { desc: 'Power LED D4 anode', expected: 2.1 },
     '3V3': { desc: '3.3 V rail', expected: 3.3 },
     '3V3_MCU': { desc: '3.3 V supply at the microcontroller', expected: 3.3 },
     NRST: { desc: 'Microcontroller reset — must be high or the MCU stays asleep', expected: 3.3 },
@@ -469,12 +476,12 @@ export const DL12: DeviceDef = {
   carbonise: [
     ['12V_SYS', 'GND', 'C1'],
     ['5V', 'GND', 'L1'],
-    ['VIN_F', 'GND', 'D1'],
+    ['IN_VF', 'GND', 'D1'],
   ],
   marketValue: 92,
   quoteBase: 30,
   minReputation: 0,
-};
+});
 
 const lit = (op: OperatingPoint, ref: string, min: number) => op.current(ref) > min;
 

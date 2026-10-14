@@ -54,16 +54,24 @@ export interface BoardGeometry {
   failures: string[];
 }
 
-/** Trace width per net (mm): power nets are wide. */
-export const traceWidth = (net: string) => (POWER_NETS.has(net) ? 0.8 : 0.35);
+/** Nets routed wide: listed rails, nets marked `power`, and the legacy name list. */
+export function powerNets(device: DeviceDef): Set<string> {
+  return new Set([...POWER_NETS, ...device.rails.map((r) => r.net), ...Object.entries(device.nets).filter(([, i]) => i.power).map(([n]) => n)]);
+}
+
+/** Trace width per net (mm) for a device: power nets are wide. */
+export function traceWidthFor(device: DeviceDef): (net: string) => number {
+  const pn = powerNets(device);
+  return (net) => (pn.has(net) ? 0.8 : 0.35);
+}
 
 /** Copper for a device: from the pre-routed cache when it is current, else routed live. */
 export function buildGeometry(device: DeviceDef, opts: { live?: boolean } = {}): BoardGeometry {
   if (!opts.live) {
-    const hit = cachedRoute(device, routeKey(device, traceWidth));
+    const hit = cachedRoute(device, routeKey(device, traceWidthFor(device)));
     if (hit) return hit;
   }
-  return routeBoard(device, traceWidth);
+  return routeBoard(device, traceWidthFor(device));
 }
 
 // ---------------------------------------------------------------------------
@@ -287,7 +295,7 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
       ctx.fillText(def.ref, def.x * PX, (def.y - 2.3) * PX);
       if (tp) {
         ctx.font = `${1.05 * PX}px Arial, sans-serif`;
-        ctx.fillText(tp.net === 'VIN_J' ? 'VIN' : tp.net, def.x * PX, (def.y + 2.3) * PX);
+        ctx.fillText(tp.net === 'VIN_J' || tp.net.endsWith('_VIN') ? 'VIN' : tp.net, def.x * PX, (def.y + 2.3) * PX);
       }
       continue;
     }

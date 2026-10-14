@@ -105,7 +105,7 @@ export interface DeviceDef {
   /** Rails a tech would check, with nominal values. */
   rails: { net: string; nominal: number; label: string }[];
   /** Plain-language description of nets, with the voltage expected on a working board. */
-  nets: Record<string, { desc: string; expected?: number }>;
+  nets: Record<string, { desc: string; expected?: number; /** Carries real current: routed as a wide trace. */ power?: boolean }>;
 
   input: PowerInput;
   /** Test point the black probe clips to. */
