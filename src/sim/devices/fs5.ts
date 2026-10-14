@@ -5,7 +5,9 @@
  * polyfuse. A TV on the bench terminates the data lines and drives hot-plug detect.
  * Fictional product.
  */
-import { c, type DeviceDef } from '../board';
+import { c } from '../board';
+import { device, place } from '../blocks/core';
+import { buckRail, ldoRail, powerInput } from '../blocks/power';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { hpdSink, limitedSource, resistor } from '../elements';
 import { addMark, type Rng, type Variant } from '../faults';
@@ -107,31 +109,6 @@ const VARIANTS: Variant[] = [
     },
   },
   {
-    id: 'buck-dead',
-    family: 'Failed regulator',
-    tier: 2,
-    weight: 0.7,
-    apply(b) {
-      b.comps.U1.fault = { type: 'dead' };
-      return { summary: '5 V regulator U1 died: 12 V in, nothing out — the console cannot start.', refs: ['U1'], hint: '12 V is there but nothing else. What makes the 5 V?' };
-    },
-  },
-  {
-    id: 'psu-conn-joint',
-    family: 'Cracked solder joint',
-    tier: 1,
-    weight: 0.8,
-    apply(b) {
-      b.comps.J1.joints['12V'] = { r: Infinity, cracked: true };
-      return {
-        summary: 'The 12 V pin of the internal power connector J1 has a cracked joint. Reflow it.',
-        refs: ['J1'],
-        hint: 'Totally dead. Does the 12 V get from the connector pin onto the board? Flip it over and look at the joints.',
-        flavor: 'It just would not turn on one day.',
-      };
-    },
-  },
-  {
     id: 'prev-port-bridge',
     family: 'Bad previous repair',
     tier: 2,
@@ -146,22 +123,6 @@ const VARIANTS: Variant[] = [
         hint: 'Someone has been here before — inspect the HDMI pins under magnification, and check neighbouring pins for continuity.',
         flavor: 'A shop replaced the HDMI port last month. Still no picture.',
         previousRepair: true,
-      };
-    },
-  },
-  {
-    id: 'esr-5v',
-    family: 'Dried-out capacitor',
-    tier: 2,
-    weight: 0.8,
-    apply(b, rng) {
-      const ref = 'C3';
-      b.comps[ref].fault = { type: 'esr', esr: rng.range(4, 12) };
-      return {
-        summary: `${ref} on the 5 V rail dried out: its capacitance and resistance still look normal, but its ESR is very high, so the regulator went unstable and the 5 V rail sags. Replace ${ref}.`,
-        refs: [ref],
-        hint: 'The 5 V rail is low but nothing is shorted and the regulator is not hot. An ESR meter on the 5 V capacitors (or a scope on the rail — look for ripple) finds the culprit.',
-        flavor: 'It started crashing, now it will not turn on at all.',
       };
     },
   },
@@ -182,7 +143,7 @@ const VARIANTS: Variant[] = [
   },
 ];
 
-export const FS5: DeviceDef = {
+export const FS5 = device({
   id: 'fs5',
   name: 'Funstation 5 (main board, HDMI section)',
   category: 'Consoles',
@@ -190,30 +151,16 @@ export const FS5: DeviceDef = {
   width: 140,
   height: 86,
   blocks: [
-    { name: '12V IN / 5V BUCK', x: 2, y: 2, w: 56, h: 32 },
-    { name: '3V3', x: 58, y: 2, w: 18, h: 32 },
+    place('IN', powerInput({ connector: 'header', volts: 12, fuse: 'F-5A', bulk: 'C-470U-35', source: 'the internal PSU' }), [2, 2], { out: '12V' }, { conn: 'J1', fuse: 'F1', bulk: 'C1', tpIn: 'TP1', tpOut: 'TP2' }),
+    place('5V', buckRail({ vout: 5, vin: 12 }), [32, 2], { vin: '12V', out: '5V' }, { reg: 'U1', boot: 'C5', enTop: 'R2', enBot: 'R3', ind: 'L1', fbTop: 'R4', fbBot: 'R5', cout: 'C3', tp: 'TP3' }),
+    place('3V3', ldoRail({ vin: 5 }), [58, 2], { vin: '5V', out: '3V3' }, { reg: 'U2', cout: 'C4', tp: 'TP4' }),
+  ],
+  outlines: [
     { name: 'APU', x: 86, y: 2, w: 52, h: 40 },
     { name: 'RETIMER', x: 40, y: 44, w: 50, h: 40 },
     { name: 'HDMI PORT', x: 90, y: 44, w: 48, h: 40 },
   ],
-  components: [
-    c('J1', 'J-PWR2', 'INPUT', 9, 7, 0, { '12V': 'VIN_J', GND: 'GND' }, '12 V from the internal PSU'),
-    c('F1', 'F-5A', 'INPUT', 21, 7, 0, { '1': 'VIN_J', '2': '12V' }, 'Main fuse'),
-    c('C1', 'C-470U-35', 'INPUT', 26, 22, 0, { '+': '12V', '-': 'GND' }, '12 V bulk capacitor'),
-    c('TP1', 'TP', 'INPUT', 5, 22, 0, { '1': 'VIN_J' }, 'Raw input'),
-    c('TP2', 'TP', 'INPUT', 13, 29, 0, { '1': '12V' }, '12 V rail'),
-    c('U1', 'U-VX2302', 'BUCK', 41, 10, 0, { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN_B', IN: '12V', SW: 'SW' }, '5 V buck converter'),
-    c('C5', 'C-100N', 'BUCK', 41, 4, 0, { '1': 'BST', '2': 'SW' }, 'Bootstrap capacitor'),
-    c('R2', 'R-100K', 'BUCK', 35, 15, 90, { '1': '12V', '2': 'EN_B' }, 'Enable divider (top)'),
-    c('R3', 'R-47K', 'BUCK', 35, 22, 90, { '1': 'EN_B', '2': 'GND' }, 'Enable divider (bottom)'),
-    c('L1', 'L-10U', 'BUCK', 49, 10, 0, { '1': 'SW', '2': '5V' }, 'Buck inductor'),
-    c('R4', 'R-52K3', 'BUCK', 42, 19, 90, { '1': '5V', '2': 'FB' }, 'Feedback divider (top)'),
-    c('R5', 'R-10K', 'BUCK', 42, 26, 90, { '1': 'FB', '2': 'GND' }, 'Feedback divider (bottom)'),
-    c('C3', 'C-22U-10', 'BUCK', 55, 19, 90, { '1': '5V', '2': 'GND' }, '5 V capacitor'),
-    c('TP3', 'TP', 'BUCK', 49, 29, 0, { '1': '5V' }, '5 V rail'),
-    c('U2', 'U-HL33', '3V3', 66, 9, 0, { GND: 'GND', OUT: '3V3', IN: '5V', TAB: '3V3' }, '3.3 V regulator'),
-    c('C4', 'C-10U-6', '3V3', 71, 20, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
-    c('TP4', 'TP', '3V3', 64, 29, 0, { '1': '3V3' }, '3.3 V rail'),
+  parts: [
     c('U3', 'U-APU-F5', 'APU', 106, 18, 0, {
       VDD: '3V3', HPD: 'HPD_IN', RTEN: 'RT_EN_IO', VID: 'VID_IO', LED: 'LED_IO', BTN: 'BTN',
       NC7: 'U3_NC7', NC8: 'U3_NC8', NC9: 'U3_NC9', NC10: 'U3_NC10', NC11: 'U3_NC11', NC12: 'U3_NC12', NC13: 'U3_NC13', NC14: 'U3_NC14', NC15: 'U3_NC15',
@@ -243,30 +190,15 @@ export const FS5: DeviceDef = {
   ],
   traces: [{ id: 'T1', a: '5V', b: '5V_H' }],
   testPoints: [
-    { ref: 'TP1', net: 'VIN_J', expected: '12 V' },
-    { ref: 'TP2', net: '12V', expected: '≈12 V' },
-    { ref: 'TP3', net: '5V', expected: '5.0 V' },
-    { ref: 'TP4', net: '3V3', expected: '3.3 V' },
     { ref: 'TP6', net: 'HDMI_5V', expected: '≈4.6 V (to the TV)' },
     { ref: 'TP7', net: 'HPD_IN', expected: '≈3.3 V once the TV is detected' },
     { ref: 'TP5', net: 'GND', expected: '0 V' },
   ],
-  rails: [
-    { net: '12V', nominal: 12, label: '12V' },
-    { net: '5V', nominal: 5, label: '5V' },
-    { net: '3V3', nominal: 3.3, label: '3V3' },
-  ],
   nets: {
     GND: { desc: 'Ground', expected: 0 },
-    VIN_J: { desc: 'Raw 12 V from the internal PSU', expected: 12 },
-    '12V': { desc: '12 V main rail', expected: 12 },
-    EN_B: { desc: 'Enable of the 5 V regulator U1', expected: 3.8 },
-    FB: { desc: 'U1 feedback — regulated to 0.8 V', expected: 0.8 },
-    SW: { desc: '5 V buck switch node', expected: 5 },
-    BST: { desc: 'U1 bootstrap pin' },
-    '5V': { desc: '5 V rail', expected: 5 },
     '5V_H': { desc: '5 V feed towards the HDMI +5 V line', expected: 5 },
     '3V3': { desc: '3.3 V for the APU and retimer', expected: 3.3 },
+    '5V': { desc: '5 V rail (also feeds the HDMI +5 V line)', expected: 5 },
     BTN: { desc: 'Power button — high normally, low while pressed', expected: 3.3 },
     LED_IO: { desc: 'APU power-light output' },
     PWR_LED_A: { desc: 'Power light anode' },
@@ -331,15 +263,11 @@ export const FS5: DeviceDef = {
     ];
   },
   variants: VARIANTS,
-  missable: ['D1', 'D3', 'D4', 'D5', 'D6', 'C3', 'C4', 'C6', 'C7', 'R11', 'SW1'],
-  carbonise: [
-    ['12V', 'GND', 'C1'],
-    ['5V', 'GND', 'L1'],
-  ],
+  missable: ['D1', 'D3', 'D4', 'D5', 'D6', 'C6', 'C7', 'R11', 'SW1'],
   marketValue: 320,
   quoteBase: 60,
   minReputation: 15,
-};
+});
 
 /** What the TV shows: picture / no signal / not detected. */
 function tvState(b: BoardState, op: OperatingPoint): string {

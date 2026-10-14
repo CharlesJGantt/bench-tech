@@ -1,0 +1,208 @@
+/**
+ * Power blocks: the input stage, buck and LDO rails that most boards share.
+ * Each brings its parts, test points, net descriptions and fault variants.
+ */
+import { addMark } from '../faults';
+import type { BlockDef } from './core';
+
+// ---------------------------------------------------------------------------
+// Input: power header / DC jack → fuse → bulk capacitor
+// ---------------------------------------------------------------------------
+
+export interface InputOpts {
+  /** Connector: an internal 2-pin power header or a barrel jack. */
+  connector: 'header' | 'barrel';
+  /** Nominal input voltage, for descriptions. */
+  volts: number;
+  fuse: string;
+  bulk: string;
+  /** Where the power comes from, for hints ("the internal PSU"). */
+  source: string;
+}
+
+/** Ports: `out` (fused rail). Local nets: VIN (raw input). */
+export function powerInput(o: InputOpts): BlockDef {
+  const header = o.connector === 'header';
+  const plus = header ? '12V' : 'TIP';
+  const minus = header ? 'GND' : 'SLEEVE';
+  const v = `${o.volts} V`;
+  return {
+    title: `${v} INPUT`,
+    size: [30, 32],
+    ports: ['out'],
+    parts: [
+      { key: 'conn', partNo: header ? 'J-PWR2' : 'J-BARREL', at: [7, 5], pins: { [plus]: 'VIN', [minus]: 'GND' }, role: `${v} in from ${o.source}` },
+      { key: 'fuse', partNo: o.fuse, at: [19, 5], pins: { '1': 'VIN', '2': 'out' }, role: 'Main fuse' },
+      { key: 'bulk', partNo: o.bulk, at: [24, 20], pins: { '+': 'out', '-': 'GND' }, role: `${v} bulk capacitor` },
+      { key: 'tpIn', partNo: 'TP', at: [3, 20], pins: { '1': 'VIN' }, role: 'Raw input' },
+      { key: 'tpOut', partNo: 'TP', at: [11, 27], pins: { '1': 'out' }, role: `${v} rail` },
+    ],
+    nets: {
+      VIN: { desc: `Raw ${v} from ${o.source}`, expected: o.volts },
+      out: { desc: `${v} main rail (after the fuse)`, expected: o.volts },
+    },
+    testPoints: [
+      { key: 'tpIn', expected: v },
+      { key: 'tpOut', expected: `≈${v}` },
+    ],
+    rails: [{ net: 'out', nominal: o.volts, label: `${o.volts}V` }],
+    carbonise: [['out', 'GND', 'bulk']],
+    variants: [
+      {
+        id: 'psu-conn-joint',
+        family: 'Cracked solder joint',
+        tier: 1,
+        weight: 0.8,
+        apply(b, _rng, ref) {
+          const r = ref('conn');
+          b.comps[r].joints[plus] = { r: Infinity, cracked: true };
+          return {
+            summary: `The ${v} pin of the input connector ${r} has a cracked joint. Reflow it.`,
+            refs: [r],
+            hint: `Totally dead. Does the ${v} get from the connector pin onto the board? Look closely at the connector joints.`,
+            flavor: 'It just would not turn on one day.',
+          };
+        },
+      },
+      {
+        id: 'fuse-blown',
+        family: 'Blown fuse',
+        tier: 1,
+        weight: 0.8,
+        apply(b, _rng, ref) {
+          const r = ref('fuse');
+          b.comps[r].fault = { type: 'open' };
+          addMark(b, r, 'discolored');
+          return {
+            summary: `Main fuse ${r} blew from a one-off surge.`,
+            refs: [r],
+            hint: `Nothing at all. Follow the ${v} in from the connector: check the fuse ${r} with continuity mode.`,
+          };
+        },
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Buck rail: regulator, enable divider, inductor, feedback divider, output cap
+// ---------------------------------------------------------------------------
+
+export interface BuckOpts {
+  /** Output voltage. Supported: 5 (feedback 52.3 k / 10 k). */
+  vout: 5;
+  /** Input voltage, for descriptions. */
+  vin: number;
+}
+
+/** Ports: `vin`, `out`. Local nets: EN, FB, SW, BST. */
+export function buckRail(o: BuckOpts): BlockDef {
+  const v = `${o.vout} V`;
+  return {
+    title: `${o.vout}V BUCK`,
+    size: [26, 32],
+    ports: ['vin', 'out'],
+    parts: [
+      { key: 'reg', partNo: 'U-VX2302', at: [9, 8], pins: { BST: 'BST', GND: 'GND', FB: 'FB', EN: 'EN', IN: 'vin', SW: 'SW' }, role: `${v} buck converter` },
+      { key: 'boot', partNo: 'C-100N', at: [9, 2], pins: { '1': 'BST', '2': 'SW' }, role: 'Bootstrap capacitor' },
+      { key: 'enTop', partNo: 'R-100K', at: [3, 13], rot: 90, pins: { '1': 'vin', '2': 'EN' }, role: 'Enable divider (top)' },
+      { key: 'enBot', partNo: 'R-47K', at: [3, 20], rot: 90, pins: { '1': 'EN', '2': 'GND' }, role: 'Enable divider (bottom)' },
+      { key: 'ind', partNo: 'L-10U', at: [17, 8], pins: { '1': 'SW', '2': 'out' }, role: 'Buck inductor' },
+      { key: 'fbTop', partNo: 'R-52K3', at: [10, 17], rot: 90, pins: { '1': 'out', '2': 'FB' }, role: 'Feedback divider (top)' },
+      { key: 'fbBot', partNo: 'R-10K', at: [10, 24], rot: 90, pins: { '1': 'FB', '2': 'GND' }, role: 'Feedback divider (bottom)' },
+      { key: 'cout', partNo: 'C-22U-10', at: [23, 17], rot: 90, pins: { '1': 'out', '2': 'GND' }, role: `${v} output capacitor` },
+      { key: 'tp', partNo: 'TP', at: [17, 27], pins: { '1': 'out' }, role: `${v} rail` },
+    ],
+    nets: {
+      EN: { desc: `Enable of the ${v} regulator`, expected: o.vin * (47 / 147) },
+      FB: { desc: `${v} regulator feedback — regulated to 0.8 V`, expected: 0.8 },
+      SW: { desc: `${v} buck switch node`, expected: o.vout },
+      BST: { desc: `${v} regulator bootstrap pin` },
+      out: { desc: `${v} rail`, expected: o.vout },
+    },
+    testPoints: [{ key: 'tp', expected: `${o.vout.toFixed(1)} V` }],
+    rails: [{ net: 'out', nominal: o.vout, label: `${o.vout}V` }],
+    missable: ['cout'],
+    carbonise: [['out', 'GND', 'ind']],
+    variants: [
+      {
+        id: 'buck-dead',
+        family: 'Failed regulator',
+        tier: 2,
+        weight: 0.7,
+        apply(b, _rng, ref) {
+          const r = ref('reg');
+          b.comps[r].fault = { type: 'dead' };
+          return { summary: `${v} regulator ${r} died: ${o.vin} V in, nothing out.`, refs: [r], hint: `${o.vin} V is there but the ${v} rail is missing. What makes the ${v}?` };
+        },
+      },
+      {
+        id: 'inductor-open',
+        family: 'Failed inductor',
+        tier: 2,
+        weight: 0.6,
+        apply(b, _rng, ref) {
+          const r = ref('ind');
+          b.comps[r].fault = { type: 'open' };
+          return {
+            summary: `Buck inductor ${r} went open inside, so nothing reaches the ${v} rail even though the regulator is switching. Replace ${r}.`,
+            refs: [r],
+            hint: `The ${v} rail is dead but the regulator has power. Unpowered, check continuity across the inductor ${r} — a good one reads almost 0 Ω.`,
+            flavor: 'It just died while I was using it.',
+          };
+        },
+      },
+      {
+        id: 'esr-out',
+        family: 'Dried-out capacitor',
+        tier: 2,
+        weight: 0.8,
+        apply(b, rng, ref) {
+          const r = ref('cout');
+          b.comps[r].fault = { type: 'esr', esr: rng.range(4, 12) };
+          return {
+            summary: `${r} on the ${v} rail dried out: capacitance and resistance still look normal, but its ESR is very high, so the regulator went unstable and the ${v} rail sags. Replace ${r}.`,
+            refs: [r],
+            hint: `The ${v} rail is low but nothing is shorted and the regulator is not hot. An ESR meter on the ${v} capacitors (or a scope on the rail — look for ripple) finds the culprit.`,
+            flavor: 'It started crashing, now it will not turn on at all.',
+          };
+        },
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LDO rail
+// ---------------------------------------------------------------------------
+
+/** Ports: `vin`, `out`. A 3.3 V LDO with its output capacitor. */
+export function ldoRail(o: { vin: number }): BlockDef {
+  return {
+    title: '3V3',
+    size: [18, 32],
+    ports: ['vin', 'out'],
+    parts: [
+      { key: 'reg', partNo: 'U-HL33', at: [8, 7], pins: { GND: 'GND', OUT: 'out', IN: 'vin', TAB: 'out' }, role: '3.3 V regulator' },
+      { key: 'cout', partNo: 'C-10U-6', at: [13, 18], rot: 90, pins: { '1': 'out', '2': 'GND' }, role: '3.3 V capacitor' },
+      { key: 'tp', partNo: 'TP', at: [6, 27], pins: { '1': 'out' }, role: '3.3 V rail' },
+    ],
+    nets: { out: { desc: '3.3 V rail', expected: 3.3 } },
+    testPoints: [{ key: 'tp', expected: '3.3 V' }],
+    rails: [{ net: 'out', nominal: 3.3, label: '3V3' }],
+    missable: ['cout'],
+    variants: [
+      {
+        id: 'ldo-dead',
+        family: 'Failed regulator',
+        tier: 2,
+        weight: 0.6,
+        apply(b, _rng, ref) {
+          const r = ref('reg');
+          b.comps[r].fault = { type: 'dead' };
+          return { summary: `3.3 V regulator ${r} died: ${o.vin} V in, nothing out.`, refs: [r], hint: `${o.vin} V reaches the regulator but there is no 3.3 V. Is the regulator itself getting its input?` };
+        },
+      },
+    ],
+  };
+}
