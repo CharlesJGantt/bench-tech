@@ -607,7 +607,12 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   private liveBoardCheck(ref: string | null): boolean {
     const s = this.s;
     if (!s.batteryLive) return true;
-    if (s.guided && !confirm('The battery is still plugged in, so the board is live even with the bench power off. Soldering now can spark and blow parts — unplug the battery first (Case → battery plug).\n\nSolder anyway?')) return false;
+    // Desoldering the battery itself is how you disconnect a soldered one: no warning.
+    if (ref && s.board.comps[ref]?.part?.kind === 'battery') return true;
+    const how = s.batterySoldered
+      ? 'The battery is soldered in, so the board is live even with the bench power off. Soldering elsewhere now can spark and blow parts — desolder one battery tab first (open the battery on the rework station, negative tab first).'
+      : 'The battery is still plugged in, so the board is live even with the bench power off. Soldering now can spark and blow parts — unplug the battery first (Case → battery plug).';
+    if (s.guided && !confirm(`${how}\n\nSolder anyway?`)) return false;
     const spark = s.batterySpark(ref);
     if (spark) {
       this.toast(spark, 'bad');

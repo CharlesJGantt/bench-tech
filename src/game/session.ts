@@ -4,7 +4,9 @@ import {
   createBoard,
   cloneBoard,
   functionalTest,
+  batteryConnected,
   hasInternalPower,
+  hasSparkingBattery,
   measure,
   operatingPoint,
   powerDown,
@@ -720,18 +722,28 @@ export class Session {
     return spill;
   }
 
-  /** Is a battery still plugged in (the board is live even with the bench power off)? */
+  /**
+   * Is a battery that can blow parts still connected (the board is live even with the bench
+   * power off)? Coin cells don't count: they can't push enough current to hurt anything.
+   */
   get batteryLive(): boolean {
-    return !this.idle && hasInternalPower(this.board);
+    return !this.idle && hasSparkingBattery(this.board);
+  }
+
+  /** The live battery is soldered in (no plug): the way to disconnect it is to desolder a tab. */
+  get batterySoldered(): boolean {
+    return Object.values(this.board.comps).some((c) => batteryConnected(this.board, c) && !c.part!.plugIn && c.part!.pkg !== 'COIN');
   }
 
   /**
-   * Soldering on a board with its battery plugged in: the iron or tweezers can bridge a live
-   * pad to ground. Returns what happened (null = got away with it).
+   * Soldering on a board with its battery connected: the iron or tweezers can bridge a live
+   * pad to ground. Returns what happened (null = got away with it). Working on the battery's
+   * own tabs is how a soldered battery comes off, so that never sparks.
    */
   batterySpark(ref: string | null, rand = Math.random): string | null {
-    if (!this.batteryLive || rand() > 0.35) return null;
     const c = ref ? this.board.comps[ref] : null;
+    if (c?.part?.kind === 'battery') return null;
+    if (!this.batteryLive || rand() > 0.35) return null;
     let text: string;
     if (c?.part && ['resistor', 'capacitor', 'fuse', 'inductor', 'diode'].includes(c.part.kind)) {
       c.fault = { type: 'open' };

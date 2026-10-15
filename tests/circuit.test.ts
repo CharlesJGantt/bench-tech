@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DL12 } from '../src/sim/devices';
-import { createBoard, functionalTest, measure, operatingPoint, powerUpSteady, type PowerConfig } from '../src/sim/circuit';
+import { BES_CART, BUTTON, DL12 } from '../src/sim/devices';
+import { createBoard, functionalTest, hasInternalPower, hasSparkingBattery, measure, operatingPoint, powerUpSteady, type PowerConfig } from '../src/sim/circuit';
 
 const adapter: PowerConfig = { kind: 'adapter' };
 const off: PowerConfig = { kind: 'off' };
@@ -55,5 +55,25 @@ describe('healthy DL-12', () => {
     const { events } = powerUpSteady(b, adapter);
     expect(events.some((e) => e.ref === 'F1')).toBe(true);
     expect(b.comps.F1.fault?.type).toBe('open');
+  });
+});
+
+describe('battery connection', () => {
+  it('a soldered coin cell keeps the board powered but cannot spark; desoldering a tab disconnects it', () => {
+    const b = createBoard(BES_CART);
+    expect(hasInternalPower(b)).toBe(true);
+    expect(hasSparkingBattery(b)).toBe(false);
+    b.comps.BT1.joints['-'] = { r: Infinity };
+    expect(hasInternalPower(b)).toBe(false);
+    b.comps.BT1.joints['-'] = { r: 0 };
+    b.liftedPads.push('BT1.+');
+    expect(hasInternalPower(b)).toBe(false);
+  });
+
+  it('a Li-ion pack sparks until unplugged', () => {
+    const b = createBoard(BUTTON);
+    expect(hasSparkingBattery(b)).toBe(true);
+    b.comps.BT1.unplugged = true;
+    expect(hasSparkingBattery(b)).toBe(false);
   });
 });

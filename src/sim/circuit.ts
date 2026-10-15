@@ -167,9 +167,25 @@ export function padNames(c: CompState): string[] {
   return pinsOf(part(c.def.partNo));
 }
 
-/** Does anything on the board supply power by itself (a plugged-in battery)? */
+/** Is this battery connected to the board (plugged in, both tabs soldered, not dead open)? */
+export function batteryConnected(b: BoardState, c: CompState): boolean {
+  if (c.part?.kind !== 'battery' || c.unplugged || c.fault?.type === 'open') return false;
+  // A soldered battery with a tab desoldered or a pad lifted is disconnected.
+  return pinsOf(c.part).every((pin) => Number.isFinite(c.joints[pin]?.r ?? 0) && !b.liftedPads.includes(`${c.ref}.${pin}`));
+}
+
+/** Does anything on the board supply power by itself (a connected battery)? */
 export function hasInternalPower(b: BoardState): boolean {
-  return Object.values(b.comps).some((c) => c.part?.kind === 'battery' && !c.unplugged && c.fault?.type !== 'open');
+  return Object.values(b.comps).some((c) => batteryConnected(b, c));
+}
+
+/**
+ * Can a connected battery push enough current to blow parts when a tip bridges a live pad?
+ * Packs and AA cells can; a coin cell (save battery) can't — its internal resistance limits
+ * a short to a few milliamps.
+ */
+export function hasSparkingBattery(b: BoardState): boolean {
+  return Object.values(b.comps).some((c) => batteryConnected(b, c) && c.part!.pkg !== 'COIN');
 }
 
 // ---------------------------------------------------------------------------
