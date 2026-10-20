@@ -53,6 +53,7 @@ export class Hud {
   private pending = false;
   private toastTimer = 0;
   private soldering = false;
+  private station: ReworkStation | null = null;
   private tutorial!: Tutorial;
   private officeTab: OfficeTab = 'work';
   private cart: Cart = {};
@@ -81,6 +82,8 @@ export class Hud {
       openOffice: () => this.openOffice('work'),
       screenOf: (ref, pin) => this.scene.screenOf(ref, pin),
       focusOn: (x, y, d) => this.scene.focusOn(x, y, d),
+      highlight: (pts) => (this.scene.tutorialPads = pts),
+      reworkState: () => (this.soldering ? (this.station?.state ?? null) : null),
     });
     const pending = Tutorial.pending();
     if (pending === 'new') this.tutorial.start();
@@ -634,12 +637,14 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     this.scene.setIronTarget(ref);
     const station = new ReworkStation(s, $('#modal-body'), (summary) => {
       this.soldering = false;
+      this.station = null;
       this.scene.setIronTarget(null);
       m.className = '';
       $('#modal-body').innerHTML = '';
       if (summary) this.toast(summary);
     });
     station.open(ref);
+    this.station = station;
     (window as unknown as { rework: unknown }).rework = station; // console debugging
   }
 

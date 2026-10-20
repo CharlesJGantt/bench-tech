@@ -52,6 +52,11 @@ const RESULT_TEXT: Record<string, string> = {
 /** The microscope rework station: a hands-on close-up of one footprint. */
 export class ReworkStation {
   private st!: ReworkState;
+
+  /** Live state of the bench (read by the tutorial). */
+  get state(): ReworkState {
+    return this.st;
+  }
   private canvas!: HTMLCanvasElement;
   private tool: ReworkTool = 'iron';
   private mouse: { x: number; y: number } | null = null;
@@ -845,15 +850,19 @@ export class ReworkStation {
     if (st.part?.original) {
       if (st.footprint.heatLimit && !st.pads.some((p) => p.lowmelt > 0.15))
         return `This part has a plastic body that melts above ~${st.footprint.heatLimit}°C. To remove it safely: flux, mix low-melt alloy into every joint (Solder → ChillMelt, heat + Space), then gentle hot air and lift. To just reflow it, keep the heat low and quick.`;
+      if (st.pads.length <= 3 && pads.every((p) => p.solder < 0.15)) return 'The solder is off. Lift the part with the tweezers (4), then Delete to bin it.';
+      const pull =
+        st.pads.length <= 3
+          ? '<b>Replace</b>: wick the solder off every joint (wick, 2), then lift the part with the tweezers. Short passes: a pad held hot too long burns and lifts.'
+          : '<b>Replace</b>: melt every joint at once (hot air, or alternate the iron fast) and lift it with the tweezers.';
       return pads.some((p) => p.flux < 0.2)
-        ? 'Start with flux on the joints.<br>• <b>Reflow</b>: heat each joint until it melts.<br>• <b>Replace</b>: melt every joint at once (hot air, or alternate the iron fast) and lift it with the tweezers.'
-        : 'Reflow each joint, or melt them all at once and lift the part with the tweezers.';
+        ? `Start with flux on the joints.<br>• <b>Reflow</b>: heat each joint until it melts.<br>• ${pull}`
+        : `Reflow each joint, or ${pull.replace('<b>Replace</b>: ', '')}`;
     }
     if (!st.part) {
       if (pads.some((p) => p.lowmelt > 0.05)) return 'Low-melt alloy is still on the pads. Flux and wick it ALL off before fitting the new part, or the joints will be weak.';
       if (pads.some((p) => p.solder > 0.45 || p.dirty)) return 'Clean the pads: flux, then wick the old solder off until they are flat and shiny.';
-      if (pads.some((p) => p.solder < 0.2)) return 'Tin the pads lightly: heat each one and feed a touch of solder (hold Space).';
-      return 'Pads are ready. Pick the right part from the tray and place it with the tweezers.';
+      return 'Pads are clean. Pick the right part from the tray and place it with the tweezers, then flux and solder each end (iron + Space).';
     }
     if (!aligned(st.part)) return 'The part is off its pads. Pick it up with the tweezers and place it again.';
     const res = jointResults(st);

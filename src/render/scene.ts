@@ -103,6 +103,8 @@ export class BenchScene {
   private psuA = this.makeDisplay(256, 96);
   private puffs: Puff[] = [];
   private ironTarget: string | null = null;
+  /** Pads the tutorial is pointing at (outlined on the board). */
+  tutorialPads: { ref: string; pin?: string }[] = [];
   private hover: BoardHit | null = null;
 
   // Orbit camera state
@@ -1235,6 +1237,23 @@ export class BenchScene {
     for (const ctl of s.board.device.controls) {
       const cap = this.comps.get(ctl.ref)?.cap;
       if (cap) cap.setLocalPosition(0, s.board.pressed.includes(ctl.ref) ? -0.7 : 0, 0);
+    }
+
+    // Tutorial: pulsing outline around the pads it points at
+    if (this.tutorialPads.length && !this.flipped) {
+      const k = 0.6 + 0.6 * (0.5 + 0.5 * Math.sin(performance.now() / 160));
+      const col = new pc.Color(1, 0.75, 0.1);
+      for (const tp of this.tutorialPads) {
+        const pad = this.geo.pads.find((q) => q.ref === tp.ref && (!tp.pin || q.pin === tp.pin));
+        if (!pad) continue;
+        const hw = pad.w / 2 + k;
+        const hh = pad.h / 2 + k;
+        const a = this.toWorld(pad.x - hw, pad.y - hh, 0.35);
+        const b = this.toWorld(pad.x + hw, pad.y + hh, 0.35);
+        const c1 = new pc.Vec3(b.x, a.y, a.z);
+        const c3 = new pc.Vec3(a.x, a.y, b.z);
+        this.app.drawLines([a, c1, c1, b, b, c3, c3, a], col, false);
+      }
     }
 
     // Hover marker + selection outline
