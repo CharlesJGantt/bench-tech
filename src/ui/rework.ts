@@ -57,6 +57,28 @@ export class ReworkStation {
   get state(): ReworkState {
     return this.st;
   }
+
+  /** The tool in hand. */
+  get currentTool(): ReworkTool {
+    return this.tool;
+  }
+
+  /** Where pad i is on screen (CSS px), for the tutorial's markers. */
+  padScreen(i: number): { x: number; y: number } | null {
+    const p = this.st?.pads[i];
+    if (!p || !this.canvas) return null;
+    const r = this.canvas.getBoundingClientRect();
+    if (!r.width) return null;
+    return { x: r.left + r.width / 2 + (p.x - this.ox) * this.scale, y: r.top + r.height / 2 + (p.y - this.oy) * this.scale };
+  }
+
+  /** Scroll the side panel so this section is in view. */
+  reveal(selector: string): void {
+    this.host.querySelector(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  /** Lifted pads already warned about. */
+  private liftedSeen = 0;
   private canvas!: HTMLCanvasElement;
   private tool: ReworkTool = 'iron';
   private mouse: { x: number; y: number } | null = null;
@@ -806,6 +828,11 @@ export class ReworkStation {
       }
     }
     const st = this.st;
+    const lifted = st.pads.filter((p) => p.lifted).length;
+    if (lifted > this.liftedSeen) {
+      this.liftedSeen = lifted;
+      this.liftWarning();
+    }
     const results = jointResults(st);
     const jointsEl = this.host.querySelector('#rw-joints');
     if (!jointsEl) return;
@@ -826,6 +853,22 @@ export class ReworkStation {
       msgs.dataset.html = html;
       msgs.innerHTML = html;
     }
+  }
+
+  /** A pad came off the board: say so loudly, and how to get out of it. */
+  private liftWarning(): void {
+    this.down = false;
+    const box = document.createElement('div');
+    box.className = 'rw-alert';
+    box.innerHTML = `<div class="rw-alert-card"><h3>⚠ A pad lifted off the board!</h3>
+      <p>Too much heat for too long burned the glue under the copper pad, and it has peeled off the PCB. A part soldered to a lifted pad does not connect.</p>
+      <p>To start this part of the work again, click <b>↶ Undo all</b> — the board goes back exactly as it was when you sat down (supplies you used stay used). Otherwise the fix is a jumper wire from that leg to where the pad's trace went.</p>
+      <p class="muted small">Next time: work in short passes and let the pad cool. A pad molten for more than about 6 seconds starts to burn.</p>
+      <div class="row"><button class="primary" data-rw-alert-ok>OK</button></div></div>`;
+    box.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[data-rw-alert-ok]')) box.remove();
+    });
+    this.host.querySelector('.rw')?.append(box);
   }
 
   /** Guided-mode suggestion for the next step, based on the actual state. */

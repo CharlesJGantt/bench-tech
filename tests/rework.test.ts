@@ -261,8 +261,8 @@ describe('rework station', () => {
     const p1 = st.pads[1];
     const p2 = st.pads[2];
     hold(st, 'hotair', (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 1.5);
-    hold(st, 'iron', p1.x, p1.y, 1.5, true);
-    hold(st, 'iron', p2.x, p2.y, 1.5, true);
+    hold(st, 'iron', p1.x, p1.y, 3, true);
+    hold(st, 'iron', p2.x, p2.y, 3, true);
     expect(st.bridges.length).toBeGreaterThan(0);
     applyRework(b, st);
     expect(b.jumpers.some((j) => j.bridge)).toBe(true);
@@ -273,8 +273,8 @@ describe('rework station', () => {
     const st = initRework(createBoard(DL12), 'U3');
     const [p1, p2] = st.pads;
     hold(st, 'hotair', (p1.x + p2.x) / 2, (p1.y + p2.y) / 2, 1.5);
-    hold(st, 'iron', p1.x, p1.y, 1.5, true);
-    hold(st, 'iron', p2.x, p2.y, 1.5, true);
+    hold(st, 'iron', p1.x, p1.y, 3, true);
+    hold(st, 'iron', p2.x, p2.y, 3, true);
     expect(st.bridges.length).toBeGreaterThan(0);
     hold(st, 'flux', p1.x, p1.y, 0.5);
     // A big blob fills the braid: wick, snip the silver end, wick again.

@@ -484,7 +484,7 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
       p.flux = Math.min(1, p.flux + 2.5 * dt);
       p.fluxGrade = kit.flux;
     }
-    if (p.temp > 240) p.flux = Math.max(0, p.flux - dt * 0.12 * grade.burn * (p.temp > 350 ? 2.5 : 1));
+    if (p.temp > 240) p.flux = Math.max(0, p.flux - dt * 0.05 * grade.burn * (p.temp > 350 ? 2.5 : 1));
 
     // Cleaning: IPA wets, the brush loosens flux into it, the wipe lifts it away.
     const near = (r: number) => active && Math.hypot(pos!.x - p.x, pos!.y - p.y) < r + Math.max(p.w, p.h) / 2;
@@ -552,7 +552,8 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
       p.molten += dt;
       // Solder wire: only flows into a molten joint
       if (share === 1 && tool === 'iron' && input.feeding) {
-        const add = 1.3 * dt;
+        // About 1.5 s of feed fills a joint to ~half the bar: a solid fillet without a blob.
+        const add = 0.7 * dt;
         const grams = add * USAGE.solderPerUnit;
         if (left(st, kit.solder) < grams) say(st, `Out of ${kit.solder === 'lowmelt' ? 'low-melt alloy' : 'solder wire'}! Reorder it from the office.`);
         else {

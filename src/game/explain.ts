@@ -44,8 +44,8 @@ export function explainReading(s: Session, r: MeterReading, red: PointRef, black
         if (r.mode === 'diode') return 'Use the Ω setting to check resistors.';
         const nominal = p.value;
         if (r.value === null || r.value > nominal * 1.15)
-          return bad(`${red.ref} is a ${p.label}Ω resistor (marked "${p.marking}"). In-circuit it may read LOWER than that because of other parts, but never higher. This one reads high → it is open/damaged.`);
-        return ok(`${red.ref} is a ${p.label}Ω resistor (marked "${p.marking}"). In-circuit readings can be a bit lower than the marked value — that is normal.`);
+          return bad(`${red.ref} is a ${p.description.split(',')[0]} (marked "${p.marking}"). In-circuit it may read LOWER than that because of other parts, but never higher. This one reads high → it is open/damaged.`);
+        return ok(`${red.ref} is a ${p.description.split(',')[0]} (marked "${p.marking}"). In-circuit readings can be a bit lower than the marked value — that is normal.`);
       }
       case 'capacitor':
       case 'electrolytic':

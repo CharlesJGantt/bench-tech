@@ -79,11 +79,16 @@ export class Hud {
     this.render();
     this.tutorial = new Tutorial(this.s, {
       isSoldering: () => this.soldering,
-      openOffice: () => this.openOffice('work'),
+      openOffice: (tab = 'work') => this.openOffice(tab),
+      closeModal: () => this.closeModal(),
       screenOf: (ref, pin) => this.scene.screenOf(ref, pin),
       focusOn: (x, y, d) => this.scene.focusOn(x, y, d),
+      focusBoard: () => this.scene.focusBoard(),
       highlight: (pts) => (this.scene.tutorialPads = pts),
       reworkState: () => (this.soldering ? (this.station?.state ?? null) : null),
+      reworkTool: () => (this.soldering ? (this.station?.currentTool ?? null) : null),
+      reworkPad: (i) => (this.soldering ? (this.station?.padScreen(i) ?? null) : null),
+      reworkReveal: (sel) => this.station?.reveal(sel),
     });
     const pending = Tutorial.pending();
     if (pending === 'new') this.tutorial.start();
@@ -833,7 +838,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     const opts = parts
       .map((p) => {
         const sl = stockOf(s.shop, p.partNo);
-        return `<option value="${p.partNo}">${esc(p.label)}${p.kind === 'resistor' ? ' Ω resistor' : ''} — $${p.cost.toFixed(2)} (${sl.new + sl.used} in stock)</option>`;
+        return `<option value="${p.partNo}">${esc(p.label)} — $${p.cost.toFixed(2)} (${sl.new + sl.used} in stock)</option>`;
       })
       .join('');
     const fee = expressFee();

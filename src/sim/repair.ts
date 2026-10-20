@@ -124,7 +124,7 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
     if (Object.values(c.joints).some((j) => j.cold)) hidden.push(`Cold solder joints on ${c.ref} will crack within weeks.`);
     if (c.burnt) hidden.push(`${c.ref} is heat-damaged and was left on the board.`);
     if (c.part.partNo !== c.def.partNo) {
-      if (c.part.kind === 'fuse' && c.part.value > part(c.def.partNo).value) hidden.push(`${c.ref} is an oversized ${c.part.label} fuse — a fire risk.`);
+      if (c.part.kind === 'fuse' && c.part.value > part(c.def.partNo).value) hidden.push(`${c.ref} is an oversized fuse (${c.part.label}) — a fire risk.`);
       else notes.push(`${c.ref} is a ${c.part.label} part; the board calls for ${part(c.def.partNo).label}.`);
     }
     if (c.marks.includes('rework-residue')) notes.push(`Sticky flux left around ${c.ref}.`);
