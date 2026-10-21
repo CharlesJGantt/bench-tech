@@ -1197,4 +1197,12 @@ button:disabled {
   opacity: 0;
   transition: opacity 0.16s ease;
 }
-.splash-text.in { opacity: 1; }
+.splash-text.in { opacity: 1; animation: splash-flash 1.1s linear infinite; }
+/* Flashes on and off like a status line that is busy loading */
+@keyframes splash-flash {
+  0%, 52% { opacity: 1; }
+  58% { opacity: 0.12; }
+  66% { opacity: 1; }
+  74% { opacity: 0.3; }
+  82%, 100% { opacity: 1; }
+}
