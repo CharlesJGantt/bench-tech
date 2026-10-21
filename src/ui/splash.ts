@@ -72,15 +72,13 @@ export function runSplash(ready: Promise<unknown>): Promise<void> {
   let loaded = false;
   void ready.then(() => (loaded = true), () => (loaded = true));
   return new Promise((resolve) => {
-    const tick = () => {
+    const timer = window.setInterval(() => {
       const t = (performance.now() - start) / SPLASH_MS;
       // Fills steadily with a little ease; holds just short of full until the game is actually ready.
       const p = Math.min(1, t) ** 0.9;
       fill.style.transform = `scaleX(${t >= 1 && !loaded ? 0.985 : p})`;
-      if (t < 1 || !loaded) {
-        requestAnimationFrame(tick);
-        return;
-      }
+      if (t < 1 || !loaded) return;
+      window.clearInterval(timer);
       fill.style.transform = 'scaleX(1)';
       window.clearInterval(phrases);
       glitching = false;
@@ -93,7 +91,6 @@ export function runSplash(ready: Promise<unknown>): Promise<void> {
           resolve();
         }, 600);
       }, 350);
-    };
-    requestAnimationFrame(tick);
+    }, 50);
   });
 }

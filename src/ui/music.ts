@@ -42,6 +42,7 @@ export class Music {
   private slider!: HTMLInputElement;
   private nameEl!: HTMLElement;
   private volEl!: HTMLElement;
+  private ready: Promise<void>;
 
   constructor() {
     this.audio.preload = 'auto';
@@ -49,7 +50,16 @@ export class Music {
     this.audio.addEventListener('ended', () => this.next());
     this.audio.addEventListener('error', () => window.setTimeout(() => this.next(), 500));
     this.build();
-    void this.loadTracks();
+    this.ready = this.loadTracks();
+  }
+
+  /** Is a track actually playing right now? */
+  get playing(): boolean {
+    return !this.audio.paused && !this.audio.ended && this.audio.currentTime > 0;
+  }
+
+  get time(): number {
+    return this.audio.currentTime;
   }
 
   private base(): string {
@@ -66,29 +76,37 @@ export class Music {
     this.refresh();
   }
 
-  /** Start when the browser allows sound (after the first click or key press). */
+  /** Start when the browser allows sound: now if it lets us, otherwise on the first click or key press. */
   arm(): void {
-    const go = () => {
-      window.removeEventListener('pointerdown', go, true);
-      window.removeEventListener('keydown', go, true);
-      this.start();
+    const kick = () => {
+      if (this.started) return cleanup();
+      this.start().then((ok) => ok && cleanup());
     };
-    window.addEventListener('pointerdown', go, true);
-    window.addEventListener('keydown', go, true);
-    // Some browsers allow autoplay straight away; if not, the first interaction starts it.
-    this.start(go);
+    const cleanup = () => {
+      window.removeEventListener('pointerdown', kick, true);
+      window.removeEventListener('keydown', kick, true);
+    };
+    window.addEventListener('pointerdown', kick, true);
+    window.addEventListener('keydown', kick, true);
+    // The track list may still be loading, and the browser may not allow sound yet: keep trying
+    // on each interaction until one play() succeeds.
+    void this.ready.then(() => kick());
   }
 
-  private start(onBlocked?: () => void): void {
-    if (this.started || this.saved.muted || !this.tracks.length) return;
+  /** Try to play; true once music is actually running (or deliberately muted). */
+  private async start(): Promise<boolean> {
+    if (this.started) return true;
+    if (this.saved.muted) return true;
+    if (!this.tracks.length) return false;
     if (!this.current) this.pick();
-    void this.audio.play().then(
-      () => {
-        this.started = true;
-        this.refresh();
-      },
-      () => onBlocked?.(),
-    );
+    try {
+      await this.audio.play();
+      this.started = true;
+      this.refresh();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Random order without repeats: each track plays once before the shuffle starts over. */
@@ -123,7 +141,7 @@ export class Music {
     if (m) this.audio.pause();
     else {
       this.started = false;
-      this.start();
+      void this.start();
     }
     this.refresh();
   }

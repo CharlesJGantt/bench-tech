@@ -29,7 +29,7 @@ async function main() {
   await splash;
   music.arm();
   // Handy for debugging from the console.
-  (window as unknown as { bench: unknown }).bench = { session, scene };
+  (window as unknown as { bench: unknown }).bench = { session, scene, music };
 }
 
 void main();
