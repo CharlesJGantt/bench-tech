@@ -2,7 +2,7 @@
  * Pocket LCD games (fictional): Game & Clock and Critter Mini. A USB-C port charges a
  * soldered-in Li-ion pouch cell (no battery door), a 3.3 V regulator laid flat on the board
  * (bent legs) feeds a tiny CPU that never switches off (the clock keeps running); a segment
- * LCD on a ribbon, a speaker, a D-pad, A / B buttons and a Game button. Critter Mini also has
+ * LCD on a ribbon, a speaker, a D-pad, A / B buttons and a Power button. Critter Mini also has
  * its notorious catastrophic-corrosion "total loss" fault.
  */
 import { device, place } from '../blocks/core';
@@ -15,6 +15,8 @@ import { silk, cx } from './retro';
 interface LcdGameSpec {
   id: string;
   name: string;
+  /** Printed on the top of the case. */
+  caseTitle: string;
   tagline: string;
   cpu: string;
   totalLoss?: boolean;
@@ -98,7 +100,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       weight: 0.9,
       apply(b) {
         b.comps.SW1.fault = { type: 'open' };
-        return { summary: 'The Game button contact is worn out: the game never starts. Replace the button contact.', refs: ['SW1'], hint: 'Press Game and measure its line: does it drop to 0 V?', flavor: 'The clock works but I cannot start a game.' };
+        return { summary: 'The Power button contact is worn out: the game never starts. Replace the button contact.', refs: ['SW1'], hint: 'Press Power and measure its line: does it drop to 0 V?', flavor: 'The clock works but I cannot start a game.' };
       },
     },
     {
@@ -200,8 +202,8 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       c('TP3', 'TP', 'POWER', 82, 18, 0, { '1': 'VCC' }, '3.3 V rail'),
       c('TP4', 'TP', 'POWER', 10, 85, 0, { '1': 'GND' }, 'Ground'),
       cx('U2', sp.cpu, 'CPU', 97, 12, 0, { VDD: 'VCC', GND: 'GND', PWR: 'START', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', OK1: 'VCC', OK2: 'VCC', OK3: 'VCC', OK4: 'VCC', BA: 'UP', DIN: 'DOWN', CE: 'LEFT', DP: 'RIGHT', EN: 'BTN_A', BB: 'BTN_B' }, 'CPU'),
-      c('R3', 'R-10K', 'CPU', 105, 18, 90, { '1': 'VCC', '2': 'START' }, 'Game button pull-up'),
-      c('SW1', 'SW-TACT', 'CTRL', 75, 83, 0, { '1': 'START', '2': 'GND' }, 'Game button'),
+      c('R3', 'R-10K', 'CPU', 105, 18, 90, { '1': 'VCC', '2': 'START' }, 'Power button pull-up'),
+      c('SW1', 'SW-TACT', 'CTRL', 75, 83, 0, { '1': 'START', '2': 'GND' }, 'Power button'),
       c('SW2', 'SW-TACT', 'CTRL', 22, 54, 0, { '1': 'UP', '2': 'GND' }, 'D-pad up'),
       c('SW3', 'SW-TACT', 'CTRL', 22, 74, 0, { '1': 'DOWN', '2': 'GND' }, 'D-pad down'),
       c('SW4', 'SW-TACT', 'CTRL', 12, 64, 0, { '1': 'LEFT', '2': 'GND' }, 'D-pad left'),
@@ -240,7 +242,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       VSYS: { desc: 'Battery rail — the cell voltage, a little higher while charging', expected: 3.8 },
       VCC: { desc: '3.3 V from the flat regulator U4', expected: 3.3, power: true },
       CHG: { desc: 'Charge status — pulled low while charging (lights the red LED)' },
-      START: { desc: 'Game button (low when pressed)' },
+      START: { desc: 'Power button (low when pressed)' },
       UP: { desc: 'D-pad up (low when pressed)' },
       DOWN: { desc: 'D-pad down (low when pressed)' },
       LEFT: { desc: 'D-pad left (low when pressed)' },
@@ -254,7 +256,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     input: { ref: 'J1', plus: 'VBUS', minus: 'GND', adapter: { v: 5.1, ilim: 1, rint: 0.2, label: "the owner's USB charger" }, psuV: 5, psuI: 1 },
     ground: 'TP4',
     controls: [
-      { ref: 'SW1', label: 'Game button' },
+      { ref: 'SW1', label: 'Power button' },
       { ref: 'SW2', label: 'D-pad up' },
       { ref: 'SW3', label: 'D-pad down' },
       { ref: 'SW4', label: 'D-pad left' },
@@ -304,11 +306,17 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     ports: [[19, 1.5, 12, 11]],
     height: 7.2,
     corners: [10, 10, 10, 10],
+    labels: [
+      { text: sp.caseTitle, at: [75, 13], size: 6.5, bold: true },
+      { text: 'A', at: [138, 47.5], size: 4, bold: true },
+      { text: 'B', at: [126, 74.5], size: 4, bold: true },
+      { text: 'POWER', at: [75, 89], size: 2.8, bold: true },
+    ],
   };
   dev.logo = { x: 120, y: 73, w: 36 };
-  silk(dev.components, { U2: 'CPU', SW1: 'GAME', SW2: 'UP', SW3: 'DOWN', SW4: 'LEFT', SW5: 'RIGHT', SW6: 'A', SW7: 'B', BT1: 'BATTERY', J1: 'USB-C', J3: 'LCD', U3: 'BEEPER', U4: '3.3V', J4: 'SPEAKER', R11: 'CONTRAST' });
+  silk(dev.components, { U2: 'CPU', SW1: 'POWER', SW2: 'UP', SW3: 'DOWN', SW4: 'LEFT', SW5: 'RIGHT', SW6: 'A', SW7: 'B', BT1: 'BATTERY', J1: 'USB-C', J3: 'LCD', U3: 'BEEPER', U4: '3.3V', J4: 'SPEAKER', R11: 'CONTRAST' });
   return dev;
 }
 
-export const GAME_CLOCK = lcdGame({ id: 'game-clock', name: 'Game & Clock', tagline: 'Pocket LCD game with a clock: USB charging, a soldered-in battery and a flat regulator.', cpu: 'U-GNC-CPU', marketValue: 70, quoteBase: 25, minReputation: 0 });
-export const CRITTER_MINI = lcdGame({ id: 'critter-mini', name: 'Critter Mini', tagline: 'Rare LCD virtual pet — sometimes a total loss.', cpu: 'U-CRT-CPU', totalLoss: true, marketValue: 120, quoteBase: 30, minReputation: 5 });
+export const GAME_CLOCK = lcdGame({ id: 'game-clock', name: 'TMWB Gamer Clock', caseTitle: 'TMWB GAMER CLOCK', tagline: 'Pocket LCD game with a clock: USB charging, a soldered-in battery and a flat regulator.', cpu: 'U-GNC-CPU', marketValue: 70, quoteBase: 25, minReputation: 0 });
+export const CRITTER_MINI = lcdGame({ id: 'critter-mini', name: 'Critter Mini', caseTitle: 'CRITTER MINI', tagline: 'Rare LCD virtual pet — sometimes a total loss.', cpu: 'U-CRT-CPU', totalLoss: true, marketValue: 120, quoteBase: 30, minReputation: 5 });

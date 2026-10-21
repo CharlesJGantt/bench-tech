@@ -348,6 +348,36 @@ export class BenchScene {
     };
     // Grips hanging off the board (controllers): a solid block of shell each
     if (!blenderShell) for (const [x0, y0, x1, y1] of f.grips ?? []) slab(x0, y0, x1, y1, H, H + BOARD_T + 6);
+    // Printed lettering on the top of the case (one transparent decal over the whole surface)
+    if (f.labels?.length) {
+      const K = 12;
+      const cv = document.createElement('canvas');
+      cv.width = Math.round(dev.width * K);
+      cv.height = Math.round(dev.height * K);
+      const lc = cv.getContext('2d')!;
+      lc.fillStyle = '#3a3c42';
+      lc.textAlign = 'center';
+      lc.textBaseline = 'middle';
+      for (const l of f.labels) {
+        lc.font = `${l.bold ? 'bold ' : ''}${l.size * K}px Arial, sans-serif`;
+        lc.fillText(l.text, l.at[0] * K, l.at[1] * K);
+      }
+      const tex = this.texture(cv);
+      const lm = new pc.StandardMaterial();
+      lm.diffuse = new pc.Color(1, 1, 1);
+      lm.diffuseMap = tex;
+      lm.opacityMap = tex;
+      lm.opacityMapChannel = 'a';
+      lm.blendType = pc.BLEND_NORMAL;
+      lm.depthWrite = false;
+      lm.gloss = 0.3;
+      lm.update();
+      const decal = new pc.Entity('case-labels');
+      decal.addComponent('render', { type: 'plane', material: lm, castShadows: false });
+      decal.setLocalScale(dev.width, 1, dev.height);
+      decal.setLocalPosition(0, H + 0.03, 0);
+      g.addChild(decal);
+    }
     for (const p of f.panels ?? []) {
       const m = new pc.StandardMaterial();
       m.diffuse = new pc.Color().fromString(p.color);
@@ -480,7 +510,7 @@ export class BenchScene {
     ctx.fillRect(80, 68, 5, 5);
     ctx.fillStyle = INK;
     ctx.font = 'bold 9px monospace';
-    ctx.fillText('CLOCK · press GAME to play', 22, 108);
+    ctx.fillText('CLOCK · press POWER to play', 22, 108);
     if (!this.clockTex) this.clockTex = this.texture(this.clockCv);
     else this.clockTex.upload();
     return this.clockTex;

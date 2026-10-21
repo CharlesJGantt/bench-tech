@@ -107,6 +107,8 @@ export interface FaceSpec {
   grille?: [number, number];
   /** Round speaker grille (concentric rings of holes): centre x, centre y. */
   speaker?: [number, number];
+  /** Printed lettering on the top of the case: text, centre (board mm) and letter height (mm). */
+  labels?: { text: string; at: [number, number]; size: number; bold?: boolean }[];
   /** Openings in the shell wall for connectors at the board edge (a USB port): centre x, centre y, width, height. */
   ports?: [number, number, number, number][];
   /** Small round buttons (home / PS / capture). */
