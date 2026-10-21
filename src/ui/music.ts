@@ -2,7 +2,9 @@
  * Background soundtrack: the Bench Tech tracks (public/music) play in a random order, one after
  * another. A round mute button sits in the bottom-left corner with a small arrow beside it that
  * expands / collapses a panel with the music volume, the track name and a skip button. Volume,
- * mute and whether the panel is open are remembered.
+ * mute and whether the panel is open are remembered. New players start with the music off (so
+ * nothing plays uninvited) and, once the tutorial is over, get a one-time popup pointing at the
+ * button.
  *
  * Browsers refuse to play sound until the player has interacted with the page (autoplay
  * policy), so when playback is blocked the button pulses with "Click for music" and the first
@@ -10,6 +12,7 @@
  * blob URL, which avoids streaming / range-request problems.
  */
 const KEY = 'benchtech.music';
+const HINT_KEY = 'benchtech.musicHint';
 /** Default music volume: low, so it sits under the sounds of the bench. */
 const DEFAULT_VOLUME = 0.12;
 
@@ -37,7 +40,8 @@ function load(): Saved {
   } catch {
     /* ignore */
   }
-  return { volume: DEFAULT_VOLUME, muted: false, panel: false };
+  // A new player starts with the music off until they choose it (see hint())
+  return { volume: DEFAULT_VOLUME, muted: true, panel: false };
 }
 
 export class Music {
@@ -80,6 +84,38 @@ export class Music {
     });
     this.build();
     this.ready = this.loadTracks();
+    window.addEventListener('benchtech:tutorial-done', () => window.setTimeout(() => this.hint(), 900));
+    window.addEventListener('keydown', (e) => e.key === 'Escape' && this.closeHint());
+  }
+
+  private hintEl: HTMLElement | null = null;
+
+  /** One-time popup: "Want to listen to music?" pointing at the button (first run, after the tutorial). */
+  hint(): void {
+    try {
+      if (localStorage.getItem(HINT_KEY)) return;
+    } catch {
+      /* ignore */
+    }
+    if (this.hintEl || this.playing) return;
+    try {
+      localStorage.setItem(HINT_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    const el = document.createElement('div');
+    el.id = 'music-hint';
+    el.innerHTML = '<b>🎵 Want to listen to music?</b><p>Click the music icon to turn the Bench Tech soundtrack on. The arrow beside it has the volume.</p><button type="button" class="primary">Got it</button>';
+    el.querySelector('button')!.addEventListener('click', () => this.closeHint());
+    document.body.append(el);
+    this.hintEl = el;
+    this.btn.classList.add('spotlight');
+  }
+
+  private closeHint(): void {
+    this.hintEl?.remove();
+    this.hintEl = null;
+    this.btn.classList.remove('spotlight');
   }
 
   /** Is a track actually playing right now? */
@@ -123,6 +159,12 @@ export class Music {
     window.addEventListener('pointerdown', kick, true);
     window.addEventListener('keydown', kick, true);
     void this.ready.then(() => kick());
+    // Players who already finished the tutorial see the hint once, on their next visit
+    try {
+      if (localStorage.getItem('benchtech.tutorial') === 'done') window.setTimeout(() => this.hint(), 2500);
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Fetch the current track into a blob URL (once per track). */
@@ -258,6 +300,7 @@ export class Music {
     this.volEl = this.root.querySelector('.music-pct')!;
     this.statusEl = this.root.querySelector('.music-status')!;
     this.btn.addEventListener('click', () => {
+      this.closeHint();
       // Nothing is playing yet (blocked, loading or failed): the button starts the music; otherwise it mutes / unmutes.
       const st = this.state();
       if (st === 'blocked' || st === 'error' || st === 'loading') {

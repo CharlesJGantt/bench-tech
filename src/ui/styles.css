@@ -1295,3 +1295,41 @@ button:disabled {
 @media (min-width: 1240px) {
   #right { bottom: 14px; }
 }
+
+/* One-time hint pointing at the music button */
+#music-hint {
+  position: fixed;
+  left: 14px;
+  bottom: 76px;
+  z-index: 55;
+  width: 250px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--panel-solid);
+  border: 1px solid var(--accent);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+#music-hint b { color: var(--accent); font-size: 15px; }
+#music-hint p { margin: 6px 0 10px; }
+#music-hint::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
+  background: var(--panel-solid);
+  border-right: 1px solid var(--accent);
+  border-bottom: 1px solid var(--accent);
+}
+.music-btn.spotlight {
+  border-color: var(--accent);
+  color: #fff;
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 18px rgba(242, 184, 28, 0.8);
+  animation: tut-pulse 1.2s ease-in-out infinite;
+}

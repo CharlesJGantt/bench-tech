@@ -169,6 +169,8 @@ export class Tutorial {
       /* ignore */
     }
     this.hide();
+    // Others (the music hint) wait for the walkthrough to be over
+    window.dispatchEvent(new Event('benchtech:tutorial-done'));
   }
 
   private hide(): void {
