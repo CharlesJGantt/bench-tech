@@ -1248,7 +1248,14 @@ button:disabled {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
   font-size: 13px;
 }
-#music:hover .music-panel, #music:focus-within .music-panel { display: block; }
+#music:hover .music-panel, #music:focus-within .music-panel, #music.open .music-panel { display: block; }
+.music-status { margin-bottom: 8px; color: #ffd38a; font-size: 12.5px; line-height: 1.35; }
+/* Blocked until the first click: the button pulses so it is obvious how to get the music going */
+.music-btn.attention { color: #fff; border-color: #3fbfff; animation: music-pulse 1.3s ease-in-out infinite; }
+@keyframes music-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(63, 191, 255, 0.7), 0 2px 10px rgba(0, 0, 0, 0.5); }
+  50% { box-shadow: 0 0 0 12px rgba(63, 191, 255, 0), 0 2px 10px rgba(0, 0, 0, 0.5); }
+}
 .music-now { margin-bottom: 8px; color: #c6ebff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .music-note { color: #3fbfff; }
 .music-vol { display: block; color: var(--muted); }
