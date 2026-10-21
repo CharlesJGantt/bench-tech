@@ -472,7 +472,9 @@ export class BenchScene {
       switch (it.kind) {
         case 'shell':
         case 'clips':
-          e.setLocalScale((dev.width + 4) / 100, 1, (dev.height + 4) / 100);
+          // A small cover (a battery door) is its own size; a case half is the whole board.
+          if (it.kind === 'clips' && sw && sh && !it.covers && (sw < dev.width * 0.7 || sh < dev.height * 0.7)) e.setLocalScale((sw + 2) / 100, 1, (sh + 2) / 100);
+          else e.setLocalScale((dev.width + 4) / 100, 1, (dev.height + 4) / 100);
           y = -BOARD_T - 1;
           this.paint(e, shellMat);
           break;
