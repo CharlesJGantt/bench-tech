@@ -17,6 +17,7 @@
     "playcanvas": "^2.23.2"
   },
   "devDependencies": {
+    "lamejs": "^1.2.1",
     "typescript": "^5.9.3",
     "vite": "^8.3.4",
     "vitest": "^5.0.4"

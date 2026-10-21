@@ -2,11 +2,13 @@ import './ui/styles.css';
 import { Session } from './game/session';
 import { BenchScene } from './render/scene';
 import { Hud } from './ui/hud';
+import { Music } from './ui/music';
 import { runSplash } from './ui/splash';
 
 async function main() {
   let finished!: () => void;
   const splash = runSplash(new Promise<void>((r) => (finished = r)));
+  const music = new Music();
   const canvas = document.getElementById('app') as HTMLCanvasElement;
   const session = new Session();
   const hud = new Hud(session);
@@ -25,6 +27,7 @@ async function main() {
   document.getElementById('loading')!.remove();
   finished();
   await splash;
+  music.arm();
   // Handy for debugging from the console.
   (window as unknown as { bench: unknown }).bench = { session, scene };
 }
