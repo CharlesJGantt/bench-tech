@@ -2,8 +2,11 @@ import './ui/styles.css';
 import { Session } from './game/session';
 import { BenchScene } from './render/scene';
 import { Hud } from './ui/hud';
+import { runSplash } from './ui/splash';
 
 async function main() {
+  let finished!: () => void;
+  const splash = runSplash(new Promise<void>((r) => (finished = r)));
   const canvas = document.getElementById('app') as HTMLCanvasElement;
   const session = new Session();
   const hud = new Hud(session);
@@ -20,6 +23,8 @@ async function main() {
   hud.attach(scene);
   scene.app.on('update', (dt: number) => hud.tickScope(dt));
   document.getElementById('loading')!.remove();
+  finished();
+  await splash;
   // Handy for debugging from the console.
   (window as unknown as { bench: unknown }).bench = { session, scene };
 }
