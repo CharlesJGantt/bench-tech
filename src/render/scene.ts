@@ -601,6 +601,11 @@ export class BenchScene {
           // On top of the panel it holds down
           const held = def.items.find((x) => x.needs?.includes(it.id));
           y = held ? (top[held.kind] ?? 0) : shellTop;
+          // Pocket games with a front shell are screwed together from the back: heads under the board
+          if (dev.face && dev.category === 'LCD game') {
+            y = -BOARD_T - 0.05;
+            e.setLocalEulerAngles(180, 0, 0);
+          }
           break;
         }
       }
