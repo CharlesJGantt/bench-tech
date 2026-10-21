@@ -881,8 +881,20 @@ button.lead.on.black {
 
 /* ------------------------------------------------------------------ office */
 #modal.office-modal #modal-body {
-  width: min(1180px, 95vw);
+  width: min(1240px, 96vw);
+  height: 94vh;
+  max-height: 94vh;
+  font-size: 16px;
+  line-height: 1.45;
 }
+#modal.office-modal .bom { font-size: 14.5px; }
+#modal.office-modal .bom td, #modal.office-modal .bom th { padding: 6px 8px; }
+#modal.office-modal .bom.parts td { padding: 5px 8px; }
+#modal.office-modal .small { font-size: 13.5px; }
+#modal.office-modal .pill { font-size: 12.5px; }
+#modal.office-modal #modal-body h3 { font-size: 14.5px; }
+#modal.office-modal button { font-size: 14.5px; }
+#modal.office-modal .of-tabs button { font-size: 15px; padding: 8px 14px; }
 .office .of-head {
   display: flex;
   align-items: center;
