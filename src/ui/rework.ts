@@ -323,6 +323,11 @@ export class ReworkStation {
     this.session.save();
   }
 
+  /** Put a tool in hand (the tutorial does this for the player). */
+  selectTool(t: ReworkTool): void {
+    this.setTool(t);
+  }
+
   private setTool(t: ReworkTool): void {
     this.tool = t;
     this.host.querySelectorAll<HTMLButtonElement>('[data-rw-tool]').forEach((b) => b.classList.toggle('on', b.dataset.rwTool === t));

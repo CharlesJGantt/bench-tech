@@ -31,6 +31,8 @@ export interface TutorialHost {
   reworkPad(i: number): { x: number; y: number } | null;
   /** Scroll the microscope's side panel to a section. */
   reworkReveal(selector: string): void;
+  /** Put a tool in the player's hand at the microscope. */
+  reworkSelect(tool: ReworkTool): void;
 }
 
 /** A point to mark: a board pad, or pad i under the microscope. */
@@ -502,10 +504,14 @@ export class Tutorial {
         place: 'side',
         target: ring('iron'),
         glow: ['#rw-joints'],
-        body: `<p>Pick the highlighted <b>Iron</b> (<kbd>1</kbd>) and hold it on a highlighted pad until the readout says <b>MOLTEN</b>.</p>
+        body: `<p>The <b>Iron</b> (<kbd>1</kbd>) is in your hand. Hold it on a highlighted pad until the readout says <b>MOLTEN</b>.</p>
           <p>Then press and hold <kbd>Space</kbd> to feed solder into the joint — only for <b>1–2 seconds</b>. Do the same on the other end.</p>
           <p class="small">Watch the <b>Joints</b> bars on the right: about <b>half a bar (50%)</b> makes a solid joint without a solder blob.</p>`,
-        enter: () => host.reworkReveal('#rw-joints'),
+        enter: () => {
+          // Hand them the iron, then give them a moment before the panel scrolls to the joints.
+          host.reworkSelect('iron');
+          window.setTimeout(() => host.reworkReveal('#rw-joints'), 1800);
+        },
         points: () => {
           const rs = bench();
           if (!rs) return [];

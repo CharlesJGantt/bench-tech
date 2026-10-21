@@ -89,6 +89,7 @@ export class Hud {
       reworkTool: () => (this.soldering ? (this.station?.currentTool ?? null) : null),
       reworkPad: (i) => (this.soldering ? (this.station?.padScreen(i) ?? null) : null),
       reworkReveal: (sel) => this.station?.reveal(sel),
+      reworkSelect: (t) => this.station?.selectTool(t),
     });
     const pending = Tutorial.pending();
     if (pending === 'new') this.tutorial.start();
