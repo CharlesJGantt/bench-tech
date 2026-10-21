@@ -842,9 +842,9 @@ def aa2():
 def screen_s():
     n = "pkg_SCREEN_S"
     e = item(n)
-    box(f"{n}_frame", e, M["bezel"], 0, 0, 0, 46, 40, 2.8, bevel=0.6, segments=3)
-    box(f"{n}_lens", e, M["lcd"], 0, -2, 2.8, 36, 30, 0.15)
-    box(f"{n}_ribbon", e, M["fpc"], 0, 19, 0, 6, 3, 0.2)
+    box(f"{n}_frame", e, M["bezel"], 0, 0, 0, 72, 46, 2.8, bevel=0.6, segments=3)
+    box(f"{n}_lens", e, M["lcd"], 0, -2, 2.8, 64, 36, 0.15)
+    box(f"{n}_ribbon", e, M["fpc"], 0, 22.5, 0, 6, 3, 0.2)
 
 
 def fpc_n(n, w):
@@ -955,6 +955,13 @@ def face_pieces():
     for i in range(6):
         for j in range(4):
             cyl(f"enc_grille_h{i}_{j}", e, M["recess"], -8.75 + i * 3.5, -5.25 + j * 3.5, 0.4, 0.7, 0.05, n=12)
+    e = item("enc_speaker")  # round speaker grille: concentric rings of holes
+    cyl("enc_speaker_plate", e, sh, 0, 0, 0, 11.5, 0.4, n=64)
+    cyl("enc_speaker_h0", e, M["recess"], 0, 0, 0.4, 0.7, 0.05, n=12)
+    for r, n in ((2.8, 6), (5.2, 12), (7.6, 18), (10.0, 24)):
+        for i in range(n):
+            a = 2 * math.pi * i / n + (0.3 if r > 5 else 0.0)
+            cyl(f"enc_speaker_h{r}_{i}", e, M["recess"], r * math.cos(a), r * math.sin(a), 0.4, 0.5, 0.05, n=10)
     e = item("enc_bezel")  # dark border inside the screen window, 10 x 10, scaled
     box("enc_bezel_box", e, M["bezel"], 0, 0, 0, 10, 10, 0.4)
 

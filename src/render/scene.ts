@@ -1,10 +1,11 @@
+import { lcdContrast } from '../sim/devices/lcdgames';
 import * as pc from 'playcanvas';
 import type { PointRef } from '../sim/circuit';
 import { bodyRect, FOOTPRINTS, rotate, type PadWorld } from '../sim/footprints';
 import type { DeviceDef } from '../sim/board';
 import type { PartSpec } from '../sim/parts';
 import type { Session } from '../game/session';
-import { buildGeometry, drawBoard, drawBoardBottom, type BoardGeometry } from './boardArt';
+import { buildGeometry, drawBoard, drawBoardBottom, onLogoLoaded, type BoardGeometry } from './boardArt';
 
 export interface BoardHit {
   /** Board coordinates (mm). */
@@ -83,6 +84,7 @@ export class BenchScene {
   private flipTarget = 0;
   private ledLights = new Map<string, pc.Entity>();
   private boardSig = '';
+  private logoHooked = false;
   private comps = new Map<string, CompVisual>();
   private meter!: pc.Entity;
   private meterDial: pc.Entity | null = null;
@@ -381,6 +383,7 @@ export class BenchScene {
     for (const [x, y] of f.buttons ?? []) cap('enc_btn', x, y);
     for (const [x, y] of f.pills ?? []) cap('enc_pill', x, y);
     if (f.grille) cap('enc_grille', f.grille[0], f.grille[1]);
+    if (f.speaker) cap('enc_speaker', f.speaker[0], f.speaker[1]);
     return g;
   }
 
@@ -422,6 +425,8 @@ export class BenchScene {
   private clockTex: pc.Texture | null = null;
   private clockCv: HTMLCanvasElement | null = null;
   private clockKey = '';
+  /** LCD contrast 0..1 from the voltage the screen gets (see lcdContrast). */
+  private lcdK = 1;
 
   /** A segment-LCD clock face showing the real time (what a Game & Clock does until you press Game). */
   private clockScreen(): pc.Texture {
@@ -429,7 +434,8 @@ export class BenchScene {
     const hh = String(now.getHours()).padStart(2, '0');
     const mm = String(now.getMinutes()).padStart(2, '0');
     const colon = now.getSeconds() % 2 === 0;
-    const key = `${hh}${mm}${colon}`;
+    const ink = Math.round(this.lcdK * 10);
+    const key = `${hh}${mm}${colon}${ink}`;
     if (!this.clockCv) {
       this.clockCv = document.createElement('canvas');
       this.clockCv.width = 160;
@@ -438,8 +444,13 @@ export class BenchScene {
     if (this.clockTex && key === this.clockKey) return this.clockTex;
     this.clockKey = key;
     const ctx = this.clockCv.getContext('2d')!;
-    ctx.fillStyle = '#c9d4b8';
+    ctx.fillStyle = '#cfd9bf';
     ctx.fillRect(0, 0, 160, 120);
+    // Dark ink at full contrast; the writing washes out into the background as the contrast drops.
+    const k = this.lcdK;
+    const mix = (a: number, b: number) => Math.round(a + (b - a) * k);
+    const INK = `rgb(${mix(207, 8)},${mix(217, 14)},${mix(191, 6)})`;
+    const GHOST = `rgba(${mix(207, 8)},${mix(217, 14)},${mix(191, 6)},0.06)`;
     // segments: a b c d e f g
     const SEG: Record<string, string> = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg' };
     const digit = (d: string, x: number, y: number, w: number, h: number): void => {
@@ -455,7 +466,7 @@ export class BenchScene {
       };
       for (const k of 'abcdefg') {
         const on = SEG[d].includes(k);
-        ctx.fillStyle = on ? '#2a3322' : 'rgba(42,51,34,0.08)';
+        ctx.fillStyle = on ? INK : GHOST;
         const [rx, ry, rw, rh] = rects[k];
         ctx.fillRect(rx, ry, rw, rh);
       }
@@ -464,10 +475,10 @@ export class BenchScene {
     digit(hh[1], 48, 34, 28, 52);
     digit(mm[0], 88, 34, 28, 52);
     digit(mm[1], 122, 34, 28, 52);
-    ctx.fillStyle = colon ? '#2a3322' : 'rgba(42,51,34,0.08)';
+    ctx.fillStyle = colon ? INK : GHOST;
     ctx.fillRect(80, 48, 5, 5);
     ctx.fillRect(80, 68, 5, 5);
-    ctx.fillStyle = '#2a3322';
+    ctx.fillStyle = INK;
     ctx.font = 'bold 9px monospace';
     ctx.fillText('CLOCK · press GAME to play', 22, 108);
     if (!this.clockTex) this.clockTex = this.texture(this.clockCv);
@@ -574,6 +585,10 @@ export class BenchScene {
     const dev = this.session.board.device;
     this.boardGroup?.destroy();
     this.cableEnts = [];
+    if (!this.logoHooked) {
+      this.logoHooked = true;
+      onLogoLoaded(() => (this.boardSig = ''));
+    }
     this.comps.clear();
     this.ledLights.clear();
     this.boardSig = '';
@@ -1244,9 +1259,17 @@ export class BenchScene {
         for (const m of v.lenses) {
           // Pocket LCD games keep time until the Game button starts the game.
           const clockMode = s.board.device.category === 'LCD game' && s.board.mcu.state.on !== 1;
+          if (s.board.device.category === 'LCD game') this.lcdK = op ? lcdContrast(op.at({ ref, pin: 'VCC' }) - op.at({ ref, pin: 'GND' })) : 1;
           m.emissiveMap = lit ? (clockMode ? this.clockScreen() : this.gameScreen()) : null;
           m.emissive = lit ? new pc.Color(1, 1, 1) : new pc.Color(0, 0, 0);
-          m.emissiveIntensity = lit ? 1.1 : 0;
+          m.emissiveIntensity = lit ? (clockMode ? 1.1 : 0.5 + 0.6 * this.lcdK) : 0;
+          // A segment LCD is read by reflected light: its dark ink must not be washed out by gloss and the pale glass colour.
+          if (s.board.device.category === 'LCD game') {
+            const keep = m as pc.StandardMaterial & { _glass?: pc.Color };
+            keep._glass ??= m.diffuse.clone();
+            m.diffuse = lit ? new pc.Color(0.03, 0.035, 0.03) : keep._glass;
+            m.specular = lit ? new pc.Color(0.04, 0.04, 0.04) : new pc.Color(1, 1, 1);
+          }
           m.update();
         }
         continue;

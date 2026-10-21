@@ -23,6 +23,9 @@ interface LcdGameSpec {
   minReputation: number;
 }
 
+/** How dark the LCD writing is, from the voltage the screen gets (full from ~3.1 V, gone below 2.4 V). */
+export const lcdContrast = (v: number): number => Math.max(0, Math.min(1, (v - 2.4) / 0.7));
+
 function lcdGame(sp: LcdGameSpec): DeviceDef {
   const variants: Variant[] = [
     {
@@ -34,6 +37,38 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
         b.comps.LCD1.fault = { type: 'dead' };
         addMark(b, 'LCD1', 'discolored');
         return { summary: 'The LCD has faded (the reflector behind it has gone dark): the segments are invisible. Fit a new LCD module.', refs: ['LCD1'], hint: 'You can hear it beep, but the screen shows nothing. Is the LCD getting its supply and data?', flavor: 'The screen has gone so faint you cannot see anything.' };
+      },
+    },
+    {
+      id: 'contrast-burnt',
+      family: 'Burnt contrast resistor',
+      tier: 1,
+      weight: 1.0,
+      apply(b, rng) {
+        b.comps.R11.fault = { type: 'high', r: Math.round(rng.range(55, 75)) };
+        addMark(b, 'R11', 'discolored');
+        return { summary: 'The screen contrast resistor R11 has burnt out high: it should be about 10 Ω but reads far more, so the LCD gets too little voltage and the writing is faint. Replace R11.', refs: ['R11'], hint: 'The screen works but the writing is pale. Measure the voltage at the LCD connector against the 3.3 V supply — where is it being lost? Check R11 with the meter.', flavor: 'The screen has gone really faint — I can hardly read the time.' };
+      },
+    },
+    {
+      id: 'contrast-crooked',
+      family: 'Misaligned resistor',
+      tier: 1,
+      weight: 0.8,
+      apply(b, rng) {
+        addMark(b, 'R11', 'crooked');
+        b.comps.R11.joints['1'] = { r: Math.round(rng.range(40, 60)), cold: true };
+        return { summary: 'The contrast resistor R11 was soldered on crooked and one end barely touches its pad, adding resistance in series: the LCD is starved and the writing is faint. Re-seat or replace R11 (flux, reflow, straighten it).', refs: ['R11'], hint: 'Pale writing. Look at R11 under the microscope — is it sitting square on both pads?', flavor: 'It has been a bit faint since the repair shop had it open.' };
+      },
+    },
+    {
+      id: 'contrast-cold',
+      family: 'Cold solder joint',
+      tier: 1,
+      weight: 0.8,
+      apply(b, rng) {
+        b.comps.R11.joints['2'] = { r: Math.round(rng.range(35, 65)), cold: true };
+        return { summary: 'A cold, cracked solder joint on the contrast resistor R11 adds resistance in series, so the LCD is starved and the writing is faint. Reflow the joint with flux.', refs: ['R11'], hint: 'Pale writing. Measure the voltage across R11: it should drop only a little. Inspect both ends of R11 under the microscope.', flavor: 'The screen got fainter over the years, and sometimes it comes back if I tap it.' };
       },
     },
     {
@@ -84,12 +119,12 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       tier: 3,
       weight: 0.5,
       apply(b, rng) {
-        liquidDamage(b, rng, ['C3', 'C4', 'R3', 'R10', 'J3'], 0.6, 0.9);
+        liquidDamage(b, rng, ['C3', 'C4', 'R3', 'R10', 'R11', 'J3'], 0.6, 0.9);
         b.comps.U2.part = null;
         addMark(b, 'U2', 'corrosion');
         return {
           summary: 'Catastrophic corrosion: the main chip has fallen off its corroded pads and everything is crusted. Only a donor board can supply that chip — without one it is a total loss. Clean everything and fit a donor chip.',
-          refs: ['U2', 'C3', 'C4', 'R3', 'R10', 'J3'],
+          refs: ['U2', 'C3', 'C4', 'R3', 'R10', 'R11', 'J3'],
           hint: 'Look at it under the light. Is the main chip even still there?',
           flavor: 'Found it in the loft after the roof leaked. It is a rare one — can you save it?',
         };
@@ -100,6 +135,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
   const state = (b: BoardState, op: OperatingPoint) => ({
     picture: lcdOn(op) && b.mcu.running && b.comps.LCD1.fault?.type !== 'dead',
     sound: Math.abs(op.current('SPK1')) > 0.03,
+    contrast: lcdContrast(op.at({ ref: 'LCD1', pin: 'VCC' }) - op.at({ ref: 'LCD1', pin: 'GND' })),
   });
 
   function functional(b: BoardState): FunctionalReport {
@@ -114,13 +150,15 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     const checks = [
       { label: 'The screen shows the game (on battery)', ok: st.picture },
       { label: 'It beeps', ok: st.sound },
+      { label: 'The writing on the screen is dark and clear', ok: !st.picture || st.contrast > 0.7 },
       { label: 'It charges from USB (charge light on)', ok: charging },
     ];
     return { checks, facts: { ...st, charging }, inputCurrent: op2.srcI, events: s.events, passed: checks.every((x) => x.ok) && !s.events.length };
   }
 
   function complain(r: FunctionalReport, events: DamageEvent[], rng: Rng): string {
-    const f = r.facts as Record<string, boolean>;
+    const f = r.facts as Record<string, boolean | number>;
+    if (f.picture && (f.contrast as number) <= 0.7) return rng.pick(['The writing on the screen is really faint.', 'I can barely read the screen — it is all washed out.']);
     if (!f.picture) return rng.pick(['Nothing on the screen.', 'Dead, even after charging all night.']) + (events.length ? ' It got warm.' : '');
     if (!f.sound) return 'No beeps.';
     if (!f.charging) return 'It will not charge any more.';
@@ -136,8 +174,8 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
     height: 90,
     blocks: [
       place('USB', usbInput({ connector: 'usbc', fuse: 'F-1A', tvs: 'D-TVS5' }), [2, 2], { out: 'VBUS' }, { conn: 'J1', fuse: 'F1', tvs: 'D1', tp: 'TP1' }, {
-        outline: { name: 'USB-C / CHARGER', x: 12, y: 2, w: 66, h: 32 },
-        layout: { conn: [19, 3.2], fuse: [30, 10], tvs: [35, 18, 270], tp: [23, 27] },
+        outline: { name: 'USB-C / CHARGER', x: 12, y: 2, w: 66, h: 19 },
+        layout: { conn: [19, 3.2], fuse: [30, 9], tvs: [35, 16, 270], tp: [24, 18] },
       }),
       place(
         'CHG',
@@ -145,43 +183,44 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
         [28, 2],
         { vin: 'VBUS', bat: 'VSYS', stat: 'CHG' },
         { sense: 'R1', cin: 'C1', chg: 'U1', cbat: 'C2', tp: 'TP2', ledRes: 'R2', led: 'D2', pack: 'BT1' },
-        { outline: null, layout: { sense: [44, 10], cin: [49, 18, 90], chg: [56, 10], cbat: [61, 20, 90], tp: [53, 29], ledRes: [67, 6], led: [72, 6], pack: [28, 44] } },
+        { outline: null, layout: { sense: [44, 8], cin: [49, 16, 90], chg: [56, 9], cbat: [62, 16, 90], tp: [70, 17], ledRes: [68, 5], led: [74, 5], pack: [21, 34] } },
       ),
     ],
     outlines: [
-      { name: 'CPU', x: 82, y: 3, w: 30, h: 26 },
-      { name: '3.3 V', x: 48, y: 33, w: 20, h: 24 },
-      { name: 'D-PAD', x: 4, y: 59, w: 42, h: 30 },
-      { name: 'BUTTONS', x: 118, y: 59, w: 30, h: 30 },
+      { name: 'CPU', x: 82, y: 3, w: 30, h: 18 },
+      { name: '3.3 V', x: 44, y: 70, w: 24, h: 19 },
+      { name: 'D-PAD', x: 4, y: 49, w: 36, h: 40 },
+      { name: 'BUTTONS', x: 114, y: 48, w: 34, h: 40 },
     ],
     parts: [
-      c('U4', 'U-LDO33T', 'POWER', 56, 43, 0, { IN: 'VSYS', GND: 'GND', OUT: 'VCC' }, '3.3 V regulator (laid flat, legs bent down)'),
-      c('C3', 'C-1U', 'POWER', 65, 37, 90, { '1': 'VSYS', '2': 'GND' }, 'Regulator input capacitor'),
-      c('C4', 'C-10U-6', 'POWER', 65, 50, 90, { '1': 'VCC', '2': 'GND' }, 'Regulator output capacitor'),
-      c('C5', 'C-100N', 'CPU', 85, 14, 90, { '1': 'VCC', '2': 'GND' }, 'CPU decoupling'),
-      c('TP3', 'TP', 'POWER', 80, 27, 0, { '1': 'VCC' }, '3.3 V rail'),
-      c('TP4', 'TP', 'POWER', 10, 80, 0, { '1': 'GND' }, 'Ground'),
-      cx('U2', sp.cpu, 'CPU', 96, 14, 0, { VDD: 'VCC', GND: 'GND', PWR: 'START', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', OK1: 'VCC', OK2: 'VCC', OK3: 'VCC', OK4: 'VCC', BA: 'UP', DIN: 'DOWN', CE: 'LEFT', DP: 'RIGHT', EN: 'BTN_A', BB: 'BTN_B' }, 'CPU'),
-      c('R3', 'R-10K', 'CPU', 104, 25, 90, { '1': 'VCC', '2': 'START' }, 'Game button pull-up'),
-      c('SW1', 'SW-TACT', 'CTRL', 60, 83, 0, { '1': 'START', '2': 'GND' }, 'Game button'),
-      c('SW2', 'SW-TACT', 'CTRL', 25, 65, 0, { '1': 'UP', '2': 'GND' }, 'D-pad up'),
-      c('SW3', 'SW-TACT', 'CTRL', 25, 83, 0, { '1': 'DOWN', '2': 'GND' }, 'D-pad down'),
-      c('SW4', 'SW-TACT', 'CTRL', 15, 74, 0, { '1': 'LEFT', '2': 'GND' }, 'D-pad left'),
-      c('SW5', 'SW-TACT', 'CTRL', 35, 74, 0, { '1': 'RIGHT', '2': 'GND' }, 'D-pad right'),
-      c('SW6', 'SW-TACT', 'CTRL', 140, 70, 0, { '1': 'BTN_A', '2': 'GND' }, 'A button'),
-      c('SW7', 'SW-TACT', 'CTRL', 127, 79, 0, { '1': 'BTN_B', '2': 'GND' }, 'B button'),
-      c('R4', 'R-10K', 'CTRL', 31, 65, 90, { '1': 'VCC', '2': 'UP' }, 'Up pull-up'),
-      c('R5', 'R-10K', 'CTRL', 31, 83, 90, { '1': 'VCC', '2': 'DOWN' }, 'Down pull-up'),
-      c('R6', 'R-10K', 'CTRL', 8, 70, 90, { '1': 'VCC', '2': 'LEFT' }, 'Left pull-up'),
-      c('R7', 'R-10K', 'CTRL', 41, 74, 90, { '1': 'VCC', '2': 'RIGHT' }, 'Right pull-up'),
-      c('R8', 'R-10K', 'CTRL', 146, 65, 90, { '1': 'VCC', '2': 'BTN_A' }, 'A pull-up'),
-      c('R9', 'R-10K', 'CTRL', 121, 85, 90, { '1': 'VCC', '2': 'BTN_B' }, 'B pull-up'),
-      c('J3', 'J-FPC3', 'SCREEN', 92, 81, 0, { VCC: 'VCC', DATA: 'LCD_D', GND: 'GND' }, 'LCD ribbon connector'),
-      c('LCD1', 'M-DBLCD', 'SCREEN', 92, 56, 0, { VCC: 'LCD1_VCC', DATA: 'LCD1_DATA', GND: 'LCD1_GND' }, 'Segment LCD', 'J3'),
-      cx('U3', 'U-SA8002', 'SOUND', 118, 12, 0, { VDD: 'VCC', GND: 'GND', EN: 'SND', OUTP: 'SPK_P', OUTN: 'SPK_N' }, 'Beeper driver'),
-      c('R10', 'R-100K', 'SOUND', 110, 20, 90, { '1': 'SND', '2': 'GND' }, 'Beeper enable pull-down'),
-      c('J4', 'J-JST2', 'SOUND', 131, 22, 0, { '1': 'SPK_P', '2': 'SPK_N' }, 'Speaker plug'),
-      c('SPK1', 'M-SPK4', 'SOUND', 131, 40, 0, { '1': 'SPK1_A', '2': 'SPK1_B' }, 'Speaker', 'J4'),
+      c('U4', 'U-LDO33T', 'POWER', 52, 77, 0, { IN: 'VSYS', GND: 'GND', OUT: 'VCC' }, '3.3 V regulator (laid flat, legs bent down)'),
+      c('C3', 'C-1U', 'POWER', 63, 75, 90, { '1': 'VSYS', '2': 'GND' }, 'Regulator input capacitor'),
+      c('C4', 'C-10U-6', 'POWER', 63, 83, 90, { '1': 'VCC', '2': 'GND' }, 'Regulator output capacitor'),
+      c('C5', 'C-100N', 'CPU', 89, 15, 90, { '1': 'VCC', '2': 'GND' }, 'CPU decoupling'),
+      c('TP3', 'TP', 'POWER', 82, 18, 0, { '1': 'VCC' }, '3.3 V rail'),
+      c('TP4', 'TP', 'POWER', 10, 85, 0, { '1': 'GND' }, 'Ground'),
+      cx('U2', sp.cpu, 'CPU', 97, 12, 0, { VDD: 'VCC', GND: 'GND', PWR: 'START', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', OK1: 'VCC', OK2: 'VCC', OK3: 'VCC', OK4: 'VCC', BA: 'UP', DIN: 'DOWN', CE: 'LEFT', DP: 'RIGHT', EN: 'BTN_A', BB: 'BTN_B' }, 'CPU'),
+      c('R3', 'R-10K', 'CPU', 105, 18, 90, { '1': 'VCC', '2': 'START' }, 'Game button pull-up'),
+      c('SW1', 'SW-TACT', 'CTRL', 75, 83, 0, { '1': 'START', '2': 'GND' }, 'Game button'),
+      c('SW2', 'SW-TACT', 'CTRL', 22, 54, 0, { '1': 'UP', '2': 'GND' }, 'D-pad up'),
+      c('SW3', 'SW-TACT', 'CTRL', 22, 74, 0, { '1': 'DOWN', '2': 'GND' }, 'D-pad down'),
+      c('SW4', 'SW-TACT', 'CTRL', 12, 64, 0, { '1': 'LEFT', '2': 'GND' }, 'D-pad left'),
+      c('SW5', 'SW-TACT', 'CTRL', 32, 64, 0, { '1': 'RIGHT', '2': 'GND' }, 'D-pad right'),
+      c('SW6', 'SW-TACT', 'CTRL', 138, 56, 0, { '1': 'BTN_A', '2': 'GND' }, 'A button'),
+      c('SW7', 'SW-TACT', 'CTRL', 126, 66, 0, { '1': 'BTN_B', '2': 'GND' }, 'B button'),
+      c('R4', 'R-10K', 'CTRL', 28, 54, 90, { '1': 'VCC', '2': 'UP' }, 'Up pull-up'),
+      c('R5', 'R-10K', 'CTRL', 28, 74, 90, { '1': 'VCC', '2': 'DOWN' }, 'Down pull-up'),
+      c('R6', 'R-10K', 'CTRL', 6, 64, 90, { '1': 'VCC', '2': 'LEFT' }, 'Left pull-up'),
+      c('R7', 'R-10K', 'CTRL', 38, 71, 90, { '1': 'VCC', '2': 'RIGHT' }, 'Right pull-up'),
+      c('R8', 'R-10K', 'CTRL', 144, 56, 90, { '1': 'VCC', '2': 'BTN_A' }, 'A pull-up'),
+      c('R9', 'R-10K', 'CTRL', 132, 66, 90, { '1': 'VCC', '2': 'BTN_B' }, 'B pull-up'),
+      c('R11', 'R-10R-1206', 'SCREEN', 87, 74, 0, { '1': 'VCC', '2': 'LCD_V' }, 'LCD contrast resistor'),
+      c('J3', 'J-FPC3', 'SCREEN', 75, 74, 0, { VCC: 'LCD_V', DATA: 'LCD_D', GND: 'GND' }, 'LCD ribbon connector'),
+      c('LCD1', 'M-DBLCD', 'SCREEN', 75, 47, 0, { VCC: 'LCD1_VCC', DATA: 'LCD1_DATA', GND: 'LCD1_GND' }, 'Segment LCD', 'J3'),
+      cx('U3', 'U-SA8002', 'SOUND', 122, 8, 0, { VDD: 'VCC', GND: 'GND', EN: 'SND', OUTP: 'SPK_P', OUTN: 'SPK_N' }, 'Beeper driver'),
+      c('R10', 'R-100K', 'SOUND', 114, 13, 90, { '1': 'SND', '2': 'GND' }, 'Beeper enable pull-down'),
+      c('J4', 'J-JST2', 'SOUND', 131, 16, 0, { '1': 'SPK_P', '2': 'SPK_N' }, 'Speaker plug'),
+      c('SPK1', 'M-SPK4', 'SOUND', 131, 32, 0, { '1': 'SPK1_A', '2': 'SPK1_B' }, 'Speaker', 'J4'),
     ],
     traces: [],
     testPoints: [
@@ -208,6 +247,7 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       RIGHT: { desc: 'D-pad right (low when pressed)' },
       BTN_A: { desc: 'A button (low when pressed)' },
       BTN_B: { desc: 'B button (low when pressed)' },
+      LCD_V: { desc: 'LCD supply after the contrast resistor — a little under 3.3 V; lower means fainter writing', expected: 3.2 },
       LCD_D: { desc: 'Segment data to the LCD' },
       SND: { desc: 'Beeper enable' },
     },
@@ -241,12 +281,13 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
       return [
         { label: 'Screen', value: st.picture ? 'segments showing' : 'blank', ok: st.picture },
         { label: 'Beeper', value: st.sound ? 'beeping' : 'silent', ok: st.sound },
+        { label: 'Screen contrast', value: st.picture ? `${Math.round(st.contrast * 100)} %` : '—', ok: !st.picture || st.contrast > 0.7 },
         { label: 'Charge light (red)', value: op.current('D2') > 5e-4 ? 'on (charging)' : 'off', ok: op.current('D2') > 5e-4 },
         { label: 'Battery rail', value: `${op.net('VSYS').toFixed(2)} V` },
       ];
     },
     variants,
-    missable: ['C3', 'C4', 'C5'],
+    missable: ['C3', 'C4', 'C5', 'R11'],
     carbonise: [['VCC', 'GND', 'C4']],
     marketValue: sp.marketValue,
     quoteBase: sp.quoteBase,
@@ -255,16 +296,17 @@ function lcdGame(sp: LcdGameSpec): DeviceDef {
   // The front of the case: the screen sits flush in its window, plastic caps over the buttons,
   // holes over the speaker and a tunnel for the USB-C port.
   dev.face = {
-    windows: [[92, 56, 42, 34]],
-    dpad: [25, 74],
-    buttons: [[140, 70], [127, 79]],
-    smallButtons: [[60, 83]],
-    grille: [131, 40],
+    windows: [[75, 45, 66, 38]],
+    dpad: [22, 64],
+    buttons: [[138, 56], [126, 66]],
+    smallButtons: [[75, 83]],
+    speaker: [131, 32],
     ports: [[19, 1.5, 12, 11]],
     height: 7.2,
-    corners: [9, 9, 9, 9],
+    corners: [10, 10, 10, 10],
   };
-  silk(dev.components, { U2: 'CPU', SW1: 'GAME', SW2: 'UP', SW3: 'DOWN', SW4: 'LEFT', SW5: 'RIGHT', SW6: 'A', SW7: 'B', BT1: 'BATTERY', J1: 'USB-C', J3: 'LCD', U3: 'BEEPER', U4: '3.3V', J4: 'SPEAKER' });
+  dev.logo = { x: 120, y: 73, w: 36 };
+  silk(dev.components, { U2: 'CPU', SW1: 'GAME', SW2: 'UP', SW3: 'DOWN', SW4: 'LEFT', SW5: 'RIGHT', SW6: 'A', SW7: 'B', BT1: 'BATTERY', J1: 'USB-C', J3: 'LCD', U3: 'BEEPER', U4: '3.3V', J4: 'SPEAKER', R11: 'CONTRAST' });
   return dev;
 }
 

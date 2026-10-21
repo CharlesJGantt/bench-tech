@@ -12,6 +12,8 @@ import { oxideR } from './contacts';
 export type CompFault =
   | { type: 'open' }
   | { type: 'short'; r: number }
+  /** Resistor burnt out high: it now reads this many ohms (not open, not its marked value). */
+  | { type: 'high'; r: number }
   /** IC alive but produces no output. */
   | { type: 'dead' }
   /** LDO pass element failed short IN→OUT. */
@@ -415,7 +417,7 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
   switch (kind) {
     case 'resistor': {
       const [a, z] = two();
-      add(E.resistor(a, z, f?.type === 'short' ? f.r : p.value, ref));
+      add(E.resistor(a, z, f?.type === 'short' || f?.type === 'high' ? f.r : p.value, ref));
       return;
     }
     case 'capacitor': {

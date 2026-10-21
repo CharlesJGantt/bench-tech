@@ -8,6 +8,20 @@ import { routeBoard, type Segment, type TraceGeom } from './router';
 
 export const PX = 20; // texture pixels per millimetre
 
+/** The Makers Workbench logo as white silkscreen (public/branding), loaded once. */
+export const LOGO_URL = 'www.themakersworkbench.com';
+const logoImg = typeof Image === 'undefined' ? null : new Image();
+const logoWaiting = new Set<() => void>();
+if (logoImg) {
+  logoImg.onload = () => logoWaiting.forEach((f) => f());
+  logoImg.src = `${import.meta.env?.BASE_URL ?? '/'}branding/makers-workbench-logo-white.png`;
+}
+/** Call back when the logo image has loaded (so the board can be redrawn with it). */
+export function onLogoLoaded(f: () => void): void {
+  if (logoImg?.complete && logoImg.naturalWidth) f();
+  else logoWaiting.add(f);
+}
+
 /** Board silkscreen branding (all fictional): title, revision line, maker. */
 const SILK: Record<string, [string, string, string]> = {
   dl12: ['BRIGHTLINE  DL-12', 'MAIN BOARD  REV C   2024-11   12V 0.5A', 'BRIGHTLINE LIGHTING CO.'],
@@ -383,6 +397,19 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
   ctx.font = `${1.4 * PX}px Arial, sans-serif`;
   ctx.fillText(rev, spot.x * PX, (spot.y + 5.2) * PX);
   ctx.textAlign = 'center';
+
+  // Makers Workbench logo and web address, in white silkscreen
+  if (dev.logo && logoImg?.complete && logoImg.naturalWidth) {
+    const { x, y, w } = dev.logo;
+    const h = (w * logoImg.naturalHeight) / logoImg.naturalWidth;
+    ctx.drawImage(logoImg, (x - w / 2) * PX, y * PX, w * PX, h * PX);
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `bold ${Math.min(1.7, (w * 1.55) / LOGO_URL.length) * PX}px Arial, sans-serif`;
+    ctx.fillText(LOGO_URL, x * PX, (y + h + 1.5) * PX);
+    ctx.fillStyle = COL.silk;
+  }
 
   // Jumper wires (enamelled copper)
   for (const j of b.jumpers) {

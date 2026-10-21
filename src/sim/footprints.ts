@@ -225,7 +225,7 @@ export const FOOTPRINTS: Record<Pkg, Footprint> = {
   SCREEN_M: { w: 52, h: 34, height: 3, pads: rowOf(4, 1.2, 15, 0.8, 1.4, false) },
   TPAD: { w: 30, h: 14, height: 2, pads: rowOf(4, 1.2, 8, 0.8, 1.4, false) },
   PAK: { w: 24, h: 10, height: 30, pads: two(1, 1.4, 1.4).map((p) => ({ ...p, y: 4 })) },
-  SCREEN_S: { w: 46, h: 40, height: 4, pads: rowOf(3, 1.2, 18, 0.8, 1.4, false) },
+  SCREEN_S: { w: 72, h: 46, height: 3, pads: rowOf(3, 1.2, 22, 0.8, 1.4, false) },
 };
 
 export function rotate(x: number, y: number, rot: number): [number, number] {

@@ -105,6 +105,8 @@ export interface FaceSpec {
   /** Openings the analog sticks poke through. */
   sticks?: [number, number][];
   grille?: [number, number];
+  /** Round speaker grille (concentric rings of holes): centre x, centre y. */
+  speaker?: [number, number];
   /** Openings in the shell wall for connectors at the board edge (a USB port): centre x, centre y, width, height. */
   ports?: [number, number, number, number][];
   /** Small round buttons (home / PS / capture). */
@@ -157,6 +159,8 @@ export interface DeviceDef {
    * The scene builds the closed front shell from it so it lines up with the parts.
    */
   face?: FaceSpec;
+  /** Where the Makers Workbench logo and web address go on the silkscreen: centre x, top y, logo width (mm). */
+  logo?: { x: number; y: number; w: number };
   /** Cartridge boards: the console they plug into (device id) and the games sold on this board. */
   cartFor?: string;
   titles?: { name: string; value: number }[];
