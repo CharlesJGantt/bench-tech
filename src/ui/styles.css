@@ -1290,3 +1290,8 @@ button:disabled {
 #controls button { padding: 7px 8px; font-size: 12.5px; }
 #controls button:first-child, #controls button.ext { grid-column: 1 / -1; }
 #controls button.big.ctl:first-child { font-size: 13.5px; padding: 9px 12px; }
+
+/* On wider windows the toolbar no longer reaches the side columns: let the right column run almost to the bottom */
+@media (min-width: 1240px) {
+  #right { bottom: 14px; }
+}
