@@ -4,7 +4,7 @@
  * are encoded as -1 because JSON has no Infinity.
  */
 import { createBoard, type BoardState, type CompFault, type Jumper, type Mark } from './circuit';
-import type { AppliedFault, Job } from './faults';
+import { generateJob, type AppliedFault, type Job } from './faults';
 import { part } from './parts';
 import { migrateCorrosion, type Corrosion } from './corrosion';
 import { DEVICES } from './devices';
@@ -99,7 +99,35 @@ export function saveJob(j: Job): SavedJob {
   return structuredClone({ ...rest, deviceId: device.id, board: saveBoard(board) });
 }
 
+/**
+ * Was this board saved from an older layout of its device (different parts or refs)? Devices get
+ * redesigned between versions; the old board can no longer be mapped onto the new one.
+ */
+function outdated(deviceId: string, board: SavedBoard): boolean {
+  const dev = DEVICES[deviceId];
+  if (!dev) return false;
+  const want = new Set(dev.components.map((c) => c.ref));
+  const have = Object.keys(board.comps);
+  if (have.length !== want.size || have.some((r) => !want.has(r))) return true;
+  return dev.components.some((c) => {
+    const saved = board.comps[c.ref]?.partNo;
+    return !!saved && part(saved).kind !== part(c.partNo).kind;
+  });
+}
+
 export function loadJob(s: SavedJob): Job {
   const { deviceId, board, ...rest } = structuredClone(s);
+  if (outdated(deviceId, board)) {
+    // Rebuild the same customer's device on the current design (same seed and fault type when it still exists).
+    const dev = DEVICES[deviceId];
+    const variant = (rest.faults as AppliedFault[] | undefined)?.[0]?.variant;
+    let fresh: Job;
+    try {
+      fresh = generateJob(dev, rest.seed, variant && dev.variants.some((v) => v.id === variant) ? { variant } : {});
+    } catch {
+      fresh = generateJob(dev, rest.seed, {});
+    }
+    return { ...fresh, customer: rest.customer, kind: rest.kind, quote: rest.quote, paid: rest.paid, title: rest.title };
+  }
   return { ...rest, device: DEVICES[deviceId], board: loadBoard(board), faults: rest.faults as AppliedFault[] };
 }

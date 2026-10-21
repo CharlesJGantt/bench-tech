@@ -35,6 +35,9 @@ const rowOf = (n: number, pitch: number, y: number, w: number, h: number, round 
 
 export const FOOTPRINTS: Record<Pkg, Footprint> = {
   TO220: { w: 10.2, h: 4.6, height: 16, pads: rowOf(3, 2.54, 0, 1.8, 1.8) },
+  // Laid flat on the board: body and tab lie along y, the bent legs reach down into pads past the front edge.
+  TO220F: { w: 10.2, h: 14, height: 5.4, pads: rowOf(3, 2.54, 9.5, 1.8, 1.8) },
+  POUCH: { w: 32, h: 24, height: 4.5, pads: two(5, 2.4, 2.4).map((p) => ({ ...p, y: -10 })) },
   DIP40: dip(40, 15.24),
   DIP28: dip(28, 15.24),
   DIP16: dip(16, 7.62),

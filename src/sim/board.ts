@@ -105,6 +105,8 @@ export interface FaceSpec {
   /** Openings the analog sticks poke through. */
   sticks?: [number, number][];
   grille?: [number, number];
+  /** Openings in the shell wall for connectors at the board edge (a USB port): centre x, centre y, width, height. */
+  ports?: [number, number, number, number][];
   /** Small round buttons (home / PS / capture). */
   smallButtons?: [number, number][];
   /** Flat panels set into the shell (a touchpad): centre, size, colour. */

@@ -345,6 +345,9 @@ export const STARTER_PACK: Record<string, number> = {
   'M-BATT-1S': 1,
   'U-7805T': 1,
   'BT-CR2032T': 2,
+  'BT-LR44X2T': 2,
+  'U-LDO33T': 1,
+  'BT-LIPO-1S': 1,
 };
 
 export const STARTING_STOCK: Record<string, number> = {

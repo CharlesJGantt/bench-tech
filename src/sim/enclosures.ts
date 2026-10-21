@@ -90,11 +90,10 @@ export const ENCLOSURES: Record<string, EnclosureDef> = {
       {
         color: id === 'game-clock' ? '#b8b3a6' : '#e7a8c0',
         items: [
-          { id: 'door', kind: 'clips', label: 'Battery door', at: [20, 42], size: [28, 28] },
           { ...screw('s1', 'Back screw 1', [4, 4], 5, 5), security: id === 'critter-mini' },
-          screw('s2', 'Back screw 2', [116, 4], 5, 5),
-          screw('s3', 'Back screw 3', [116, 76], 5, 5),
-          { id: 'back', kind: 'shell', label: 'Back cover', at: [60, 40], size: [120, 80], needs: ['door', 's1', 's2', 's3'], covers: true },
+          screw('s2', 'Back screw 2', [146, 4], 5, 5),
+          screw('s3', 'Back screw 3', [146, 86], 5, 5),
+          { id: 'back', kind: 'shell', label: 'Back cover', at: [75, 45], size: [150, 90], needs: ['s1', 's2', 's3'], covers: true },
         ],
       } satisfies EnclosureDef,
     ]),

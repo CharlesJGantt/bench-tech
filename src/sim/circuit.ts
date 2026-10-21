@@ -884,6 +884,8 @@ export function measure(
 
 const THETA: Record<string, number> = {
   TO220: 50,
+  TO220F: 50,
+  POUCH: 40,
   DIP40: 45,
   DIP28: 50,
   DIP16: 70,

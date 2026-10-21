@@ -104,6 +104,19 @@ const batteryWorn: BlockVariant = {
     };
   },
 };
+const batterySolderedWorn: BlockVariant = {
+  ...batteryWorn,
+  apply(b, _rng, ref) {
+    const r = ref('pack');
+    b.comps[r].fault = { type: 'worn' };
+    return {
+      summary: `The battery ${r} is worn out: it reads well under 3.6 V and collapses under load. Desolder its tabs and solder in a new cell (heat the tabs briefly, never the cell).`,
+      refs: [r],
+      hint: 'Measure the battery itself: a healthy single cell reads 3.7–4.2 V. This one is soldered in, so measure on its pads.',
+      flavor: 'It dies after a few minutes even when fully charged.',
+    };
+  },
+};
 // ---------------------------------------------------------------------------
 
 export interface ChargerOpts {
@@ -115,8 +128,8 @@ export interface ChargerOpts {
   cbat?: string;
   /** Red charge LED (VBUS → LED → STAT, lit while charging). */
   led?: boolean;
-  /** Battery connector + plug-in Li-ion pack. */
-  battery?: boolean;
+  /** Battery connector + plug-in Li-ion pack; 'soldered' = a pouch cell with tabs soldered to the board. */
+  battery?: boolean | 'soldered';
 }
 
 /** Ports: `vin` (VBUS), `bat` (battery / system rail), `stat` (charge status, low while charging). */
@@ -134,7 +147,9 @@ export function liIonCharger(o: ChargerOpts): BlockDef {
       { key: 'ledRes', partNo: 'R-1K', at: [2, 18], pins: { '1': 'vin', '2': 'LED' }, role: 'Charge LED resistor' },
       { key: 'led', partNo: 'LED-RED', at: [8, 18], pins: { A: 'LED', K: 'stat' }, role: 'Charge LED (on while charging)' },
     );
-  if (o.battery)
+  if (o.battery === 'soldered')
+    parts.push({ key: 'pack', partNo: 'BT-LIPO-1S', at: [44, 16], pins: { '+': 'bat', '-': 'GND' }, role: 'Li-ion battery (soldered in)' });
+  else if (o.battery)
     parts.push(
       { key: 'conn', partNo: 'J-JST2', at: [28, 4], pins: { '1': 'bat', '2': 'GND' }, role: 'Battery connector' },
       { key: 'pack', partNo: 'M-BATT-1S', at: [44, 16], pins: { '+': 'P', '-': 'N' }, role: 'Li-ion battery pack', mates: 'conn' },
@@ -151,8 +166,7 @@ export function liIonCharger(o: ChargerOpts): BlockDef {
       ...(o.led ? { LED: { desc: 'Charge LED anode' } } : {}),
       NC5: { desc: 'Unused charger pin' },
       NC6: { desc: 'Unused charger pin' },
-      P: { desc: 'Battery pack +' },
-      N: { desc: 'Battery pack −' },
+      ...(o.battery === 'soldered' ? {} : { P: { desc: 'Battery pack +' }, N: { desc: 'Battery pack −' } }),
     },
     testPoints: [{ key: 'tp', expected: '3.7–4.2 V (battery)' }],
     rails: [{ net: 'bat', nominal: 3.8, label: 'BAT' }],
@@ -173,7 +187,7 @@ export function liIonCharger(o: ChargerOpts): BlockDef {
           };
         },
       },
-      ...(o.battery ? [batteryWorn] : []),
+      ...(o.battery ? [o.battery === 'soldered' ? batterySolderedWorn : batteryWorn] : []),
     ],
   };
 }

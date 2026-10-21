@@ -419,6 +419,62 @@ export class BenchScene {
     return this.screenTex;
   }
 
+  private clockTex: pc.Texture | null = null;
+  private clockCv: HTMLCanvasElement | null = null;
+  private clockKey = '';
+
+  /** A segment-LCD clock face showing the real time (what a Game & Clock does until you press Game). */
+  private clockScreen(): pc.Texture {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const colon = now.getSeconds() % 2 === 0;
+    const key = `${hh}${mm}${colon}`;
+    if (!this.clockCv) {
+      this.clockCv = document.createElement('canvas');
+      this.clockCv.width = 160;
+      this.clockCv.height = 120;
+    }
+    if (this.clockTex && key === this.clockKey) return this.clockTex;
+    this.clockKey = key;
+    const ctx = this.clockCv.getContext('2d')!;
+    ctx.fillStyle = '#c9d4b8';
+    ctx.fillRect(0, 0, 160, 120);
+    // segments: a b c d e f g
+    const SEG: Record<string, string> = { '0': 'abcdef', '1': 'bc', '2': 'abdeg', '3': 'abcdg', '4': 'bcfg', '5': 'acdfg', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg' };
+    const digit = (d: string, x: number, y: number, w: number, h: number): void => {
+      const t = 5;
+      const rects: Record<string, [number, number, number, number]> = {
+        a: [x + t, y, w - 2 * t, t],
+        b: [x + w - t, y + t, t, h / 2 - t],
+        c: [x + w - t, y + h / 2, t, h / 2 - t],
+        d: [x + t, y + h - t, w - 2 * t, t],
+        e: [x, y + h / 2, t, h / 2 - t],
+        f: [x, y + t, t, h / 2 - t],
+        g: [x + t, y + h / 2 - t / 2, w - 2 * t, t],
+      };
+      for (const k of 'abcdefg') {
+        const on = SEG[d].includes(k);
+        ctx.fillStyle = on ? '#2a3322' : 'rgba(42,51,34,0.08)';
+        const [rx, ry, rw, rh] = rects[k];
+        ctx.fillRect(rx, ry, rw, rh);
+      }
+    };
+    digit(hh[0], 14, 34, 28, 52);
+    digit(hh[1], 48, 34, 28, 52);
+    digit(mm[0], 88, 34, 28, 52);
+    digit(mm[1], 122, 34, 28, 52);
+    ctx.fillStyle = colon ? '#2a3322' : 'rgba(42,51,34,0.08)';
+    ctx.fillRect(80, 48, 5, 5);
+    ctx.fillRect(80, 68, 5, 5);
+    ctx.fillStyle = '#2a3322';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('CLOCK · press GAME to play', 22, 108);
+    if (!this.clockTex) this.clockTex = this.texture(this.clockCv);
+    else this.clockTex.upload();
+    return this.clockTex;
+  }
+
   /** Give every mesh of an entity one material (case tint / translucency). */
   private paint(e: pc.Entity, m: pc.Material): void {
     for (const r of e.findComponents('render') as pc.RenderComponent[]) for (const mi of r.meshInstances) mi.material = m;
@@ -517,6 +573,7 @@ export class BenchScene {
     const app = this.app;
     const dev = this.session.board.device;
     this.boardGroup?.destroy();
+    this.cableEnts = [];
     this.comps.clear();
     this.ledLights.clear();
     this.boardSig = '';
@@ -850,7 +907,7 @@ export class BenchScene {
       let rot = c.def.rot + (c.reversed ? 180 : 0);
       if (c.marks.includes('crooked')) rot += 9;
       // Analog sticks under a front shell stand proud of it, like the real thing
-      const lift = c.part.pkg === 'STICK' && this.session.board.device.face ? Math.max(0, (this.session.board.device.face.height ?? 9) - 8) : 0;
+      const lift = c.part.pkg === 'STICK' && this.session.board.device.face ? Math.max(0, (this.session.board.device.face.height ?? 9) - 8) : this.screenLift(c);
       e.setLocalPosition(this.toWorld(c.def.x, c.def.y, 0.03 + lift));
       e.setLocalEulerAngles(c.marks.includes('loose') ? 4 : 0, -rot, 0);
       if (c.marks.includes('bulged')) e.setLocalScale(1, 1.12, 1);
@@ -874,6 +931,71 @@ export class BenchScene {
             mi.material = m;
           }
         }
+      }
+    }
+    this.syncCables();
+  }
+
+  /** A screen under a tall front shell is mounted up on a frame so its glass sits flush with the front. */
+  private screenLift(c: { def: { partNo: string }; part: PartSpec | null }): number {
+    const dev = this.session.board.device;
+    if (!dev.face || !c.part || !c.part.pkg.startsWith('SCREEN') || dev.category !== 'LCD game') return 0;
+    return Math.max(0, (dev.face.height ?? 9) - FOOTPRINTS[c.part.pkg].height - 0.05);
+  }
+
+  private cableEnts: pc.Entity[] = [];
+  private cableMats: { ribbon: pc.StandardMaterial; red: pc.StandardMaterial; black: pc.StandardMaterial } | null = null;
+
+  /** Ribbon cables and wires from plug-in modules (screens, speakers, packs) to their connectors. */
+  private syncCables(): void {
+    for (const e of this.cableEnts) e.destroy();
+    this.cableEnts = [];
+    if (!this.cableMats) {
+      const mat = (r: number, g: number, b: number, gloss = 0.4) => {
+        const m = new pc.StandardMaterial();
+        m.diffuse = new pc.Color(r, g, b);
+        m.gloss = gloss;
+        m.update();
+        return m;
+      };
+      this.cableMats = { ribbon: mat(0.78, 0.5, 0.2), red: mat(0.75, 0.08, 0.06), black: mat(0.07, 0.07, 0.08) };
+    }
+    const mats = this.cableMats;
+    const b = this.session.board;
+    const padsOf = (ref: string) => this.geo.pads.filter((q) => q.ref === ref);
+    const mid = (ps: { x: number; y: number }[]) => ({ x: ps.reduce((t, q) => t + q.x, 0) / ps.length, y: ps.reduce((t, q) => t + q.y, 0) / ps.length });
+    const run = (a: pc.Vec3, c: pc.Vec3, width: number, thick: number, mat: pc.StandardMaterial, lift: number): void => {
+      const ctrl = new pc.Vec3((a.x + c.x) / 2, Math.max(a.y, c.y) + lift, (a.z + c.z) / 2);
+      const N = 14;
+      const pt = (t: number) => new pc.Vec3((1 - t) * (1 - t) * a.x + 2 * (1 - t) * t * ctrl.x + t * t * c.x, (1 - t) * (1 - t) * a.y + 2 * (1 - t) * t * ctrl.y + t * t * c.y, (1 - t) * (1 - t) * a.z + 2 * (1 - t) * t * ctrl.z + t * t * c.z);
+      for (let i = 0; i < N; i++) {
+        const p0 = pt(i / N);
+        const p1 = pt((i + 1) / N);
+        const e = new pc.Entity('cable');
+        e.addComponent('render', { type: 'box', material: mat, castShadows: true });
+        const m = new pc.Mat4().setLookAt(p0, p1, pc.Vec3.UP);
+        e.setLocalPosition((p0.x + p1.x) / 2, (p0.y + p1.y) / 2, (p0.z + p1.z) / 2);
+        e.setLocalRotation(new pc.Quat().setFromMat4(m));
+        e.setLocalScale(width, thick, p0.clone().sub(p1).length() * 1.08);
+        this.boardGroup.addChild(e);
+        this.cableEnts.push(e);
+      }
+    };
+    for (const c of Object.values(b.comps)) {
+      const conn = c.def.mates ? b.comps[c.def.mates] : null;
+      if (!conn || !c.part || c.unplugged || !conn.part) continue;
+      const mp = padsOf(c.ref);
+      const cp = padsOf(conn.ref);
+      if (!mp.length || !cp.length) continue;
+      const ribbon = conn.part.pkg.startsWith('FPC');
+      if (ribbon) {
+        const a = mid(cp);
+        const d = mid(mp);
+        const span = Math.max(...mp.map((q) => q.x)) - Math.min(...mp.map((q) => q.x));
+        run(this.toWorld(a.x, a.y, 1.6), this.toWorld(d.x, d.y, 0.9 + this.screenLift(c)), Math.max(4, span + 2.4), 0.16, mats.ribbon, 4);
+      } else if (cp.length >= 2 && mp.length >= 2) {
+        // two wires: first pad red, second black
+        for (let i = 0; i < 2; i++) run(this.toWorld(cp[i].x, cp[i].y, 1.6), this.toWorld(mp[i].x, mp[i].y, 1.2), 0.9, 0.9, i === 0 ? mats.red : mats.black, 3 + i);
       }
     }
   }
@@ -1120,7 +1242,9 @@ export class BenchScene {
       if (sc.part?.kind === 'logic' && sc.part.pkg.startsWith('SCREEN')) {
         const lit = !!op && !sc.unplugged && sc.fault?.type !== 'dead' && op.at({ ref, pin: 'VCC' }) - op.at({ ref, pin: 'GND' }) > 2.4 && op.at({ ref, pin: 'DATA' }) - op.at({ ref, pin: 'GND' }) > 1.2;
         for (const m of v.lenses) {
-          m.emissiveMap = lit ? this.gameScreen() : null;
+          // Pocket LCD games keep time until the Game button starts the game.
+          const clockMode = s.board.device.category === 'LCD game' && s.board.mcu.state.on !== 1;
+          m.emissiveMap = lit ? (clockMode ? this.clockScreen() : this.gameScreen()) : null;
           m.emissive = lit ? new pc.Color(1, 1, 1) : new pc.Color(0, 0, 0);
           m.emissiveIntensity = lit ? 1.1 : 0;
           m.update();

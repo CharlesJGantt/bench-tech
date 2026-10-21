@@ -724,6 +724,33 @@ def to220():
         box(f"{n}_leg{i}", e, M["tin"], -2.54 + i * 2.54, 0, 0, 0.8, 0.5, 1.6)
 
 
+def to220f():
+    """TO-220 laid flat on the board: body and tab along y, legs bent down at the front."""
+    n = "pkg_TO220F"
+    e = item(n)
+    # black body (front) and metal tab (back), both lying flat
+    box(f"{n}_body", e, M["black"], 0, 1.8, 0.9, 10.2, 8.4, 4.4, bevel=0.2)
+    box(f"{n}_tab", e, M["steel"], 0, -4.6, 0.9, 10.2, 5.2, 1.3, bevel=0.1)
+    cyl(f"{n}_hole", e, M["recess"], 0, -5.6, 2.2, 1.7, 0.05, n=20)
+    # bent legs: out of the front, a short run forward, then down into the pads
+    for i in range(3):
+        x = -2.54 + i * 2.54
+        # one continuous leg: horizontal out of the body, then a right-angle bend down into the hole
+        box(f"{n}_leg{i}a", e, M["tin"], x, 7.95, 1.9, 0.8, 3.9, 0.5)
+        box(f"{n}_leg{i}b", e, M["tin"], x, 9.5, 0.0, 0.8, 0.8, 2.4)
+
+
+def pouch():
+    """Flat Li-ion pouch cell with two tabs at the front edge."""
+    n = "pkg_POUCH"
+    e = item(n)
+    box(f"{n}_cell", e, M["steel"], 0, 0.5, 0.3, 30, 22.5, 3.6, bevel=0.5)
+    box(f"{n}_seal", e, M["band"], 0, -10.4, 0.3, 30, 2.4, 1.0)
+    box(f"{n}_label", e, M["recess"], 0, 3.0, 3.9, 20, 10, 0.02)
+    for sx in (-1, 1):
+        box(f"{n}_tab{sx}", e, M["tin"], sx * 5, -10.8, 0.25, 3.0, 4.0, 0.3)
+
+
 def dip_pkg(pins, row):
     n = f"pkg_DIP{pins}"
     e = item(n)
@@ -889,6 +916,8 @@ tpad()
 slide()
 pak()
 to220()
+to220f()
+pouch()
 for _p, _r in ((40, 15.24), (28, 15.24), (16, 7.62), (14, 7.62)):
     dip_pkg(_p, _r)
 coin()

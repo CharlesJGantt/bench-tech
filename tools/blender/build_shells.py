@@ -110,6 +110,10 @@ def build(dev):
     for i, (sx, sy) in enumerate(f.get("sticks", [])):
         cut = prism(f"stk{i}", rounded_outline(sx - 7, sy - 7, sx + 7, sy + 7, [7] * 4, segs=16), z0 - 2, top + 2, cx, cy)
         boolean(shell, cut, "DIFFERENCE")
+    # Openings in the wall for connectors at the board edge (USB port): a tunnel up to just over the port's height
+    for i, (px, py, pw, ph) in enumerate(f.get("ports", [])):
+        cut = prism(f"port{i}", rounded_outline(px - pw / 2, py - ph / 2, px + pw / 2, py + ph / 2, [1.3] * 4), z0 - 2, min(top - 0.5, 3.8), cx, cy)
+        boolean(shell, cut, "DIFFERENCE")
     # Clamshell opened flat: a groove across where the two halves meet
     if f.get("hinge") is not None:
         hy = f["hinge"]

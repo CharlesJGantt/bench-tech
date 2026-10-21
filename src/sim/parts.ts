@@ -62,6 +62,8 @@ export type Pkg =
   | 'LEDBAR'
   | 'TP'
   | 'TO220'
+  | 'TO220F'
+  | 'POUCH'
   | 'DIP40'
   | 'DIP28'
   | 'DIP16'
@@ -348,6 +350,8 @@ export const PARTS: Record<string, PartSpec> = {
   'J-FPC2': { partNo: 'J-FPC2', kind: 'connector', pkg: 'FPC2', value: 0, label: 'Screen ribbon connector', marking: '', cost: 0.8, heatLimit: 230, pins: ['BL+', 'BL-'], description: 'Flip-lock ribbon (FPC) connector for the screen. Fragile latch and a very heat-sensitive plastic body.' },
 
   // ---------------------------------------------------------------- plug-in modules (swapped by hand)
+  'BT-LIPO-1S': { partNo: 'BT-LIPO-1S', kind: 'battery', pkg: 'POUCH', value: 3.8, label: 'Li-ion pouch cell 3.7V 600mAh (soldered tabs)', marking: '3.7V', cost: 6, pins: ['+', '-'], description: 'Flat single-cell Li-ion pouch with two metal tabs soldered straight to the board. Desolder a tab (low heat, quickly) to disconnect it before working on the board.' },
+  'U-LDO33T': { partNo: 'U-LDO33T', kind: 'ldo', pkg: 'TO220F', value: 3.3, dropout: 0.3, ilim: 0.5, label: '3.3V regulator (TO-220, laid flat)', marking: 'LD33', rating: 16, cost: 0.6, pins: ['IN', 'GND', 'OUT'], description: '3.3 V linear regulator in a TO-220 package laid flat on the board, its legs bent down into the pads. Pinout: IN, GND, OUT. Flex cracks the joints of the bent legs.' },
   'M-BATT-1S': { partNo: 'M-BATT-1S', kind: 'battery', pkg: 'BATT', value: 3.8, label: 'Li-ion pack 3.7V 2000mAh', marking: '3.7V', cost: 12, plugIn: true, pins: ['+', '-'], description: 'Single-cell Li-ion battery pack with lead and plug.' },
   'M-SCREEN-B': { partNo: 'M-SCREEN-B', kind: 'module', pkg: 'SCREEN', value: 2.9, label: 'Button screen module', marking: '', cost: 24, plugIn: true, pins: ['BL+', 'BL-'], description: 'Replacement Button LCD module with ribbon cable. The backlight is an LED inside the module.' },
   'M-SPK4': { partNo: 'M-SPK4', kind: 'module', pkg: 'SPK', value: 4, label: '4Ω speaker', marking: '4Ω 3W', cost: 3, plugIn: true, pins: ['1', '2'], description: '4 Ω 3 W speaker with lead and plug. Reads about 4 Ω on the meter.' },
@@ -513,6 +517,7 @@ export const PARTS: Record<string, PartSpec> = {
   'SW-TRIG': { partNo: 'SW-TRIG', kind: 'button', pkg: 'TACT6', value: 0, label: 'Trigger switch + spring', marking: '', cost: 1.5, description: 'Trigger mechanism: a switch with a return spring. A broken spring leaves it stuck pressed.' },
   ...handheldParts(),
   'J-CELLCLIP': { partNo: 'J-CELLCLIP', kind: 'connector', pkg: 'JST2', value: 0, label: 'Coin-cell clip', marking: '', cost: 0.8, pins: ['+', '-'], description: 'Spring clip holding the button cells. Its contacts tarnish when cells leak.' },
+  'BT-LR44X2T': { partNo: 'BT-LR44X2T', kind: 'battery', pkg: 'COIN', value: 3.0, label: '2 × LR44 cells with solder tabs', marking: 'LR44', cost: 1.5, pins: ['+', '-'], description: 'Two 1.5 V button cells stacked and welded to solder tabs. Solder the tabs, never the cells themselves — heat ruins them.' },
   'M-LR44X2': { partNo: 'M-LR44X2', kind: 'battery', pkg: 'COIN', value: 3.0, label: '2 × LR44 button cells', marking: 'LR44', cost: 1.5, plugIn: true, pins: ['+', '-'], description: 'Two 1.5 V button cells in series.' },
   'U-OSC14': { partNo: 'U-OSC14', kind: 'logic', pkg: 'DIP14', value: 5, label: 'Clock oscillator', marking: 'OSC 10MHz', cost: 2.5, pins: dipPins(14, { 7: 'GND', 8: 'OUT', 14: 'VCC' }), logic: { vcc: 'VCC', vmin: 4.2, iq: 0.02, ch: [{ outs: ['OUT'] }] }, description: 'Canned crystal oscillator: the master clock for the whole board.' },
   'U-CNT16': { partNo: 'U-CNT16', kind: 'logic', pkg: 'DIP16', value: 5, label: '4-bit counter', marking: 'SN74161N', cost: 1.2, pins: dipPins(16, { 1: 'CLK', 2: 'Q', 8: 'GND', 16: 'VCC' }), logic: { vcc: 'VCC', vmin: 4.2, iq: 0.03, ch: [{ needHigh: ['CLK'], outs: ['Q'] }] }, description: 'Synchronous 4-bit counter: counts clock pulses. A dead one gives good inputs, no outputs on the scope.' },
