@@ -40,16 +40,33 @@ export function runSplash(ready: Promise<unknown>): Promise<void> {
   // Three different lines picked at random for this load
   const order = [...PHRASES].sort(() => Math.random() - 0.5).slice(0, PHRASE_COUNT);
   let n = 0;
+  const GLYPHS = '#%&@$?/\|<>[]{}0123456789ABCDEFXZ';
   const say = () => {
     if (n >= order.length) return;
-    text.classList.remove('in');
-    window.setTimeout(() => {
-      text.textContent = `${order[n++]}…`;
-      text.classList.add('in');
-    }, 160);
+    const line = `${order[n++]}…`;
+    text.classList.add('in');
+    // The new line scrambles into place, character by character
+    let settled = 0;
+    const scramble = window.setInterval(() => {
+      settled += 1.4;
+      text.textContent = [...line].map((ch, i) => (ch === ' ' || i < settled ? ch : GLYPHS[Math.floor(Math.random() * GLYPHS.length)])).join('');
+      if (settled >= line.length) {
+        window.clearInterval(scramble);
+        text.textContent = line;
+      }
+    }, 40);
   };
   say();
   const phrases = window.setInterval(say, PHRASE_MS);
+  // Random glitch bursts: the line jitters, splits into cyan / magenta ghosts and blinks
+  let glitching = true;
+  const glitch = () => {
+    if (!glitching) return;
+    text.classList.add('glitch');
+    window.setTimeout(() => text.classList.remove('glitch'), 90 + Math.random() * 180);
+    window.setTimeout(glitch, 250 + Math.random() * 900);
+  };
+  window.setTimeout(glitch, 400);
 
   const start = performance.now();
   let loaded = false;
@@ -66,6 +83,8 @@ export function runSplash(ready: Promise<unknown>): Promise<void> {
       }
       fill.style.transform = 'scaleX(1)';
       window.clearInterval(phrases);
+      glitching = false;
+      text.classList.remove('glitch');
       text.textContent = 'Ready!';
       window.setTimeout(() => {
         root.classList.add('out');
