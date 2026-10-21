@@ -22,6 +22,7 @@ const PHRASES = [
   'Counting The Capacitors Twice',
   'Blaming The Firmware',
   'Keeping The Magic Smoke Inside',
+  'Sniffing The Magic Smoke',
   'Reflowing The Reflow Oven',
   'Untangling The Probe Leads',
 ];
