@@ -112,6 +112,17 @@ export interface QueuedJob {
   job: SavedJob;
 }
 
+/** A customer job already handed back: shown as a finished row, with no Start button. */
+export interface ReturnedJob {
+  id: number;
+  kind: 'customer' | 'warranty';
+  customer: string;
+  device: string;
+  quote: number;
+  outcome: 'fixed' | 'comeback' | 'not-fixed' | 'gave-up';
+  paid: number;
+}
+
 export interface ActiveWork {
   kind: 'customer' | 'warranty' | 'project';
   id: number;
@@ -146,6 +157,8 @@ export interface ShopState {
   market: Listing[];
   projects: Project[];
   queue: QueuedJob[];
+  /** Jobs handed back today (shown as completed in the office until the day ends). */
+  returned?: ReturnedJob[];
   /** Comebacks that will walk back in on a later day. */
   warrantyPending: { day: number; job: SavedJob; customer: string; homeTest?: { refund: number } }[];
   /** Unhappy flip buyers. */
@@ -725,6 +738,9 @@ export function endDay(st: ShopState): DayReport {
     spreadCorrosion(job.board);
     q.job = saveJob(job);
   }
+
+  // Yesterday's finished jobs drop off the list
+  st.returned = [];
 
   // Customers who waited too long walk out
   const before2 = st.queue.length;

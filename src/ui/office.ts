@@ -153,6 +153,17 @@ function work(s: Session): string {
         <td>${isActive ? '<span class="pill">on bench</span>' : `<button data-act="start-work" data-kind="${j.kind}" data-id="${j.id}"${j.tutorial ? ' data-tutorial="1"' : ''}>Start</button>`}</td></tr>`;
     })
     .join('');
+  const done = (st.returned ?? [])
+    .map((r) => {
+      const status =
+        r.outcome === 'fixed'
+          ? `<span class="good">✓ Completed${r.paid ? ` — paid ${money(r.paid)}` : ''}</span>`
+          : r.outcome === 'gave-up'
+            ? '<span class="muted">Handed back unrepaired</span>'
+            : '<span class="bad">Returned — it did not pass</span>';
+      return `<tr><td><b>${esc(r.customer)}</b> <span class="muted small">· ${esc(r.device)}</span>${r.kind === 'warranty' ? ' <span class="pill warn">warranty</span>' : ''}</td><td class="num">${r.kind === 'warranty' ? 'free' : money(r.quote)}</td><td class="small">${status}</td><td><span class="pill">${r.outcome === 'fixed' ? 'completed' : 'returned'}</span></td></tr>`;
+    })
+    .join('');
   const proj = st.projects
     .filter((p) => p.status !== 'donor' && (p.status !== 'sold' || st.day - (p.sellsOn ?? 0) < 7))
     .map((p) => {
@@ -173,7 +184,7 @@ function work(s: Session): string {
     })
     .join('');
   return `${bench}
-    <div class="of-card"><h3>Customers waiting</h3><table class="bom">${q || '<tr><td class="muted">No customers waiting. Advertising brings more in.</td></tr>'}</table></div>
+    <div class="of-card"><h3>Customers waiting</h3><table class="bom">${q || '<tr><td class="muted">No customers waiting. Advertising brings more in.</td></tr>'}${done}</table></div>
     <div class="of-card"><h3>Your projects</h3><table class="bom">${proj || '<tr><td class="muted">None. Buy broken devices in the Marketplace to fix and sell.</td></tr>'}</table></div>`;
 }
 

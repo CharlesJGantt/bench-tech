@@ -19,7 +19,7 @@ import {
   type PointRef,
   type PowerConfig,
 } from '../sim/circuit';
-import { generateJob, type Job } from '../sim/faults';
+import { generateJob, jobName, type Job } from '../sim/faults';
 import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
@@ -45,6 +45,7 @@ import {
   placeOrder,
   type CustomerAsk,
   type DayReport,
+  type ReturnedJob,
   type ShopState,
 } from '../business/shop';
 import { explainReading } from './explain';
@@ -328,6 +329,12 @@ export class Session {
     this.save();
   }
 
+  /** Remember a handed-back job so the office can show it as finished today. */
+  private noteReturned(id: number | undefined, job: Job, outcome: ReturnedJob['outcome'], paid: number): void {
+    if (id === undefined) return;
+    (this.shop.returned ??= []).push({ id, kind: job.kind === 'warranty' ? 'warranty' : 'customer', customer: job.customer, device: jobName(job), quote: job.quote, outcome, paid });
+  }
+
   /** Hand a customer / warranty job back. */
   returnToCustomer(): WorkResult {
     this.setPowerMode('off');
@@ -342,10 +349,12 @@ export class Session {
       rep = 0;
       job.paid = job.paid ?? job.quote;
     }
+    // Note which queue entry this was before completing the job clears `active`.
+    const a = this.shop.active;
     completeCustomerJob(this.shop, job, ev.outcome, payout, rep);
     if (homeFail) cartHomeFailure(this.shop, job);
-    const a = this.shop.active;
-    this.shop.queue = this.shop.queue.filter((q) => q.id !== a?.id);
+    if (a) this.shop.queue = this.shop.queue.filter((q) => q.id !== a.id);
+    this.noteReturned(a?.id, job, homeFail ? 'not-fixed' : ev.outcome, payout);
     this.lastResult = { kind: 'customer', evaluation: { ...ev, payout, reputation: rep }, job };
     this.clearBench();
     return this.lastResult;
@@ -358,6 +367,7 @@ export class Session {
     this.shop.reputation = Math.max(0, this.shop.reputation - 2);
     const a = this.shop.active;
     this.shop.queue = this.shop.queue.filter((q) => q.id !== a?.id);
+    this.noteReturned(a?.id, job, 'gave-up', 0);
     this.lastResult = { kind: 'gave-up', job };
     this.clearBench();
     return this.lastResult;
