@@ -1160,7 +1160,7 @@ button:disabled {
 .splash-mid {
   position: absolute;
   left: 50%;
-  top: 55%;
+  top: 47.5%;
   width: 28%;
   transform: translateX(-50%);
   text-align: center;
