@@ -1,9 +1,11 @@
 /**
  * Start-up splash: the Bench Tech title art with a glowing blue loading bar that fills over
- * (at least) seven seconds, and a rotating line of workshop humour underneath.
+ * (at least) twelve seconds, with three lines of workshop humour underneath, one after another.
  */
-const SPLASH_MS = 7000;
-const PHRASE_MS = 1400;
+const SPLASH_MS = 12000;
+/** Three lines per load, each shown for a third of the time. */
+const PHRASE_COUNT = 3;
+const PHRASE_MS = SPLASH_MS / PHRASE_COUNT;
 
 const PHRASES = [
   'Warming Up The Soldering Iron',
@@ -34,13 +36,14 @@ export function runSplash(ready: Promise<unknown>): Promise<void> {
   const fill = root.querySelector<HTMLElement>('.splash-bar i')!;
   const text = root.querySelector<HTMLElement>('.splash-text')!;
 
-  // A shuffled order, so each line shows once before any repeats; the first is always the iron.
-  const order = [PHRASES[0], ...PHRASES.slice(1).sort(() => Math.random() - 0.5)];
+  // Three different lines picked at random for this load
+  const order = [...PHRASES].sort(() => Math.random() - 0.5).slice(0, PHRASE_COUNT);
   let n = 0;
   const say = () => {
+    if (n >= order.length) return;
     text.classList.remove('in');
     window.setTimeout(() => {
-      text.textContent = `${order[n++ % order.length]}…`;
+      text.textContent = `${order[n++]}…`;
       text.classList.add('in');
     }, 160);
   };
