@@ -60,7 +60,8 @@ for (const f of files) {
     if (right) right[i] = wav.samples[i * wav.channels + 1];
   }
   const parts = [];
-  const BLOCK = 1152 * 20;
+  // Exactly one MP3 frame per call: lamejs outputs near-silence when fed bigger blocks.
+  const BLOCK = 1152;
   for (let i = 0; i < frames; i += BLOCK) {
     const l = left.subarray(i, i + BLOCK);
     const chunk = right ? enc.encodeBuffer(l, right.subarray(i, i + BLOCK)) : enc.encodeBuffer(l);

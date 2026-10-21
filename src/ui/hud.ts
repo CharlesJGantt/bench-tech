@@ -1076,7 +1076,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       s.idle
         ? ''
         : dev.controls
-            .map((c, i) => `<button class="big ctl ${s.board.pressed.includes(c.ref) ? 'on' : ''}" data-ctl="${c.ref}">Hold: ${esc(c.label)} (${c.ref})${i === 0 ? ' · Space' : ''}</button>`)
+            .map((c, i) => `<button class="big ctl ${s.board.pressed.includes(c.ref) ? 'on' : ''}" data-ctl="${c.ref}">${i === 0 ? 'Hold: ' : ''}${esc(c.label)} (${c.ref})${i === 0 ? ' · Space' : ''}</button>`)
             .join('') +
           (dev.externals ?? [])
             .map((x) => `<button class="ext ${s.board.attached.includes(x.id) ? 'on' : ''}" data-act="attach" data-id="${x.id}">${s.board.attached.includes(x.id) ? '✓ ' : ''}${esc(x.label)}</button>`)

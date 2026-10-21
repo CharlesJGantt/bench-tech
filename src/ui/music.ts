@@ -1,7 +1,8 @@
 /**
  * Background soundtrack: the Bench Tech tracks (public/music) play in a random order, one after
- * another. A round mute button sits in the bottom-right corner; hovering it opens a small
- * panel with the music volume, the track name and a skip button. Volume and mute are remembered.
+ * another. A round mute button sits in the bottom-left corner with a small arrow beside it that
+ * expands / collapses a panel with the music volume, the track name and a skip button. Volume,
+ * mute and whether the panel is open are remembered.
  *
  * Browsers refuse to play sound until the player has interacted with the page (autoplay
  * policy), so when playback is blocked the button pulses with "Click for music" and the first
@@ -20,6 +21,8 @@ interface Track {
 interface Saved {
   volume: number;
   muted: boolean;
+  /** The details panel is expanded (collapsed by default). */
+  panel: boolean;
 }
 
 type State = 'loading' | 'blocked' | 'playing' | 'muted' | 'error';
@@ -30,11 +33,11 @@ const ICON_OFF = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" st
 function load(): Saved {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    if (raw && typeof raw.volume === 'number') return { volume: Math.min(1, Math.max(0, raw.volume)), muted: !!raw.muted };
+    if (raw && typeof raw.volume === 'number') return { volume: Math.min(1, Math.max(0, raw.volume)), muted: !!raw.muted, panel: !!raw.panel };
   } catch {
     /* ignore */
   }
-  return { volume: DEFAULT_VOLUME, muted: false };
+  return { volume: DEFAULT_VOLUME, muted: false, panel: false };
 }
 
 export class Music {
@@ -45,6 +48,7 @@ export class Music {
   private saved = load();
   private root = document.createElement('div');
   private btn!: HTMLButtonElement;
+  private more!: HTMLButtonElement;
   private slider!: HTMLInputElement;
   private nameEl!: HTMLElement;
   private volEl!: HTMLElement;
@@ -55,12 +59,18 @@ export class Music {
   private loadingTrack: Promise<boolean> | null = null;
   private error = '';
   private armed = false;
+  private lastState: State = 'loading';
 
   constructor() {
     this.audio.preload = 'auto';
     this.audio.volume = this.saved.volume;
     this.audio.addEventListener('ended', () => void this.next());
     this.audio.addEventListener('playing', () => this.refresh());
+    this.audio.addEventListener('canplay', () => this.refresh());
+    this.audio.addEventListener('timeupdate', () => {
+      // Catch the moment playback is really under way (keeps the panel and button state honest)
+      if (this.lastState !== this.state()) this.refresh();
+    });
     this.audio.addEventListener('pause', () => this.refresh());
     this.audio.addEventListener('error', () => {
       this.error = `the audio could not be played (code ${this.audio.error?.code ?? '?'})`;
@@ -74,7 +84,7 @@ export class Music {
 
   /** Is a track actually playing right now? */
   get playing(): boolean {
-    return !this.audio.paused && !this.audio.ended && this.audio.currentTime > 0;
+    return !this.audio.paused && !this.audio.ended && this.audio.readyState >= 3;
   }
 
   get time(): number {
@@ -150,7 +160,13 @@ export class Music {
     if (!this.tracks.length) return false;
     if (!this.current) this.pick();
     if (!this.blobUrl || this.audio.src !== this.blobUrl) {
-      if (!(await this.fetchTrack())) return false;
+      // A track that will not load is skipped (up to a few in a row) rather than leaving silence
+      let ok = await this.fetchTrack();
+      for (let tries = 0; !ok && tries < 3 && this.tracks.length > 1; tries++) {
+        this.pick();
+        ok = await this.fetchTrack();
+      }
+      if (!ok) return false;
     }
     try {
       await this.audio.play();
@@ -228,9 +244,15 @@ export class Music {
         <label class="music-vol">Music volume <b class="music-pct"></b><input type="range" min="0" max="100" step="1" aria-label="Music volume" /></label>
         <div class="row" style="margin:6px 0 0"><button class="music-skip" type="button" title="Play another track">⏭ Next track</button></div>
       </div>
-      <button class="music-btn" type="button" aria-label="Music"></button>`;
+      <div class="music-row"><button class="music-btn" type="button" aria-label="Music"></button><button class="music-more" type="button" aria-label="Music controls"></button></div>`;
     document.body.append(this.root);
     this.btn = this.root.querySelector('.music-btn')!;
+    this.more = this.root.querySelector('.music-more')!;
+    this.more.addEventListener('click', () => {
+      this.saved.panel = !this.saved.panel;
+      this.save();
+      this.refresh();
+    });
     this.slider = this.root.querySelector('input')!;
     this.nameEl = this.root.querySelector('.music-name')!;
     this.volEl = this.root.querySelector('.music-pct')!;
@@ -260,6 +282,7 @@ export class Music {
 
   private refresh(): void {
     const st = this.state();
+    this.lastState = st;
     const off = st === 'muted';
     this.btn.innerHTML = off ? ICON_OFF : ICON_ON;
     this.btn.classList.toggle('muted', off);
@@ -278,6 +301,9 @@ export class Music {
             ? 'Loading…'
             : '';
     this.statusEl.style.display = this.statusEl.textContent ? 'block' : 'none';
-    this.root.classList.toggle('open', st === 'blocked' || st === 'error');
+    const open = this.saved.panel || st === 'blocked' || st === 'error';
+    this.root.classList.toggle('open', open);
+    this.more.textContent = open ? '▾' : '▴';
+    this.more.title = open ? 'Hide the music controls' : 'Music volume and track';
   }
 }
