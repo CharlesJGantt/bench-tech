@@ -95,10 +95,14 @@ interface Meta {
   keys?: string[];
   /** Heating step: show the pad-heat warning and live gauge. */
   heat?: boolean;
+  /** Say / show the to-do line after the explanation (the office tour: explain, then "Click Next"). */
+  last?: boolean;
+  /** Read the step's title out first ("Welcome to your shop office"). */
+  title?: boolean;
 }
 const META: Record<string, Meta> = {
-  welcome: { todo: ['Click Start the tutorial'] },
-  office: { todo: ['Click Start next to Robin T.'] },
+  welcome: { last: true, title: true, todo: ['Click Start the tutorial'] },
+  office: { last: true, title: true, todo: ['Click Start beside Robin T'] },
   ticket: { ctx: true, todo: ['Read the ticket, then click Next'] },
   power: { todo: ['Click Customer adapter'] },
   tp1: { ctx: true, todo: ['Click TP1 with the red probe'] },
@@ -130,10 +134,76 @@ const META: Record<string, Meta> = {
   'case-done': { todo: ['Click Done'] },
   return: { todo: ['Click Return to customer'] },
   'return-yes': { todo: ['Click Return to Robin T.'] },
-  end: { todo: ['Click Tour the office'] },
+  end: { last: true, title: true, todo: ['Click Tour the office'] },
 };
 /** The office tour only explains: the highlighted tab / button is context, Next moves on. */
 const metaOf = (st: Step): Meta => st.meta ?? META[st.id] ?? { ctx: true, todo: ['Read this, then click Next'] };
+
+/** Where the thing you use is on the screen and what it is for (shown on the card and read aloud). */
+const UI_TEXT: Record<string, string> = {
+  "office": "In the list of customers waiting, each job shows the customer, the device, the price, and a Start button.",
+  "ticket": "The repair ticket is the panel at the top left. It shows the customer, the quote and what they noticed. Under it are buttons for the case, for returning the job, for calling the customer, and for the service sheet.",
+  "power": "The Power panel is on the right, under the multimeter. Its buttons choose what powers the board: off, the customer's adapter, or your own bench power supply.",
+  "tp1": "Test points are the small round pads on the board. This one is flashing, with a number on it. The multimeter panel at the top right shows the reading, and its Red and Black boxes show where each probe is.",
+  "tp2": "Test point 2 is flashing on the board, a little further along from the first. The multimeter panel at the top right shows the reading and where each probe sits.",
+  "off": "The Off button is the first button in the Power panel on the right.",
+  "mode": "The multimeter is the panel at the top right. Its row of four buttons chooses what it measures: volts, resistance, continuity, which beeps, and a diode test.",
+  "fuse": "The Red and Black boxes in the multimeter panel show where each probe is. A left-click puts the red probe on a pad, and a right-click puts the black one.",
+  "select": "The toolbar along the bottom chooses what your mouse does: multimeter, inspect, soldering and more. Click a part with Soldering and a card about it opens on the left, with a Rework at the microscope button.",
+  "rw-t-flux1": "You are now at the microscope. The big picture on the left is a close-up of the fuse and its pads. The tool buttons are the grid at the top right: Iron, Wick, Flux, Tweezers, Hot air, Liquid, Brush and Wipe, each with its keyboard number.",
+  "rw-flux": "Your mouse is the tool in the microscope picture on the left. A yellow ring marks each pad that still needs flux.",
+  "rw-t-wick": "The Wick is the second button in the tool grid at the top right.",
+  "rw-wick": "The Joints panel lower on the right lists each pad: its solder bar, its temperature, and its pad heat bar, which fills as the pad gets too hot.",
+  "rw-t-tweezers": "The Tweezers are the fourth button in the tool grid at the top right.",
+  "rw-lift": "The fuse is the part in the middle of the microscope picture. When you click it, the tweezers pick it up and it follows your mouse.",
+  "rw-bin": "The Delete key is on your keyboard. Whatever the tweezers are holding gets thrown away.",
+  "rw-tray": "The Parts tray is the list on the right, below the tool settings. Each row is a part you can use, with a New button that takes one from your stock.",
+  "rw-place": "The empty outline in the middle of the microscope picture is the fuse's footprint, with a pad at each end. The new fuse follows your mouse until you click.",
+  "rw-t-flux2": "The Flux button is the third button in the tool grid at the top right.",
+  "rw-flux2": "A yellow ring marks each pad that still needs flux, in the microscope picture on the left.",
+  "rw-t-iron": "The Iron is the first button in the tool grid at the top right. Its temperature slider is at the top of the window.",
+  "rw-joints": "The Joints section is lower down in the right-hand panel. It has one row for each pad, with its solder bar, its heat bar and its temperature.",
+  "rw-heat1": "In the Joints panel, the temperature beside each pad rises while you heat it, and it says MOLTEN once the solder has melted.",
+  "rw-feed1": "The solder bar in the Joints panel fills as solder goes onto the pad. The mark in the middle of the bar is the half-way line.",
+  "rw-heat2": "In the Joints panel, the second row is this pad. Its temperature rises while you heat it.",
+  "rw-feed2": "The solder bar for this pad is in the Joints panel. The mark in the middle of the bar is the half-way line.",
+  "rw-t-flux3": "The Flux button is the third button in the tool grid at the top right.",
+  "rw-flux3": "A yellow ring marks each pad that still needs flux, in the microscope picture on the left.",
+  "rw-t-hotair": "The Hot air button is the fifth button in the tool grid at the top right. Its temperature slider is at the top of the window.",
+  "rw-hotair": "The dashed circle around your mouse is the area the hot air nozzle heats. The temperature of each pad shows in the Joints panel on the right.",
+  "rw-t-liquid": "The Liquid button is the sixth button in the tool grid at the top right.",
+  "rw-liquid": "The Cleaning liquid selector is in the tool settings on the right, under the tool grid.",
+  "rw-ipa": "The wet look on a pad shows the liquid, and it turns cloudy where flux has dissolved into it.",
+  "rw-t-brush": "The Brush is the seventh button in the tool grid at the top right.",
+  "rw-brush": "Move the brush back and forth over a pad in the microscope picture. The faint flux ovals around the pads fade as it loosens the flux.",
+  "rw-t-wipe1": "The Wipe is the eighth and last button in the tool grid at the top right.",
+  "rw-wipe1": "Drag the wipe over a pad in the microscope picture to lift the wet liquid and flux away.",
+  "rw-t-liquid2": "The Liquid button is the sixth button in the tool grid at the top right.",
+  "rw-rewet": "White marks around a pad are dried flux. Keep the liquid on them in the microscope picture until they turn wet and cloudy again.",
+  "rw-t-wipe2": "The Wipe is the eighth and last button in the tool grid at the top right.",
+  "rw-wipe2": "Drag the wipe over the pads in the microscope picture until no marks are left.",
+  "rw-done": "The Done button is green and sits at the top right of the microscope window, next to Undo all, which puts the board back exactly as it was.",
+  "rw-lifted": "The Undo all button is at the top right of the microscope window, next to Done.",
+  "test-power": "The Power panel is on the right, under the multimeter. Customer adapter plugs the customer's own charger back in.",
+  "test-lamp": "The lamp button is in the Power panel, below the status lines. It works like the switch on the lamp. You can also hold the space bar.",
+  "case-open": "The Case button is on the repair ticket at the top left. It says whether the lamp's case is open or closed.",
+  "case-close": "This is the case workbench. Close it up for me, on the right, puts the case back together for you.",
+  "case-done": "The Done button is at the top right of the case window.",
+  "return": "Return to customer is the green button on the repair ticket at the top left.",
+  "return-yes": "A window asks you to confirm. The button with the customer's name hands the lamp back.",
+  "end": "That is the end of the repair. The shop office, with everything else you can do, comes next.",
+  "of-overview": "The row of tabs across the top of the office window switches between its pages. The End day button is in the bar above the tabs.",
+  "of-work": "The Work tab is the second tab in the row across the top of the office.",
+  "of-supplies": "Supplies and parts is the third tab. The Consumables list is on the left, with a plus and minus button beside each pack, and the Order basket is on the right.",
+  "of-parts": "The Components in stock list is further down the same page. Each row has the part, how many you have, its price, and plus and minus buttons.",
+  "of-storeroom": "The Store-room is the fourth tab in the row across the top of the office.",
+  "of-tools": "Equipment is the fifth tab. Each card shows a tool, its price and a Buy button.",
+  "of-market": "The Marketplace is the sixth tab. Each card is a listing with its price and a Buy button, and the search box for donor devices is at the top of the page.",
+  "of-ads": "Advertising is the seventh and last tab. Each card is a level of advertising with its daily cost and a Choose button.",
+  "of-endday": "The End day button is the green button at the top right of the office window.",
+  "of-career": "The Career card is on the Overview tab, at the bottom of the page. Its button starts a brand new career.",
+  "of-help": "The Help button is at the top right of the screen, next to the View button. Inside it is a Play the tutorial button."
+};
 
 const netOf = (s: Session, p: { ref: string; pin: string } | null) => (p ? s.board.comps[p.ref]?.def.pins[p.pin] : undefined);
 const visible = (sel: string) => {
@@ -384,11 +454,13 @@ export class Tutorial {
     this.card.className = `tut-${st.place ?? 'bottom'}`;
     this.card.style.display = 'block';
     const todo = metaOf(st).todo ?? [];
+    const todoHtml = todo.length ? `<ol class="tut-todo">${todo.map((t, i) => `<li><span class="tut-n">${i + 1}</span>${esc(t)}</li>`).join('')}</ol>` : '';
     this.card.innerHTML = `<div class="tut-head"><span class="tut-step">Step ${this.step + 1} of ${n} · ${esc(sectionOf(st.id))}</span><span class="row" style="margin:0;gap:4px">${this.voice.supported ? `<button class="tut-skip" data-tut="replay" title="Hear this step again">↻</button><button class="tut-skip" data-tut="voice" title="${this.voice.enabled ? 'Voice on: click to turn the narration off' : 'Voice off: click to turn the narration on'}">${this.voice.enabled ? '🔊' : '🔇'}</button>` : ''}<button class="tut-skip" data-tut="min" title="Collapse / expand">▾</button><button class="tut-skip" data-tut="skip" title="End the tutorial">Skip tutorial ✕</button></span></div>
       <div class="tut-progress"><i style="width:${Math.round(((this.step + 1) / n) * 100)}%"></i></div>
       <h3>${esc(st.title)}</h3>
-      ${todo.length ? `<ol class="tut-todo">${todo.map((t, i) => `<li><span class="tut-n">${i + 1}</span>${esc(t)}</li>`).join('')}</ol>` : ''}
-      <div class="tut-body">${st.body}</div>${st.ask ?? ''}
+      ${metaOf(st).last ? '' : todoHtml}
+      ${UI_TEXT[st.id] ? `<p class="tut-ui">📍 ${esc(UI_TEXT[st.id])}</p>` : ''}
+      <div class="tut-body">${st.body}</div>${metaOf(st).last ? todoHtml : ''}${st.ask ?? ''}
       <div class="tut-foot">${st.next ? `<button class="primary" data-tut="next" data-label="${esc(st.next)}">${esc(st.next)}</button>` : '<span class="muted small">Do it on the bench — this moves on by itself.</span>'}</div>`;
     this.position();
     this.narrate();
@@ -421,7 +493,7 @@ export class Tutorial {
     const m = metaOf(st);
     // Say the action itself ("Click the continuity mode on the multimeter."), then the explanation.
     // The office tour has no action to announce, only text to read.
-    const todo = st.meta || META[st.id] ? (m.todo ?? []) : [];
+    const todo = m.todo ?? [];
     const lead = ['First, ', 'Then, ', 'After that, ', 'Finally, '];
     const actions = todo.map((t, i) => `<p>${todo.length > 1 ? (i === todo.length - 1 && todo.length > 2 ? lead[3] : lead[Math.min(i, 2)]) : ''}${esc(t.replace(/\.$/, ''))}.</p>`).join('');
     // The full heat warning is spoken once (the first heating step); after that a short reminder
@@ -431,7 +503,9 @@ export class Tutorial {
       : st.id === firstHeat
         ? '<p>Warning. Heat kills pads. A pad that stays molten for about ten seconds, or gets far above 320 degrees, burns and lifts off the board, and the repair is ruined. Work in short bursts, watch the pad heat bar, and let go before it fills.</p>'
         : '<p>Watch the pad heat bar, and let go before it fills.</p>';
-    const html = `${actions}${warn}${st.body}`;
+    const head = m.title ? `<p>${esc(st.title)}${/[.!?]$/.test(st.title) ? '' : '.'}</p>` : '';
+    const where = UI_TEXT[st.id] ? `<p>${esc(UI_TEXT[st.id])}</p>` : '';
+    const html = m.last ? `${head}${warn}${st.body}${where}${actions}` : `${head}${actions}${where}${warn}${st.body}`;
     return speakable(html);
   }
 
@@ -672,9 +746,9 @@ export class Tutorial {
       },
       {
         id: 'office',
-        title: 'Your shop office',
+        title: 'Welcome to your shop office',
         target: '[data-act="start-work"][data-tutorial="1"]',
-        body: `<p>This is the office: customers wait here, and so do your supplies, orders and money. <b>Robin T.</b> has brought in a lamp.</p>`,
+        body: `<p>This is the office: customers wait here, and so do your supplies, orders and money. <b>Robin T.</b> has brought in a broken lamp.</p>`,
         enter: () => host.openOffice('work'),
         done: onJob,
       },
@@ -1097,6 +1171,7 @@ export class Tutorial {
       // ------------------------------------------------ office tour
       {
         id: 'of-overview',
+        meta: { ctx: true, last: true, todo: ['Click Next to see the Work tab'] },
         title: 'Overview',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="overview"]',
@@ -1106,6 +1181,7 @@ export class Tutorial {
       },
       {
         id: 'of-work',
+        meta: { ctx: true, last: true, todo: ['Click Next to see Supplies and parts'] },
         title: 'Work',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="work"]',
@@ -1115,6 +1191,7 @@ export class Tutorial {
       },
       {
         id: 'of-supplies',
+        meta: { ctx: true, last: true, todo: ['Click Next to see the parts list'] },
         title: 'Supplies & parts: consumables',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="stock"]',
@@ -1126,6 +1203,7 @@ export class Tutorial {
       },
       {
         id: 'of-parts',
+        meta: { ctx: true, last: true, todo: ['Click Next to see the Store-room'] },
         title: 'Supplies & parts: components',
         place: 'top',
         target: '.bom.parts',
@@ -1136,6 +1214,7 @@ export class Tutorial {
       },
       {
         id: 'of-storeroom',
+        meta: { ctx: true, last: true, todo: ['Click Next to see Equipment'] },
         title: 'Store-room',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="storeroom"]',
@@ -1145,6 +1224,7 @@ export class Tutorial {
       },
       {
         id: 'of-tools',
+        meta: { ctx: true, last: true, todo: ['Click Next to see the Marketplace'] },
         title: 'Equipment',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="tools"]',
@@ -1154,6 +1234,7 @@ export class Tutorial {
       },
       {
         id: 'of-market',
+        meta: { ctx: true, last: true, todo: ['Click Next to see Advertising'] },
         title: 'Marketplace',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="market"]',
@@ -1164,6 +1245,7 @@ export class Tutorial {
       },
       {
         id: 'of-ads',
+        meta: { ctx: true, last: true, todo: ['Click Next to see what End day does'] },
         title: 'Advertising',
         place: 'bottom',
         target: '[data-act="office-tab"][data-tab="ads"]',
@@ -1173,6 +1255,7 @@ export class Tutorial {
       },
       {
         id: 'of-endday',
+        meta: { ctx: true, last: true, todo: ['Click Next to learn about starting a new career'] },
         title: 'End day',
         place: 'bottom',
         target: '[data-act="end-day"]',
@@ -1182,6 +1265,7 @@ export class Tutorial {
       },
       {
         id: 'of-career',
+        meta: { ctx: true, last: true, todo: ['Click Next to find out how to replay this tutorial'] },
         title: 'Starting over',
         place: 'top',
         target: '[data-act="new-game"]',
@@ -1194,6 +1278,7 @@ export class Tutorial {
       },
       {
         id: 'of-help',
+        meta: { ctx: true, last: true, todo: ['Click Finish to start playing'] },
         title: 'Replay any time',
         place: 'top',
         target: '[data-act="help"]',

@@ -47,6 +47,23 @@ def spoken(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
+def speak(clause: str):
+    """One clause of speech. The model occasionally babbles on after a short clause, so a take that
+    is far longer than the words need is thrown away and recorded again (slightly different speed)."""
+    limit = max(1.8, len(clause) / 8 + 0.8)
+    for attempt in range(6):
+        samples, rate = kokoro.create(clause, voice=VOICE, speed=SPEED + 0.01 * attempt, lang='en-us')
+        if len(samples) / rate <= limit:
+            return samples, rate
+        print(f"   retake ({len(samples) / rate:.1f}s for {len(clause)} characters): {clause[:50]}")
+    return samples, rate
+
+
+wanted = {f"{st['id']}.{st['hash']}.wav" for st in steps}
+for old in os.listdir(OUT):
+    if old.endswith('.wav') and old not in wanted:
+        os.remove(os.path.join(OUT, old))
+
 for i, st in enumerate(steps, 1):
     path = os.path.join(OUT, f"{st['id']}.{st['hash']}.wav")
     if os.path.exists(path):
@@ -56,7 +73,7 @@ for i, st in enumerate(steps, 1):
     for sentence in re.split(r'(?<=[.!?:])\s+', spoken(st['text'])):
         clauses = [c for c in re.split(r'\s+,\s+', sentence) if c.strip()]
         for j, clause in enumerate(clauses):
-            samples, rate = kokoro.create(clause, voice=VOICE, speed=SPEED, lang='en-us')
+            samples, rate = speak(clause)
             chunks.append(samples)
             chunks.append(np.zeros(int(rate * (GAP_SENTENCE if j == len(clauses) - 1 else GAP_CLAUSE)), dtype=samples.dtype))
     samples = np.concatenate(chunks) if chunks else np.zeros(1, dtype='float32')
