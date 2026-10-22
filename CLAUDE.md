@@ -7,6 +7,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `npm test` — vitest (sim + fault generator invariants)
 - `npm run typecheck` / `npm run build`
 - `npm run routes` — re-route every board into `src/render/routes/*.json` (required after adding/changing a device layout, footprint or the router; a geometry test fails while the cache is stale). It also clears `node_modules/.vitest-cache`, which otherwise keeps a stale list of route files.
+- `npm run voice` — re-record the tutorial narration (`public/voice/*.mp3`, American male voice via the Kokoro neural TTS; needs `pip install kokoro-onnx soundfile`). First dump the step text from the running game (`window.tutorial.scripts()` → `tools/narration.json`); clips are named by a hash of their text, so edited steps are silent until re-recorded. `tools/encode-music.mjs` converts the WAV soundtrack to the MP3s in `public/music`.
 - `npm run models` — export device face layouts (`tools/build-faces.gen.ts` → `tools/blender/faces.json`), then rebuild `public/models/parts.glb` (`build_parts.py`) and `public/models/shells.glb` (`build_shells.py`: one rounded front shell per handheld / controller, `face_<id>`) via headless Blender 5.2 (override path with `BLENDER`). Re-run after changing a device's `face` layout.
 
 ## Architecture

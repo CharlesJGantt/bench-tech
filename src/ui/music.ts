@@ -84,6 +84,10 @@ export class Music {
     });
     this.build();
     this.ready = this.loadTracks();
+    // Duck the music while the tutorial voice is talking
+    window.addEventListener('benchtech:speaking', (e) => {
+      this.audio.volume = (e as CustomEvent<boolean>).detail ? this.saved.volume * 0.3 : this.saved.volume;
+    });
     window.addEventListener('benchtech:tutorial-done', () => window.setTimeout(() => this.hint(), 900));
     window.addEventListener('keydown', (e) => e.key === 'Escape' && this.closeHint());
   }

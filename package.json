@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "models": "node tools/build-models.mjs",
-    "routes": "vitest run -c tools/vitest.routes.config.ts --reporter=verbose && node -e \"require('fs').rmSync('node_modules/.vitest-cache',{recursive:true,force:true})\""
+    "routes": "vitest run -c tools/vitest.routes.config.ts --reporter=verbose && node -e \"require('fs').rmSync('node_modules/.vitest-cache',{recursive:true,force:true})\"",
+    "voice": "python tools/generate-voice.py && node tools/encode-voice.mjs"
   },
   "dependencies": {
     "playcanvas": "^2.23.2"

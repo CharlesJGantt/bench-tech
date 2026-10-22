@@ -10,3 +10,4 @@ Repair Video Transcripts/
 *.log
 .DS_Store
 screenshots/
+.voice-work/

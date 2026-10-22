@@ -90,7 +90,10 @@ export class Hud {
       reworkPad: (i) => (this.soldering ? (this.station?.padScreen(i) ?? null) : null),
       reworkReveal: (sel) => this.station?.reveal(sel),
       reworkSelect: (t) => this.station?.selectTool(t),
+      reworkPart: () => (this.soldering ? (this.station?.partScreen() ?? null) : null),
+      toast: (m) => this.toast(m),
     });
+    (window as unknown as { tutorial: Tutorial }).tutorial = this.tutorial; // voice-clip generation + console debugging
     const pending = Tutorial.pending();
     if (pending === 'new') this.tutorial.start();
     else if (pending) this.tutorial.resume(pending);
@@ -265,6 +268,8 @@ export class Hud {
 
   onClick(hit: BoardHit | null, ev: PointerEvent): void {
     const s = this.s;
+    // While the walkthrough runs, only the pads / parts it points at can be picked
+    if (this.tutorial?.active && !this.tutorial.allowsBoard(hit)) return;
     if (this.scene.flipped) {
       if (ev.button === 0) this.toast('The board is upside down — press B (or Flip board) to turn it back over.');
       return;

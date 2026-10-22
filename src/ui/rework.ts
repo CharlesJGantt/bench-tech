@@ -72,6 +72,17 @@ export class ReworkStation {
     return { x: r.left + r.width / 2 + (p.x - this.ox) * this.scale, y: r.top + r.height / 2 + (p.y - this.oy) * this.scale };
   }
 
+  /** Where the part (fuse) sits on screen (CSS px). */
+  partScreen(): { x: number; y: number } | null {
+    const p = this.st?.part ?? this.st?.held;
+    if (!p || !this.canvas) return null;
+    const r = this.canvas.getBoundingClientRect();
+    if (!r.width) return null;
+    const x = this.st.part ? p.dx : 0;
+    const y = this.st.part ? p.dy : 0;
+    return { x: r.left + r.width / 2 + (x - this.ox) * this.scale, y: r.top + r.height / 2 + (y - this.oy) * this.scale };
+  }
+
   /** Scroll the side panel so this section is in view. */
   reveal(selector: string): void {
     this.host.querySelector(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -130,7 +141,7 @@ export class ReworkStation {
             <h3>Parts tray</h3>
             <div class="rw-tray" id="rw-tray"></div>
             <p class="muted small">Board calls for: <b>${esc(fp.label)}</b>${POLARIZED.includes(fp.kind) ? ' — polarised, match the silkscreen mark (R to rotate).' : ''}</p>
-            <h3>Joints</h3>
+            <h3>Joints <span class="rw-legend muted small">solder · <b>pad heat</b> (if it fills, the pad burns off!)</span></h3>
             <div id="rw-joints"></div>
             <div id="rw-guide" class="note"></div>
             <div id="rw-msgs" class="rw-msgs"></div>
@@ -846,7 +857,10 @@ export class ReworkStation {
       .map((p, i) => {
         const bar = Math.min(100, (p.solder / 2) * 100);
         const state = p.lifted ? 'lifted' : p.temp >= meltOf(p) ? 'molten' : `${Math.round(p.temp)}°C`;
-        return `<div class="rw-joint"><b>${p.pin}</b><span class="rw-bar"><i style="width:${bar}%"></i><em style="left:${50}%"></em></span><span class="muted">${state}</span>${guided ? `<span class="rw-res ${results[i]}">${RESULT_TEXT[results[i]]}</span>` : ''}</div>`;
+        // How close this pad is to burning off the board: molten far too long, or damage already done
+        const risk = p.lifted ? 1 : Math.min(1, Math.max(p.damage, p.molten / 11.5));
+        const level = risk > 0.6 ? 'hot' : risk > 0.3 ? 'warm' : '';
+        return `<div class="rw-joint"><b>${p.pin}</b><span class="rw-bar" title="Solder on the pad: about half is a good joint"><i style="width:${bar}%"></i><em style="left:${50}%"></em></span><span class="rw-heat ${level}" title="Pad heat: if this fills, the pad burns off the board"><i style="width:${Math.round(risk * 100)}%"></i></span><span class="muted">${state}</span>${guided ? `<span class="rw-res ${results[i]}">${RESULT_TEXT[results[i]]}</span>` : ''}</div>`;
       })
       .join('');
     const guide = this.host.querySelector('#rw-guide') as HTMLElement;
