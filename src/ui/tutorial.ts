@@ -104,20 +104,20 @@ const META: Record<string, Meta> = {
   welcome: { last: true, title: true, todo: ['Click Start the tutorial'] },
   office: { last: true, title: true, todo: ['Click Start beside Robin T'] },
   ticket: { ctx: true, todo: ['Read the ticket, then click Next'] },
-  power: { todo: ['Click Customer adapter'] },
-  tp1: { ctx: true, todo: ['Click TP1 with the red probe'] },
-  tp2: { ctx: true, todo: ['Click TP2'] },
-  off: { todo: ['Click Off'] },
-  mode: { todo: ['Click the continuity mode on the multimeter'] },
-  fuse: { ctx: true, todo: ['Left-click one end of F1 (red probe)', 'Right-click the other end of F1 (black probe)'] },
-  select: { todo: ['Choose Soldering (key 3) — later: click Rework at the microscope', 'Click the fuse F1 on the board'] },
+  power: { todo: ['Click the Customer adapter button in the Power panel with the mouse'] },
+  tp1: { ctx: true, todo: ['Left-click the flashing test point TP1 on the board with the mouse to place the red probe on it'] },
+  tp2: { ctx: true, todo: ['Left-click the flashing test point TP2 on the board with the mouse to move the red probe onto it'] },
+  off: { todo: ['Click the Off button in the Power panel with the mouse'] },
+  mode: { todo: ['Click the continuity mode button on the multimeter, the third button in its row, with the mouse'] },
+  fuse: { ctx: true, todo: ['Left-click one end of F1 on the board with the mouse to place the red probe', 'Right-click the other end of F1 with the mouse to place the black probe'] },
+  select: { todo: ['Press the 3 key, or click Soldering in the toolbar at the bottom', 'Left-click the fuse F1 on the board with the mouse', 'Click Rework at the microscope in the part card on the left'] },
   'rw-flux': { todo: ['Pick the Flux tool', 'Paint every marked pad (clicking again adds more flux)'] },
   'rw-wick': { canvas: true, keys: ['c'], todo: ['Pick the Wick tool', 'Hold it on each marked joint until the solder is gone'] },
-  'rw-lift': { canvas: true, todo: ['Pick the Tweezers', 'Click the fuse to lift it, then press Delete to bin it'] },
+  'rw-lift': { canvas: true, todo: ['Pick the Tweezers', 'Left-click the fuse to lift it, then press the Delete key to bin it'] },
   'rw-tray': { todo: ['Click New beside Fuse 1A fast'] },
   'rw-place': { canvas: true, todo: ['Click the empty footprint to set the fuse down'] },
-  'rw-flux2': { todo: ['Pick the Flux tool', 'Paint both marked pads'] },
-  'rw-flux3': { todo: ['Pick the Flux tool', 'Paint both marked pads'] },
+  'rw-flux2': { todo: ['Pick the Flux tool', 'Press and hold the left mouse button on each marked pad'] },
+  'rw-flux3': { todo: ['Pick the Flux tool', 'Press and hold the left mouse button on each marked pad'] },
   'rw-hotair': { canvas: true, todo: ['Pick Hot air', 'Sweep it back and forth over both joints until about 300°C, then stop'] },
   'rw-liquid': { allow: ['select[data-kit="liquid"]'], todo: ['Pick the Liquid tool', 'Check the Cleaning liquid says IPA'] },
   'rw-ipa': { canvas: true, todo: ['Liquid tool (in your hand)', 'Wet each marked joint until the flux dissolves'] },
@@ -128,7 +128,7 @@ const META: Record<string, Meta> = {
   'rw-done': { todo: ['Click Done'] },
   'rw-lifted': { todo: ['Click Undo all, then confirm'] },
   'test-power': { todo: ['Click Customer adapter'] },
-  'test-lamp': { keys: [' '], todo: ['Press and hold the lamp button (or hold Space)'] },
+  'test-lamp': { keys: [' '], todo: ['Click and hold the Hold: Lamp button with the mouse, or press and hold the Space bar'] },
   'case-open': { todo: ['Click Case: open'] },
   'case-close': { todo: ['Click Close it up for me'] },
   'case-done': { todo: ['Click Done'] },
@@ -636,7 +636,7 @@ export class Tutorial {
       title: `Select the ${toolName[t]}`,
       place: 'side',
       target: ring(t),
-      meta: { todo: [`Click ${toolName[t]} (or press ${keyOf[t]})`] },
+      meta: { todo: [`Click the ${toolName[t]} button with the mouse, or press the ${keyOf[t]} key`] },
       body: `<p>${why}</p>`,
       done: () => !!bench() && tool() === t,
       skip: (s) => (!!bench() && tool() === t) || !!skipMore?.(s),
@@ -655,7 +655,7 @@ export class Tutorial {
           id: `rw-heat${n + 1}`,
           title: n === 0 ? 'Heat the first pad' : 'Heat the second pad',
           place: 'side',
-          meta: { canvas: true, heat: true, todo: ['Press and hold the mouse button on the marked pad until the readout says MOLTEN'] },
+          meta: { canvas: true, heat: true, todo: ['Press and hold the left mouse button on the marked pad until its readout says MOLTEN'] },
           glow: ['#rw-joints'],
           body: `<p>Hold the iron's tip on the pad (hover it to read its temperature). Solder melts at about 220°C, so <b>MOLTEN</b> appears long before the pad is in danger. Keep the pad under about 320°C.</p>`,
           enter: () => {
@@ -677,7 +677,7 @@ export class Tutorial {
           id: `rw-feed${n + 1}`,
           title: 'Feed in the solder',
           place: 'side',
-          meta: { canvas: true, heat: true, keys: [' '], todo: ['Keep the iron on the pad (still MOLTEN) and hold Space for 1–2 seconds'] },
+          meta: { canvas: true, heat: true, keys: [' '], todo: ['Keep the left mouse button held on the pad, and while it still says MOLTEN, press and hold the Space bar for 1 to 2 seconds'] },
           glow: ['#rw-joints'],
           body: `<p>Holding <kbd>Space</kbd> feeds solder wire into the molten joint. In the <b>Joints</b> panel the solder bar should reach about <b>half (50%)</b>: a solid joint without a blob. Then let go and lift the iron.</p>`,
           points: mark('then hold Space'),
@@ -714,7 +714,7 @@ export class Tutorial {
         title,
         place: 'side',
         body,
-        meta: { canvas: true, todo: ['Click or hold on every marked pad (clicking again adds more flux)'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button on each marked pad to paint flux on it; each extra click adds more'] },
         enter: () => {
           prev = bench()?.pads.map((p) => p.flux) ?? null;
           got = [];
@@ -849,7 +849,7 @@ export class Tutorial {
         id: 'rw-wick',
         title: 'Wick the old solder off',
         place: 'side',
-        meta: { canvas: true, heat: true, keys: ['c'], todo: ['Hold the wick on each marked joint until the solder is gone'] },
+        meta: { canvas: true, heat: true, keys: ['c'], todo: ['Press and hold the left mouse button with the wick on each marked joint until the solder is gone'] },
         glow: ['#rw-joints'],
         body: `<p>Press and hold on a joint: the iron heats through the braid and the solder runs into it. The pad should end up bare copper. If the wick end turns silver, cut it off with <kbd>C</kbd>; if the flux is gone, add more.</p>`,
         points: () => {
@@ -867,7 +867,7 @@ export class Tutorial {
         id: 'rw-lift',
         title: 'Lift out the blown fuse',
         place: 'side',
-        meta: { canvas: true, todo: ['Click the fuse to pick it up with the tweezers'] },
+        meta: { canvas: true, todo: ['Left-click the fuse in the microscope picture with the mouse to pick it up'] },
         body: `<p>✓ The solder is off, so nothing holds the fuse down any more.</p>`,
         points: [{ rwPart: true, label: 'click the fuse' }],
         done: () => {
@@ -908,7 +908,7 @@ export class Tutorial {
         id: 'rw-place',
         title: 'Place the new fuse',
         place: 'side',
-        meta: { canvas: true, todo: ['Click the empty footprint to set the fuse down on the pads'] },
+        meta: { canvas: true, todo: ['Left-click the empty footprint between the two pads with the mouse to set the fuse down'] },
         body: `<p>It only counts if it sits on both pads.</p>`,
         points: [{ rwPart: true, label: 'click here to place it' }],
         done: (s) => newFuseOn(s),
@@ -943,7 +943,7 @@ export class Tutorial {
         id: 'rw-hotair',
         title: 'Reflow with hot air',
         place: 'side',
-        meta: { canvas: true, heat: true, todo: ['Hold the mouse button and sweep back and forth over both joints until they read 300–320°C, then let go'] },
+        meta: { canvas: true, heat: true, todo: ['Press and hold the left mouse button, and move the mouse back and forth over both joints until they read 300 to 320 degrees, then let go'] },
         glow: ['#rw-joints'],
         body: `<p>Keep the nozzle moving over <b>both joints at the same time</b>. The flux bubbles as it heats. Hover a pad for its temperature. When both are about <b>300–320°C</b>, <b>stop</b>: any longer and the pads start to burn.</p>`,
         enter: () => {
@@ -979,7 +979,7 @@ export class Tutorial {
         id: 'rw-ipa',
         title: 'Wet the flux with IPA',
         place: 'side',
-        meta: { canvas: true, todo: ['Hold the Liquid tool on each marked joint until the flux dissolves into the IPA'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button with the Liquid tool on each marked joint until the flux dissolves into the IPA'] },
         body: `<p>Keep it wet until the flux melts into the IPA: the liquid turns cloudy and yellowish.</p>`,
         points: () => {
           const rs = bench();
@@ -996,7 +996,7 @@ export class Tutorial {
         id: 'rw-brush',
         title: 'Scrub with the brush',
         place: 'side',
-        meta: { canvas: true, todo: ['Scrub back and forth over each marked joint until the flux ovals disappear'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button and move the brush back and forth over each marked joint until the flux ovals disappear'] },
         body: `<p>If the IPA dries before you finish, pick the Liquid tool and add a little more.</p>`,
         points: () => {
           const rs = bench();
@@ -1013,7 +1013,7 @@ export class Tutorial {
         id: 'rw-wipe1',
         title: 'Wipe the wet joint',
         place: 'side',
-        meta: { canvas: true, todo: ['Drag the wipe across the joint that is still wet'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button and drag the wipe across the joint that is still wet'] },
         body: `<p>Save the side that is still wet first.</p>`,
         enter: () => {
           // Let one side dry out (if neither has), so the next steps can show how to rescue it.
@@ -1043,7 +1043,7 @@ export class Tutorial {
         id: 'rw-rewet',
         title: 'Re-wet the dried residue',
         place: 'side',
-        meta: { canvas: true, todo: ['Hold the Liquid tool on the marked residue until it turns liquid again'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button with the Liquid tool on the marked residue until it turns liquid again'] },
         body: `<p>When the white residue goes cloudy and wet, it can be wiped.</p>`,
         points: () => {
           const rs = bench();
@@ -1064,7 +1064,7 @@ export class Tutorial {
         id: 'rw-wipe2',
         title: 'Wipe the rest away',
         place: 'side',
-        meta: { canvas: true, todo: ['Drag the wipe over the marked joints until they are clean'] },
+        meta: { canvas: true, todo: ['Press and hold the left mouse button and drag the wipe over the marked joints until they are clean'] },
         body: `<p>The pads should end up clean and shiny.</p>`,
         points: () => {
           const rs = bench();
