@@ -151,7 +151,7 @@ export class BenchScene {
     const app = this.app;
     // parts.glb: parts, tools, bench; shells.glb: Blender front shells per device (face_<id>)
     for (const file of ['parts', 'shells']) {
-      const asset = new pc.Asset(file, 'container', { url: `${import.meta.env.BASE_URL}models/${file}.glb` });
+      const asset = new pc.Asset(file, 'container', { url: `${import.meta.env.BASE_URL}models/${file}.glb?v=${typeof __MODELS_V__ === 'string' ? __MODELS_V__ : '0'}` });
       app.assets.add(asset);
       await new Promise<void>((resolve, reject) => {
         asset.once('load', () => resolve());
@@ -297,6 +297,7 @@ export class BenchScene {
       ['supply:kapton', 'tool_kapton', 150, 130, 0],
     ];
     for (const [id, model, x, z, yaw] of spots) {
+      if (!this.templates.has(model)) continue; // (an outdated cached model file: skip the prop rather than crash)
       const p = this.clone(model);
       p.setLocalPosition(x, -BOARD_T, z);
       p.setLocalEulerAngles(0, yaw, 0);
@@ -1020,7 +1021,7 @@ export class BenchScene {
       // A cracked screen: the Blender crack decal over the glass, sized to it
       if (c.marks.includes('cracked-screen')) {
         const glass = SCREEN_GLASS[tpl];
-        if (glass) {
+        if (glass && this.templates.has('decal_crack')) {
           const crack = this.clone('decal_crack');
           crack.setLocalPosition(0, glass[3], glass[2]);
           crack.setLocalScale(glass[0] / 10, 1, glass[1] / 10);

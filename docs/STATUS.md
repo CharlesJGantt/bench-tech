@@ -123,11 +123,11 @@ Second and third locations run by staff (stretch goal): TODO.
 ## 11. Port inspection and liquid damage (messages 136 and the latest)
 | Request | Status |
 |---|---|
-| Look into the USB / HDMI port with tweezers, pick, blower, swabs; debris; bent pins need a new port | PARTIAL (works, but as a pop-up window, not in the microscope view) |
-| See the port end view inside the microscope view (eyepiece, zoom, ring light) | NEXT |
-| Corrosion visible on the port pins and around liquid damage in that view | NEXT |
-| Bent and mangled pins visible in the microscope port view | PARTIAL (drawn in the window; move it into the microscope) |
-| Liquid damage indicator stickers around the board (turn red where liquid reached) to tell the player where to look for corrosion | NEXT |
+| Look into the USB / HDMI port with tweezers, pick, blower, swabs; debris; bent pins need a new port | DONE |
+| Port end view inside the microscope (eyepiece, wheel zoom, ring light on L) reached from the pad view or the component panel | DONE |
+| Corrosion crust visible on the port pins; bent and mangled pins visible | DONE |
+| Liquid damage indicator stickers on the PCB (beside ports, battery connector, game slot, main chip): white when dry, red where liquid reached; the inspector points at a red one | DONE |
+| Real 3D camera tip-up of the board (the end view is a drawn view, not a camera move) | PARTIAL |
 
 ## 12. USB meter and diagnosis tools (messages 129-132 and the pasted list)
 Boot pull / settle / charge ramp, no-battery fluctuation, short brown-out, fast-charge negotiation, charger and cable
@@ -156,8 +156,7 @@ remains, fuses hidden under tape or putty, bimetal switch that resets by cooling
 - Interview and pricing questions (messages 107, 114-116) were answered in chat only: nothing to build
 
 ## Suggested order
-1. Port view inside the microscope with corrosion and bent pins, plus liquid damage stickers (agreed just now)
-2. MyPhone with a wireless-charging coil (adds a device and the coil fault)
+1. MyPhone with a wireless-charging coil (adds a device and the coil fault)
 3. Laptops, Ding boards, SoundHalo supply, Funstation 5 power section (device goal and your named devices)
 4. Marketplace game lots; broken ribbon connector fault; clogged power ports; drives beyond consoles
 5. Tutorial script review and new-mechanic steps (voice re-record when you say so)

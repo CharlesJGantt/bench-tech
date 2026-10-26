@@ -75,9 +75,23 @@ describe('port window', () => {
       const fake = { board: job.board, job, guided: true, owns: () => true, shop: { supplies: { swabs: 5 } } } as never;
       const html = portViewHtml(fake, ref, 'test');
       expect(html).toContain('<svg');
-      expect(html).toContain('port-clean');
+      expect(html).toContain('data-pv-clean');
+      expect(html).toContain('eyepiece');
       if (id.includes('bent')) expect(html).toContain('bent');
       else expect(html).toMatch(/fluff|grime|dust/);
     }
+  });
+
+  it('shows corrosion crust on the contacts after liquid damage', async () => {
+    const { portViewHtml } = await import('../src/ui/portview');
+    const { corrode } = await import('../src/sim/corrosion');
+    const d = withVariant('usb-port-clogged')[0];
+    const job = generateJob(d, 2, { variant: 'usb-port-clogged' });
+    const ref = job.faults[0].refs[0];
+    corrode(job.board, ref, 0.6);
+    const fake = { board: job.board, job, guided: true, owns: () => true, shop: { supplies: { swabs: 5 } } } as never;
+    const html = portViewHtml(fake, ref, '', { zoom: 2, ring: true });
+    expect(html).toContain('liquid damage');
+    expect(html).toContain('scale(2)');
   });
 });

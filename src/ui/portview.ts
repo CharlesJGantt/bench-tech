@@ -5,6 +5,7 @@
  */
 import type { Session } from '../game/session';
 import { debrisLevel, portClear } from '../sim/portclean';
+import { CORROSION_RGB, crustAt } from '../sim/corrosion';
 import { part, pinsOf } from '../sim/parts';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -27,7 +28,13 @@ const TOOL_BTNS: [string, string, string, string][] = [
   ['swab', '', '🧽 Swab', 'Wipe loose dust out (uses a swab)'],
 ];
 
-export function portViewHtml(s: Session, ref: string, message = ''): string {
+/** Microscope state for the port view: lens zoom (1..) and the ring light. */
+export interface ScopeOpts {
+  zoom: number;
+  ring: boolean;
+}
+
+export function portViewHtml(s: Session, ref: string, message = '', scope: ScopeOpts = { zoom: 1, ring: false }): string {
   const c = s.board.comps[ref];
   const p = c.part ?? part(c.def.partNo);
   const pkg = p.pkg;
@@ -61,6 +68,25 @@ export function portViewHtml(s: Session, ref: string, message = ''): string {
       : `<rect x="${x - 3}" y="${y - 8}" width="6" height="${pkg === 'HDMI' ? 18 : 24}" rx="2" fill="#e2bf5a"/>`;
   });
 
+  // Corrosion crust on the contacts (liquid damage): speckles in the spill's colours
+  let crust = '';
+  const corrPins = new Set<string>();
+  pins.forEach((pin, i) => {
+    const lv = crustAt(c, pin) || (c.marks.includes('corrosion') && !c.corr ? 0.3 : 0);
+    if (lv < 0.05) return;
+    corrPins.add(pin);
+    const row = Math.floor(i / perRow);
+    const col = i % perRow;
+    const x = 56 + (col + 0.5) * ((W - 112) / perRow);
+    const y = pkg === 'HDMI' ? 52 + row * 34 : 62;
+    const rgb = CORROSION_RGB[c.corr?.color ?? 'green'];
+    const rgb2 = CORROSION_RGB[(['green', 'white', 'yellow', 'purple', 'black'] as const)[Math.floor(rnd() * 5)]];
+    for (let k = 0; k < 4 + Math.round(lv * 12); k++) {
+      const col2 = rnd() < 0.6 ? rgb : rgb2;
+      crust += `<circle cx="${(x + (rnd() - 0.5) * 12).toFixed(1)}" cy="${(y + (rnd() - 0.3) * 22).toFixed(1)}" r="${(1 + rnd() * 2.6 * (0.5 + lv)).toFixed(1)}" fill="rgb(${col2[0]},${col2[1]},${col2[2]})" opacity="${(0.55 + 0.4 * rnd()).toFixed(2)}"/>`;
+    }
+  });
+
   // Debris
   let junk = '';
   if (d) {
@@ -84,10 +110,13 @@ export function portViewHtml(s: Session, ref: string, message = ''): string {
   if (d && d.lint > 0.05) seen.push('grey fluff and lint');
   if (d && d.packed > 0.05) seen.push('dark grime packed onto the contacts');
   if (d && d.loose > 0.05) seen.push('loose dust and crumbs');
+  if (corrPins.size) seen.push(`green, white and dark crust on ${corrPins.size === 1 ? 'a contact' : `${corrPins.size} contacts`} (liquid damage)`);
   if (bent.length) seen.push(`${bent.length > 1 ? 'contacts' : 'a contact'} bent flat (${bent.join(', ')})`);
   const verdict = bent.length
     ? 'A bent contact cannot be straightened without breaking it: this port has to be replaced.'
-    : portClear(c) && lvl < 0.03
+    : corrPins.size
+      ? 'Corrosion on the contacts: liquid got in. Treat the board with corrosion cleaner, scrub and rinse it, then clean the port.'
+      : portClear(c) && lvl < 0.03
       ? 'Spotless. A cable will seat properly now.'
       : lvl >= 0.05
         ? 'Still dirty. Work through it with the tools below.'
@@ -96,16 +125,18 @@ export function portViewHtml(s: Session, ref: string, message = ''): string {
   const btn = ([how, toolId, label, tip]: (typeof TOOL_BTNS)[number]) => {
     const own = how === 'swab' ? s.shop.supplies.swabs >= 1 : s.owns(toolId);
     const lock = own ? '' : ` disabled title="${how === 'swab' ? 'Out of swabs' : 'You do not have this tool yet (Equipment tab)'}"`;
-    return `<button data-act="port-clean" data-ref="${ref}" data-how="${how}" title="${esc(tip)}"${lock}>${label}</button>`;
+    return `<button data-pv-clean="${how}" title="${esc(tip)}"${lock}>${label}</button>`;
   };
 
-  return `<h2>🔦 Looking into ${esc(ref)} <span class="muted">· ${esc(p.label)}</span></h2>
-    <p class="muted small">The board is tipped up on its edge so the port faces you, and the light is on. ${s.guided ? 'The board must be off.' : ''}</p>
-    <div class="portview"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Looking into the port">
-      <rect width="${W}" height="${H}" rx="10" fill="#0d1218"/>${housing}${contacts}${junk}
-    </svg></div>
+  const z = Math.max(1, Math.min(4, scope.zoom));
+  const bright = scope.ring ? 1.25 : 0.82;
+  return `<h2>🔬 Microscope: end view of ${esc(ref)} <span class="muted">· ${esc(p.label)}</span></h2>
+    <p class="muted small">${(0.7 * z).toFixed(1)}× lens view · wheel zooms · <kbd>L</kbd> ring light ${scope.ring ? 'on' : 'off'} (the ring light shows fine crust and bent contacts) ${s.guided ? '· The board must be off.' : ''}</p>
+    <div class="portview scope"><div class="eyepiece" style="filter:brightness(${bright})"><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Looking into the port through the microscope" style="transform:scale(${z});transform-origin:50% 50%">
+      <rect width="${W}" height="${H}" fill="#0d1218"/>${housing}${contacts}${crust}${junk}
+    </svg></div></div>
     ${s.guided || seen.length ? `<p class="small">${seen.length ? `You can see ${seen.join(', ')}.` : 'The contacts are bright and clear.'} <b>${esc(verdict)}</b></p>` : ''}
     ${message ? `<p class="note">${esc(message)}</p>` : ''}
     <div class="row">${TOOL_BTNS.map(btn).join('')}</div>
-    <div class="row"><button data-act="close">Done</button></div>`;
+    <div class="row"><button data-pv-ring>${scope.ring ? '💡 Ring light off' : '💡 Ring light on'}</button><button class="primary" data-pv-back>↩ Back to the pads</button></div>`;
 }

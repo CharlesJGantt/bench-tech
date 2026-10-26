@@ -2,6 +2,7 @@ import type { DeviceDef } from '../sim/board';
 import type { BoardState } from '../sim/circuit';
 import { bodyRect, padsOf, type PadWorld } from '../sim/footprints';
 import { part } from '../sim/parts';
+import { ldiLevel, ldiSpots } from '../sim/ldi';
 import { CORROSION_RGB, crustSpeckles, hashStr } from '../sim/corrosion';
 import { cachedRoute, routeKey } from './routeCache';
 import { routeBoard, type Segment, type TraceGeom } from './router';
@@ -409,6 +410,40 @@ export function drawBoard(canvas: HTMLCanvasElement, b: BoardState, geo: BoardGe
     ctx.font = `bold ${Math.min(1.7, (w * 1.55) / LOGO_URL.length) * PX}px Arial, sans-serif`;
     ctx.fillText(LOGO_URL, x * PX, (y + h + 1.5) * PX);
     ctx.fillStyle = COL.silk;
+  }
+
+  // Liquid damage indicator stickers: white and clean until liquid reaches them, then they bloom red
+  for (const s of ldiSpots(dev)) {
+    const lv = ldiLevel(b, s);
+    const x = (s.x - s.size / 2) * PX;
+    const y = (s.y - s.size / 2) * PX;
+    const w = s.size * PX;
+    ctx.fillStyle = '#f4f3ee';
+    ctx.strokeStyle = '#b9b7ad';
+    ctx.lineWidth = 0.12 * PX;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, w, 0.5 * PX);
+    ctx.fill();
+    ctx.stroke();
+    // four rings, pale pink when dry; they fill red and bleed outwards as the liquid reaches the sticker
+    for (const [dx, dy] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
+      const cx = (s.x + dx * s.size) * PX;
+      const cy = (s.y + dy * s.size) * PX;
+      if (lv > 0) {
+        const g = ctx.createRadialGradient(cx, cy, 0.1 * PX, cx, cy, (0.9 + lv * 0.6) * PX);
+        g.addColorStop(0, `rgba(214,30,40,${0.55 + lv * 0.4})`);
+        g.addColorStop(1, 'rgba(214,30,40,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(cx, cy, (0.9 + lv * 0.6) * PX, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = lv > 0 ? '#c2182a' : '#eab4bd';
+      ctx.lineWidth = 0.16 * PX;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 0.55 * PX, 0, Math.PI * 2);
+      ctx.stroke();
+    }
   }
 
   // Jumper wires (enamelled copper)

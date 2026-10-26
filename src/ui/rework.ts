@@ -1,4 +1,6 @@
 import { FOOTPRINTS } from '../sim/footprints';
+import { portViewHtml } from './portview';
+import { isPort, type PortTool } from '../sim/portclean';
 import { crustSpeckles, hashStr } from '../sim/corrosion';
 import { PARTS, POLARIZED, type PartSpec } from '../sim/parts';
 import {
@@ -83,6 +85,43 @@ export class ReworkStation {
     return { x: r.left + r.width / 2 + (x - this.ox) * this.scale, y: r.top + r.height / 2 + (y - this.oy) * this.scale };
   }
 
+  private pvOverlay: HTMLElement | null = null;
+  private pvScope = { zoom: 1, ring: false };
+
+  /** The port end view: the board tipped up so the microscope looks straight into the port. */
+  openPortView(message = ''): void {
+    const s = this.session;
+    const ref = this.st.ref;
+    if (!this.pvOverlay) {
+      const box = document.createElement('div');
+      box.className = 'rw-portov';
+      this.host.querySelector('.rw')?.appendChild(box);
+      this.pvOverlay = box;
+      box.addEventListener('click', (e) => {
+        const t = e.target as HTMLElement;
+        const how = t.closest<HTMLElement>('[data-pv-clean]')?.dataset.pvClean;
+        if (how) {
+          const r = s.cleanPortWith(ref, how as PortTool);
+          this.openPortView(r.text);
+        } else if (t.closest('[data-pv-ring]')) {
+          this.pvScope.ring = !this.pvScope.ring;
+          this.openPortView();
+        } else if (t.closest('[data-pv-back]')) this.closePortView();
+      });
+      box.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        this.pvScope.zoom = Math.min(4, Math.max(1, this.pvScope.zoom * Math.exp(-Math.max(-600, Math.min(600, e.deltaY)) * 0.0015)));
+        this.openPortView(message);
+      }, { passive: false });
+    }
+    this.pvOverlay.innerHTML = `<div class="rw-portov-in">${portViewHtml(s, ref, message, this.pvScope)}</div>`;
+  }
+
+  private closePortView(): void {
+    this.pvOverlay?.remove();
+    this.pvOverlay = null;
+  }
+
   /** Scroll the side panel so this section is in view. */
   reveal(selector: string): void {
     this.host.querySelector(selector)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -109,6 +148,12 @@ export class ReworkStation {
   private bubbles: { x: number; y: number; t: number }[] = [];
   private keyDown = (e: KeyboardEvent) => this.onKey(e, true);
   private keyUp = (e: KeyboardEvent) => this.onKey(e, false);
+  private pvKey = (e: KeyboardEvent) => {
+    if (this.pvOverlay && (e.key === 'l' || e.key === 'L')) {
+      this.pvScope.ring = !this.pvScope.ring;
+      this.openPortView();
+    }
+  };
 
   constructor(
     private session: Session,
@@ -129,6 +174,7 @@ export class ReworkStation {
           <h2>🔬 Rework — ${ref} <span class="muted">${esc(c.def.role)} · ${fp.pkg}</span></h2>
           <label class="rw-temp">Iron <input type="range" id="rw-temp" min="200" max="450" step="10" value="330"> <b id="rw-temp-v">330°C</b></label>
           <label class="rw-temp">Air <input type="range" id="rw-air" min="150" max="450" step="10" value="340"> <b id="rw-air-v">340°C</b></label>
+          ${isPort(c) ? '<button id="rw-port" title="Tip the board up and look straight into the port through the microscope">🔦 Port end view</button>' : ''}
           <div class="row" style="margin:0"><button class="primary" id="rw-done" title="Leave the microscope. Everything you did stays done (Esc).">✓ Done</button><button id="rw-cancel" title="Put the board back exactly as it was when you sat down">↶ Undo all</button></div>
         </div>
         <div class="rw-main">
@@ -175,6 +221,7 @@ export class ReworkStation {
       this.chooseKit(sel.dataset.kit as 'tip' | 'nozzle' | 'wick' | 'flux' | 'solder' | 'liquid', sel.value);
     });
     (this.host.querySelector('#rw-done') as HTMLElement).addEventListener('click', () => this.finish(true));
+    this.host.querySelector('#rw-port')?.addEventListener('click', () => this.openPortView());
     (this.host.querySelector('#rw-cancel') as HTMLElement).addEventListener('click', () => {
       if (confirm('Undo everything you did at the microscope this time? Supplies you used are still gone.')) this.finish(false);
     });
@@ -229,6 +276,7 @@ export class ReworkStation {
     });
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
     window.addEventListener('keydown', this.keyDown);
+    window.addEventListener('keydown', this.pvKey);
     window.addEventListener('keyup', this.keyUp);
 
     this.setTool('iron');
@@ -380,6 +428,7 @@ export class ReworkStation {
     cancelAnimationFrame(this.raf);
     clearInterval(this.timer);
     window.removeEventListener('keydown', this.keyDown);
+    window.removeEventListener('keydown', this.pvKey);
     window.removeEventListener('keyup', this.keyUp);
     let summary: string | null = null;
     if (apply) {

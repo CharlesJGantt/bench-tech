@@ -730,6 +730,7 @@ button.lead.on.black {
   flex-direction: column;
   width: 100%;
   min-height: 0;
+  position: relative;
 }
 .rw-head {
   display: flex;
@@ -1433,3 +1434,17 @@ body.tut-locked #rw-canvas:not(.tut-ok) { cursor: not-allowed; }
 .portview { margin: 8px 0; perspective: 600px; }
 .portview svg { transform-origin: 50% 100%; animation: tipup 0.8s ease-out; border-radius: 10px; }
 @keyframes tipup { from { transform: rotateX(70deg) scale(0.9); opacity: 0.2; } to { transform: rotateX(0) scale(1); opacity: 1; } }
+
+/* microscope port end view */
+.rw-portov { position: absolute; inset: 0; background: rgba(4, 6, 9, 0.94); z-index: 5; display: grid; place-items: center; overflow: auto; padding: 14px; }
+.rw-portov-in { width: min(760px, 100%); }
+.portview.scope { display: grid; place-items: center; }
+.portview .eyepiece { width: min(70vh, 100%); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #05070a; box-shadow: 0 0 0 10px #151a22, 0 0 0 12px #2c3644, inset 0 0 60px #000; display: grid; place-items: center; }
+.portview .eyepiece svg { animation: tipup 0.8s ease-out; }
+
+/* microscope port end view */
+.rw-portov { position: absolute; inset: 0; background: rgba(4, 6, 9, 0.94); z-index: 5; display: grid; place-items: center; overflow: auto; padding: 14px; }
+.rw-portov-in { width: min(760px, 100%); }
+.portview.scope { display: grid; place-items: center; }
+.portview .eyepiece { width: min(70vh, 100%); aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #05070a; box-shadow: 0 0 0 10px #151a22, 0 0 0 12px #2c3644, inset 0 0 60px #000; display: grid; place-items: center; }
+.portview .eyepiece svg { animation: tipup 0.8s ease-out; }

@@ -18,8 +18,8 @@ import { CHANNELS, fireStaff, forecastListing, hireStaff, moveShop, raiseStaff, 
 import { loadJob } from '../sim/persist';
 import { discViewHtml } from './discview';
 import { KAPTON_PER_RESET } from '../sim/thermalfuse';
-import { portViewHtml } from './portview';
-import { isPort, type PortTool } from '../sim/portclean';
+import { LDI_REACH, trippedStickers } from '../sim/ldi';
+import { isPort } from '../sim/portclean';
 import { portRef, portTest } from '../sim/porttest';
 import { ACCESSORY_PRICE } from '../sim/accessories';
 import { capacityVerdict, usbMeterNow } from '../game/explain';
@@ -460,20 +460,11 @@ export class Hud {
         });
         break;
       }
-      case 'port-view': {
-        if (!s.reachable) {
-          this.toast('Take the board out of its case first (🔧 Case on the ticket).', 'bad');
-          break;
-        }
-        this.modal(portViewHtml(s, d.ref!), 'wide');
+      case 'port-view':
+        // The microscope: it opens on the pads; "Port end view" tips the board up and looks into the port
+        this.openRework(d.ref!);
+        this.station?.openPortView();
         break;
-      }
-      case 'port-clean': {
-        const r = s.cleanPortWith(d.ref!, d.how as PortTool);
-        this.modal(portViewHtml(s, d.ref!, r.text), 'wide');
-        if (!r.ok) this.toast(r.text, 'bad');
-        break;
-      }
       case 'port-tester':
         this.showPortTester();
         break;
@@ -1463,6 +1454,11 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     if (p && p.partNo !== c.def.partNo && magnified && p.marking !== fp.marking) obs.push(`Marked "${p.marking}" — the parts list says this should be "${fp.marking || fp.label}".`);
     const lifted = s.board.liftedPads.filter((k) => k.startsWith(`${ref}.`)).map((k) => k.split('.')[1]);
     for (const pin of lifted) obs.push(`The ${pin} pad has been torn off the board!`);
+    for (const st of trippedStickers(s.board)) {
+      if (Math.hypot(c.def.x - st.x, c.def.y - st.y) > LDI_REACH) continue;
+      obs.push(`The liquid damage sticker guarding ${st.guards} has turned red: liquid reached this part of the board. Look closely for corrosion.`);
+      break;
+    }
     for (const k of s.board.cutPads ?? []) {
       if (!k.startsWith(`${ref}.`)) continue;
       obs.push(magnified ? `🔍 A fine scratch cuts straight through the copper trace running to pin ${k.split('.')[1]}.` : '<span class="muted">Zoom in along the tracks to look for a scratch.</span>');
@@ -1519,7 +1515,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
         ${c.marks.includes('pptc-high') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Heat it with the hot air, nothing masked">🔥 Heat it with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then heat (${KAPTON_PER_RESET} cm)</button>` : ''}
-        ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port with a light">🔦 Look into the port</button>` : ''}
+        ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port through the microscope">🔦 Look into the port (microscope)</button>` : ''}
       </div>`
       }
       ${jumpers.map((j) => `<div class="kv small"><span>Jumper ${j.id}${j.gauge ? ` · ${j.gauge} ga${j.sealed ? ' · sealed' : ''}` : ''}</span><span>${j.gauge && !j.sealed ? `<button data-act="jumper-seal" data-id="${j.id}">Seal (UV mask)</button> ` : ''}<button data-act="jumper-del" data-id="${j.id}">Remove wire</button></span></div>`).join('')}`;
