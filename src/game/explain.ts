@@ -1,4 +1,4 @@
-import { measure, type MeterReading, type PointRef } from '../sim/circuit';
+import { measure, type CapacityResult, type MeterReading, type PointRef } from '../sim/circuit';
 import type { Session } from './session';
 
 /** Nets joined by copper traces count as one logical net. */
@@ -196,4 +196,12 @@ export function usbMeterNow(t: number, volts: number, finalA: number, unsteady =
           ? ''
           : 'The charge controller is starting up…';
   return { volts: Math.max(0, volts), amps, watts: Math.max(0, volts) * amps, ok: done ? end.ok : true, verdict: done ? end.verdict : note, stage, done, note };
+}
+
+/** What a capacity reading says about a battery. */
+export function capacityVerdict(r: CapacityResult): { text: string; ok: boolean } {
+  const pct = Math.round((r.deliveredMah / r.ratedMah) * 100);
+  if (pct >= 85) return { ok: true, text: `${pct} % of its rated capacity: the battery is healthy.` };
+  if (pct >= 60) return { ok: true, text: `${pct} % of its rated capacity: ageing but usable. Expect shorter runtime.` };
+  return { ok: false, text: `Only ${pct} % of its rated capacity: end of life. This is why it dies so quickly. Replace the battery.` };
 }

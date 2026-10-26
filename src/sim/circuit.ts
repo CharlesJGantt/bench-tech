@@ -1167,3 +1167,40 @@ export function customerSession(b: BoardState, power: PowerConfig = { kind: 'ada
 export function functionalTest(b: BoardState): FunctionalReport {
   return b.device.functional(b);
 }
+
+// ---------------------------------------------------------------------------
+// Battery capacity (what a USB meter's charge counter reveals)
+// ---------------------------------------------------------------------------
+
+/** Rated capacity of a battery part in mAh (read from its label). */
+export function ratedMah(p: PartSpec): number {
+  const m = /(\d+)\s*mAh/i.exec(p.label);
+  return m ? Number(m[1]) : 1500;
+}
+
+/** How much of its rated capacity a connected battery still holds (1 = new). A worn-out one holds 30-60 %. */
+export function batteryHealth(c: CompState): number {
+  if (c.fault?.type !== 'worn') return 1;
+  let h = 0;
+  for (const ch of c.ref) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return 0.3 + (h % 30) / 100;
+}
+
+export interface CapacityResult {
+  ref: string;
+  ratedMah: number;
+  deliveredMah: number;
+  health: number;
+  /** Hours to run the charge from empty to full at the charging current. */
+  hours: number;
+}
+
+/** A full charge from empty on the (connected) battery, as the meter's charge counter would total it. */
+export function chargeTest(b: BoardState, chargeAmps: number): CapacityResult | null {
+  const c = Object.values(b.comps).find((x) => batteryConnected(b, x) && x.part!.pkg !== 'COIN');
+  if (!c?.part || chargeAmps < 0.05) return null;
+  const rated = ratedMah(c.part);
+  const health = batteryHealth(c);
+  const delivered = Math.round(rated * health * 1.05);
+  return { ref: c.ref, ratedMah: rated, deliveredMah: delivered, health, hours: delivered / 1000 / chargeAmps };
+}

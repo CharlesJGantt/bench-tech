@@ -36,3 +36,31 @@ describe('USB power meter', () => {
     expect(usbMeterReading(0.4, 1.5).verdict).toContain('browns out');
   });
 });
+
+describe('battery capacity test', () => {
+  it('a worn battery delivers far less than rated; a good one about its rating', async () => {
+    const { DEVICE_LIST } = await import('../src/sim/devices');
+    const { generateJob } = await import('../src/sim/faults');
+    const { chargeTest, batteryHealth } = await import('../src/sim/circuit');
+    const { capacityVerdict } = await import('../src/game/explain');
+    let tested = 0;
+    for (const d of DEVICE_LIST) {
+      const v = d.variants.find((x) => x.id.endsWith('battery-worn'));
+      if (!v) continue;
+      const job = generateJob(d, 3, { variant: v.id });
+      const worn = chargeTest(job.board, 0.8);
+      const bad = Object.values(job.board.comps).find((c) => c.fault?.type === 'worn')!;
+      expect(batteryHealth(bad)).toBeLessThan(0.6);
+      if (worn) {
+        expect(worn.deliveredMah).toBeLessThan(worn.ratedMah * 0.6);
+        expect(capacityVerdict(worn).ok).toBe(false);
+      }
+      bad.fault = null;
+      const fine = chargeTest(job.board, 0.8);
+      if (fine) expect(capacityVerdict(fine).ok).toBe(true);
+      tested++;
+    }
+    expect(tested).toBeGreaterThan(0);
+    expect(chargeTest(generateJob(DEVICE_LIST[0], 1).board, 0.01)).toBeNull();
+  });
+});

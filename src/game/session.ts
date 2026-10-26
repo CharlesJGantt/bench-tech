@@ -5,6 +5,8 @@ import {
   cloneBoard,
   functionalTest,
   batteryConnected,
+  chargeTest,
+  type CapacityResult,
   hasInternalPower,
   hasSparkingBattery,
   measure,
@@ -25,7 +27,7 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
-import { METER_CHARGE_START, METER_RAMP } from './explain';
+import { capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -218,7 +220,9 @@ export class Session {
     // Both meter leads start off the board (Black → GND clips the black one to ground).
     this.meter.red = null;
     this.meter.black = null;
-    this.activeProbe = 'red';
+    this.jumperStart = null;
+    this.lastCapacity = null;
+    this.meterMah = 0;
     this.selected = null;
     this.scopePoint = null;
     this.jumperStart = null;
@@ -473,11 +477,29 @@ export class Session {
 
   /** Seconds since the device was plugged in (drives the USB meter's boot / settle / charge curve). */
   meterT = 0;
+  /** Charge counted by the USB meter since plug-in (mAh), and the last capacity test. */
+  meterMah = 0;
+  lastCapacity: CapacityResult | null = null;
+
+  /** Fast-forward a full charge from empty and read the charge counter: the battery's real capacity. */
+  runCapacityTest(): { ok: boolean; text: string } {
+    if (!this.owns('usb-meter')) return { ok: false, text: 'You need a USB power meter.' };
+    if (!this.op || (this.powerMode !== 'adapter' && this.powerMode !== 'psu-jack')) return { ok: false, text: 'Plug the device in through the meter first (adapter or bench-supply jack).' };
+    const r = chargeTest(this.board, usbMeterCurrent(99, this.op.srcI).amps);
+    if (!r) return { ok: false, text: 'No charge is going into a battery: nothing to measure. Is there a battery fitted, and is it charging at all?' };
+    this.lastCapacity = r;
+    this.shop.usage.powerSeconds += Math.min(7200, r.hours * 3600);
+    const v = capacityVerdict(r);
+    this.addLog('action', `Capacity test: ${r.deliveredMah} mAh of ${r.ratedMah} mAh`);
+    this.emit();
+    return { ok: true, text: `Charged from empty in ${r.hours.toFixed(1)} h: ${r.deliveredMah} mAh of ${r.ratedMah} mAh. ${v.text}` };
+  }
 
   setPowerMode(m: PowerMode): void {
     if (m === this.powerMode) return;
     this.powerMode = m;
     this.meterT = 0;
+    this.meterMah = 0;
     if (m === 'off') this.board.mcu.tripped = false;
     const names: Record<PowerMode, string> = { off: 'Power off', adapter: 'Plugged in the 12 V adapter', 'psu-jack': 'Bench PSU connected to the DC jack', 'psu-clips': 'Bench PSU on clip leads' };
     this.addLog('action', names[m]);
@@ -615,6 +637,7 @@ export class Session {
     if (this.op) this.shop.usage.powerSeconds += dt;
     if (this.op && this.owns('usb-meter') && (this.powerMode === 'adapter' || this.powerMode === 'psu-jack') && this.meterT < METER_CHARGE_START + METER_RAMP + 0.5) {
       this.meterT += dt;
+      this.meterMah += (usbMeterCurrent(this.meterT, this.op.srcI, this.chargingIntoNothing).amps * dt * 1000) / 3600;
       this.emit();
     }
     this.board.cooling = coolingFor(this.encDef, this.enc);

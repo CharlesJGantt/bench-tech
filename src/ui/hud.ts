@@ -16,7 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
-import { usbMeterNow } from '../game/explain';
+import { capacityVerdict, usbMeterNow } from '../game/explain';
 import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -400,6 +400,11 @@ export class Hud {
       case 'attach':
         s.toggleAttach(d.id!);
         break;
+      case 'meter-capacity': {
+        const r = s.runCapacityTest();
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
       case 'jumper-seal': {
         const sel = (['green', 'red', 'blue', 'black'] as const).find((c) => s.shop.supplies[`mask-${c}` as SupplyId] >= 0.3);
         const r = s.sealWire(Number(d.id), sel ?? 'green');
@@ -951,7 +956,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     const s = this.s;
     if (!s.owns('usb-meter') || (s.powerMode !== 'adapter' && s.powerMode !== 'psu-jack')) return '';
     const m = usbMeterNow(s.meterT, op.srcV, op.srcI, s.chargingIntoNothing);
-    return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
+    return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W<br><span class="small">Counted ${s.meterMah.toFixed(2)} mAh · ${(s.meterMah * 0.005).toFixed(3)} Wh</span> <button data-act="meter-capacity" title="Fast-forward a full charge from empty and read the total">⏱ Capacity test</button>${s.lastCapacity ? `<br><span class="small ${capacityVerdict(s.lastCapacity).ok ? 'good' : 'warn'}"><b>${s.lastCapacity.deliveredMah} mAh</b> of ${s.lastCapacity.ratedMah} rated${s.guided ? ` — ${esc(capacityVerdict(s.lastCapacity).text)}` : ''}</span>` : ''}${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
   }
 
   private renderOffice(): void {
