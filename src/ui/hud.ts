@@ -1,7 +1,7 @@
 import type { MeterMode, PointRef } from '../sim/circuit';
 import { part } from '../sim/parts';
 import type { SolderQuality } from '../sim/repair';
-import { pointLabel, type PowerMode, type Session, type Tool } from '../game/session';
+import { pointLabel, REVIEW, type PowerMode, type Session, type Tool } from '../game/session';
 import type { BenchScene, BoardHit } from '../render/scene';
 import { beep, pop, sizzle } from './audio';
 import { schematicHtml } from './schematic';
@@ -94,7 +94,8 @@ export class Hud {
       toast: (m) => this.toast(m),
     });
     (window as unknown as { tutorial: Tutorial }).tutorial = this.tutorial; // voice-clip generation + console debugging
-    const pending = Tutorial.pending();
+    // The review save (?review) skips the walkthrough
+    const pending = REVIEW ? null : Tutorial.pending();
     if (pending === 'new') this.tutorial.start();
     else if (pending) this.tutorial.resume(pending);
     else if (this.s.idle) this.openOffice('work');

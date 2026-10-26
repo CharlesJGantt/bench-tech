@@ -30,6 +30,7 @@ Browser electronics-repair game. PlayCanvas engine (npm) + Vite + TypeScript. De
 - `src/rework/model.ts` — hands-on rework physics per pad (temperature, solder, flux, IPA/dissolved/white residue, heat damage, bridges incl. hidden whiskers/balls, corrosion crust/sludge, cleaning liquids); `bridgeVisible()`/`maxZoom()` are the microscope visibility rules; `applyRework()` writes joints, lifted pads and solder bridges (as `bridge` jumpers = real shorts) back to the board. No DOM.
 - `src/render/` — PlayCanvas scene (`scene.ts`, board flip, net highlight), procedural PCB textures (`boardArt.ts`, top + bottom), and `router.ts` (two-layer grid A* autorouter: Steiner trees, 45°, rip-up-and-retry). Routes are pre-built and cached by layout hash (`routeCache.ts`; bump `ROUTER_VERSION` when router rules change). Copper is generated from the same netlist the sim solves; `tests/geometry.test.ts` proves connectivity and no foreign contact.
 - `src/ui/` — DOM HUD, shop office (`office.ts`), rework microscope station (`rework.ts`, stock-backed parts tray), jumper heat-bar minigame, modals, schematic, audio.
+- `?review` URL flag: a separate save (`benchtech.review.v1`) with $10 000, top reputation, every tool and one waiting job per device (`createReviewShop`), for going through every device one by one. The tutorial is skipped; don't end the day in it (waiting customers leave).
 - `?debug` URL flag shows live net voltages on hover and the hidden fault on the ticket.
 
 ## Conventions

@@ -224,3 +224,15 @@ describe('cartridges tested at home', () => {
     expect(st.cash).toBeLessThan(cash);
   });
 });
+
+describe('review save', () => {
+  it('has one waiting job for every device, all loadable', async () => {
+    const { createReviewShop } = await import('../src/business/shop');
+    const { DEVICE_LIST } = await import('../src/sim/devices');
+    const { loadJob } = await import('../src/sim/persist');
+    const st = createReviewShop();
+    expect(st.queue.length).toBe(DEVICE_LIST.length);
+    expect(new Set(st.queue.map((q) => q.job.deviceId)).size).toBe(DEVICE_LIST.length);
+    for (const q of st.queue) expect(loadJob(q.job).device.id).toBe(q.job.deviceId);
+  });
+});

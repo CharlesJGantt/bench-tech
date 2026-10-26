@@ -23,6 +23,7 @@ import {
   STARTING_STOCK,
   STARTER_PACK,
   STARTING_TOOLS,
+  TOOLS,
   SUPPLIES,
   tool,
   TRENDS,
@@ -777,6 +778,25 @@ export function endDay(st: ShopState): DayReport {
   st.market = st.market.filter((l) => l.expires >= st.day);
   while (st.market.length < 4) st.market.push(newListing(st));
   return report;
+}
+
+/**
+ * A save for going through every device one by one (`?review` in the address): lots of cash,
+ * top reputation, every tool, and one waiting job for each device in the game. Do not end the
+ * day in it: customers who wait too long walk out.
+ */
+export function createReviewShop(seed = 777): ShopState {
+  const st = createShop(seed);
+  st.cash = 10000;
+  st.reputation = 100;
+  st.tools = TOOLS.map((t) => t.id);
+  st.queue = []; // the usual starter customers make way for the review jobs
+  DEVICE_LIST.forEach((dev, i) => {
+    const job = generateJob(dev, seed * 1000 + i, { maxTier: 3 });
+    job.quote = Math.round(job.quote);
+    st.queue.push({ id: st.nextId++, kind: 'customer', customer: job.customer, complaint: job.complaint, quote: job.quote, arrived: st.day, job: saveJob(job) });
+  });
+  return st;
 }
 
 export function createShop(seed = 12345): ShopState {

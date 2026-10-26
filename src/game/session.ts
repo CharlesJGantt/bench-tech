@@ -32,6 +32,7 @@ import {
   completeCustomerJob,
   cartHomeFailure,
   createShop,
+  createReviewShop,
   endDay,
   listProject,
   maxTier,
@@ -71,7 +72,9 @@ export type WorkResult =
   | { kind: 'scrapped'; salvaged: string[]; job: Job }
   | { kind: 'gave-up'; job: Job };
 
-const SAVE_KEY = 'benchtech.save.v2';
+/** `?review` in the address: a separate save with one waiting job per device (see createReviewShop). */
+export const REVIEW = typeof location !== 'undefined' && new URLSearchParams(location.search).has('review');
+const SAVE_KEY = REVIEW ? 'benchtech.review.v1' : 'benchtech.save.v2';
 const SETTINGS_KEY = 'benchtech.settings.v1';
 
 function loadSettings(): { guided: boolean } {
@@ -92,7 +95,7 @@ function loadShop(): ShopState {
   } catch {
     /* fall through to a new game */
   }
-  return createShop(Math.floor(Math.random() * 2 ** 31));
+  return REVIEW ? createReviewShop() : createShop(Math.floor(Math.random() * 2 ** 31));
 }
 
 type Listener = () => void;
@@ -416,7 +419,7 @@ export class Session {
   }
 
   newGame(): void {
-    this.shop = createShop(Math.floor(Math.random() * 2 ** 31));
+    this.shop = REVIEW ? createReviewShop() : createShop(Math.floor(Math.random() * 2 ** 31));
     this.clearBench();
     this.emit();
   }
