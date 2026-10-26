@@ -4,7 +4,7 @@ You have never playtested a game this thoroughly, so this list is built to be co
 
 Three files work together:
 - **This file** explains what to test and the order.
-- **`Bench_Tech_Test_Tracker.csv`** is the spreadsheet (open in Excel / Google Sheets / Gridcraft): one row per thing to test, with a Status column and notes columns. 495 rows.
+- **`Bench_Tech_Test_Tracker.csv`** is the spreadsheet (open in Excel / Google Sheets / Gridcraft): one row per thing to test, with a Status column and notes columns. 505 rows.
 - **`Bench_Tech_Test_Games.csv`** is one row per game title (1,396) for label, loading-screen and media approval.
 - **`TEST_LOG.md`** is the running notes file **I update** with test results, issues and rework you report.
 
@@ -41,6 +41,8 @@ Three files work together:
 | Reballing / BGA (NEXT to build: design in REBALLING_DESIGN.md) | 9 | Reballing and BGA work do not exist yet; devices are about to include BGA chips, so it is the next feature to build. These rows define what it must cover. |
 | Locations, bench, storefront, employees | 10 | Locations and staff exist; bench upgrades, scenes and the storefront view do not. |
 | Calling the customer: every scenario | 10 | Every call option, including the planned one where the customer refuses a pricey part and stops the repair (buy it for spares, or return it). |
+| Condition, appraisal and restoration (items you buy and sell) | 9 | Condition grades, damaged labels and cases, repair price effects, restoration cleaning (not built). |
+| Logic analyzer (research first) | 1 | The logic analyzer tool (not built). |
 | Things you may have missed | 31 | Start menu, saves, tutorials, sound, window sizes, browsers, performance, settings, accessibility, naming and licences, economy balance, error cases, Steam readiness. |
 
 Plus the per-game file: 1,396 rows (label art, loading screen, media look, disc centre hole, boot-to-game check).

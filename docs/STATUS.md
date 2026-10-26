@@ -221,6 +221,16 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Condition grades and price effects of damage, scratches and labels | TODO |
 | Generators for the reference lists | TODO |
 
+## 20. Condition, appraisal and restoration (new, 2026-10-26; spec in `CONDITION_AND_APPRAISAL.md`)
+| Item | Status |
+|---|---|
+| Condition grades, per-copy appraisal and the price formula (items you buy and sell only) | TODO |
+| Damaged labels shown damaged (price stickers, marker writing, scuffs); worn cases (scratched, yellowed, chipped corners, missing screws, grime) | TODO |
+| Repairs that lower the price (fragile copper-wire trace repairs with extra UV mask, non-original parts) | TODO |
+| UV solder mask coating over the finished trace / pad repair area, cured with the UV lamp | TODO (today wires are sealed one by one) |
+| Restoration: Electro-Bright for yellowing, low heat hot air for stickers (prolonged heat singes the label), light IPA for marker and grime | TODO |
+| Logic analyzer tool (research first, then build) | TODO |
+
 ## Suggested order (not decided: we are planning)
 0. **Reballing / BGA** (you said: next), then the test lab boot sequence with WiFi / Bluetooth testing
 1. Finish planning: the order of the console wave, the start menu and the shop scenes

@@ -179,14 +179,27 @@ Each task has where it came from in brackets.
 95. [ ] Guide: **the marketplace**, equipment and equipment upgrades, how **moving to a new location** works, **hiring and managing employees**.
 96. [ ] Guide: **selling what you bought and repaired in every buy / sell scenario** (auction, buy-it-now, storefront, fees, refunds, games and media).
 97. [ ] Guide: **lists of all devices, all electrical faults, all consoles, media and games with rarity and base prices**.
-98. [ ] Guide: **how damage, repairs, damaged labels, scratches and condition affect the price** (needs the condition-grade / appraisal system, task 20).
+98. [ ] Guide: **how damage, repairs, damaged labels, scratches and condition affect the price** (needs the condition-grade / appraisal system, tasks 20 and 107-113).
 99. [ ] Guide: **every repair step and every repair process**.
 100. [ ] Guide: **every way to find faults and trace signals with the tools**: how to use the USB meter, multimeter, oscilloscope, **logic analyzer**, etc.
-101. [ ] **Logic analyzer tool** (named in your request; it does not exist in the game yet): build it before documenting it.
+101. [ ] **Logic analyzer tool** (named in your request; it does not exist in the game yet): **research heavily first** how logic analyzers work and how they
+    are used in consumer electronics repair for fault finding (buses, clocks, chip-select, I2C / SPI / UART, boot traces), then build it, then document it.
 102. [ ] **Component identification guide** (every part type: package, markings, how it looks, what it does, how it fails).
 103. [ ] Generators that produce the reference lists (devices, parts, faults, supplies, tools, games and prices) from the code and data so the docs cannot drift.
 104. [ ] Decide the guide's format (Markdown, site, PDF, in-game viewer), and where the agent entry file lives (`AGENTS.md`).
 105. [ ] Add "document it" to the checklist for every new feature; keep both documentation sets current as features ship.
+
+## L. Condition, appraisal and restoration of items you buy and sell (new; see `CONDITION_AND_APPRAISAL.md`)
+Only for what the player buys and sells, not for what customers pay for repairs.
+107. [ ] **Condition grades and per-copy appraisal** (grade scale and multipliers; unique copy ids), price = value x rarity x condition x repair originality x completeness.
+108. [ ] **Damaged labels that look damaged**: price stickers over the label, **permanent marker marks and wording**, scratches, tears, scuffs, fading (label art overlays).
+109. [ ] **Worn cases**: scratched, **yellowed**, **chipped corners**, **missing screws**, dirty and grimy (Blender materials and case variants).
+110. [ ] **Repairs lower the price when they are not factory condition**: pad / trace repairs with copper wire are fragile and add a visible extra layer of UV solder mask;
+    also non-original parts, screws, glue, revived fuses, reballed chips.
+111. [ ] **Trace and pad repair finish**: when a repair is complete the damaged area is coated in UV-cured solder mask and cured with the UV lamp (a visible patch on the board).
+112. [ ] **Restoration cleaning**: **Electro-Bright** plastics cleaner (new supply) for yellowing; **hot air on its lowest setting** to lift stickers (prolonged heat discolours or
+    singes the label); **light IPA** for permanent marker and for dirt and grime; a feel and a risk model for each.
+113. [ ] Show condition on marketplace listings and when selling (description and a photo-style view), and apply it in every sale channel.
 
 ---
 

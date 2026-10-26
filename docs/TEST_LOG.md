@@ -1,7 +1,7 @@
 # Bench Tech: test log (kept by Claude)
 
 Tell me an ID and what you found; I update this file and the tracker. Tags: NOT TESTED, PASS, FAIL, REWORK, BLOCKED, NOT BUILT, N/A.
-Counts (start): NOT TESTED: 229, NOT BUILT: 266
+Counts (start): NOT TESTED: 229, NOT BUILT: 276
 
 ## Issues found
 
@@ -539,6 +539,26 @@ Counts (start): NOT TESTED: 229, NOT BUILT: 266
 | CAL-008 | Customer stops the repair and asks for the item back | Not built | NOT BUILT |  |
 | CAL-009 | Customers who wait too long walk out | Built | NOT TESTED |  |
 | CAL-010 | Rush certified customers | Built | NOT TESTED |  |
+
+### Condition, appraisal and restoration (items you buy and sell)
+
+| ID | Item | Built? | Status | Notes |
+|---|---|---|---|---|
+| CND-001 | Condition grades and appraisal of a game or device you bought | Not built | NOT BUILT |  |
+| CND-002 | Damaged labels look damaged (price sticker, permanent marker wording, scuffs) | Not built | NOT BUILT |  |
+| CND-003 | Worn cases: scratched, yellowed, chipped corners, missing screws, grimy | Not built | NOT BUILT |  |
+| CND-004 | Restore: Electro-Bright on a yellowed case | Not built | NOT BUILT |  |
+| CND-005 | Restore: lowest-heat hot air lifts a sticker | Not built | NOT BUILT |  |
+| CND-006 | Restore: light IPA removes permanent marker and grime | Not built | NOT BUILT |  |
+| CND-007 | Pad / trace repair with copper wire lowers the resale price | Not built | NOT BUILT |  |
+| CND-008 | Repaired area coated in UV solder mask and cured with the UV lamp | Not built | NOT BUILT |  |
+| CND-009 | Customers pay the same regardless of condition (price effects only for items you buy and sell) | Not built | NOT BUILT |  |
+
+### Logic analyzer (research first)
+
+| ID | Item | Built? | Status | Notes |
+|---|---|---|---|---|
+| LGA-001 | Logic analyzer: connect probes, capture a bus, read the trace | Not built | NOT BUILT |  |
 
 ### Things you may have missed
 
