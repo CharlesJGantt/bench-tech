@@ -4,6 +4,7 @@
  * motherboard through a P-channel power MOSFET, and shuts it off again if the rail's
  * "power good" never comes up. Fictional product.
  */
+import { titlesOf } from '../games';
 import { c } from '../board';
 import { device, place } from '../blocks/core';
 import { buckRail, ldoRail, powerInput } from '../blocks/power';
@@ -327,13 +328,7 @@ export const SBOX = device({
     ['12V', 'GND', 'C1'],
     ['12V_MAIN', 'GND', 'C2'],
   ],
-  discTitles: [
-    { name: 'Ironclad Frontier', value: 38 },
-    { name: 'Apex Drift X', value: 30 },
-    { name: 'Zombie Harvest 3', value: 25 },
-    { name: 'Starfarer Legacy', value: 42 },
-    { name: 'Blitz Arena 2026', value: 28 },
-  ],
+  discTitles: titlesOf('SB1X'),
   marketValue: 260,
   quoteBase: 50,
   minReputation: 10,

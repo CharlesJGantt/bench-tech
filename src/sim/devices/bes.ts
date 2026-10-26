@@ -3,6 +3,7 @@
  * CPU, picture chip, lockout chip, cartridge slot, RF modulator (aerial out) and AV out,
  * one controller port. Fictional product. Its cartridge board is BES_CART below.
  */
+import { titlesOf } from '../games';
 import { device, place } from '../blocks/core';
 import { powerInput } from '../blocks/power';
 import { c } from '../board';
@@ -291,10 +292,5 @@ export const BES_CART = cartridge({
   lockout: true,
   save: true,
   quoteBase: 18,
-  titles: [
-    { name: 'Pipe Brothers', value: 22 },
-    { name: 'Duck Blaster', value: 12 },
-    { name: 'Mega Bolt Man', value: 38 },
-    { name: 'Castle Climber', value: 28 },
-  ],
+  titles: titlesOf('BES'),
 });

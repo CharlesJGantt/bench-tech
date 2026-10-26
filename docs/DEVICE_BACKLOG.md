@@ -17,7 +17,7 @@ Lamp, Bluetooth speaker (BoomPuck), TV backlight board, Sbox One X power board, 
 Funstation 5 HDMI section, DualPulse, Sbox pad, Retrobit RB35, Rogue Pal, Duo handhelds (3), Game & Clock, Critter
 mini, Galaxy Raid arcade, Dream Boy family (6) + carts, BES / B64 / Vega / Paltari + carts.
 
-### Disc consoles (built boards, no drive hardware yet)
+### Disc consoles (built boards, no drive hardware yet; the full entries are in section 2b)
 Funstation 5 and Sbox One X take game discs. Disc games now exist for the scratched-disc job: Funstation 5 (Crown of Embers, Nightfall Ranger, Pitch Perfect Soccer 25, Tidal Rally 5, Hunters of the Hollow Moon) and Sbox One X (Ironclad Frontier, Apex Drift X, Zombie Harvest 3, Starfarer Legacy, Blitz Arena 2026). Still to build: a disc drive card for each (dirty lens, tray and spindle faults, like the Game Orb drive).
 
 ## 2. Already planned earlier (from your first lists)
@@ -27,6 +27,85 @@ Funstation 5 and Sbox One X take game discs. Disc games now exist for the scratc
 - MyPhone 16 / 17 / 18 / 19 (with a wireless-charging coil on some)
 - SoundHalo mains power supply (dead start-up resistor, dim-bulb tester)
 - VoltMax and others; later phases: intermittents, BGA work, mains supplies
+
+## 2b. NEW consoles, controllers and media (from `Bench_Tech_new-Console_and_Controller_TO_CREATE_List.md`)
+**None of this exists yet.** Funstation 5 and Sbox One X have boards in the game (HDMI section, power board) but their
+full entries below are still to create. Rules from your document: Bintendo Pyramid is a NEW console with its own
+Bintendo Mini-Disc (not the DJ Pocket mini disc, not the Game Orb disc); every non-handheld console gets **one unique
+controller** (different shell silhouette AND different PCB outline, no recoloured copies); **case colour variants for
+every controller** are cosmetic only (same electronics); no new games are requested for these (the 1,396-title library
+already covers them); every board inherits the existing fault library plus its own faults; disc drives need optical,
+servo, ribbon, spindle, eject and mechanism diagnosis.
+
+### Consoles and handheld to create (15 entries, 41 repairable boards)
+| ID | Console | Type | Native media | Repairable boards (size, density) | Model-specific faults |
+|---|---|---|---|---|---|
+| DJ-01 | DiscJockie 1 | Home console | DJ1 Game Disc | Main logic PCB (L, Medium); Optical servo PCB (S, Sparse) | Worn tray/lid interlock, weak laser emission, sled-gear binding, spindle motor stall, aged capacitors near AV and voltage rails, cracked front controller-port s |
+| DJ-02 | DiscJockie 2 | Home console | DJ2 Game Disc | Main logic PCB (L, High); Optical drive PCB (S, Medium); Power PCB (M, Sparse) | Bad DVD reads, tray belt fatigue, spindle-start failures, power-supply capacitor degradation, optical ribbon tears, failed standby rails, cracked AV and USB con |
+| DJ-03 | DiscJockie 3 | Home console | DJ3 Game Disc | Performance mainboard (XL, Very high); Optical drive PCB (S, Medium); Power PCB (M, Medium) | Processor power rail shorts, MOSFET/driver faults, HDMI protection/retimer faults, high-temperature memory faults, optical drive pairing/authentication errors,  |
+| DJ-P | DiscJockie Pocket | Handheld console | DJ Pocket Mini Game Disc | Integrated handheld mainboard (M, High); Mini-disc servo PCB (XS, Medium) | Miniature disc-door latch damage, pickup misalignment, spindle wear, weak battery or charge input, display flex tearing, button membrane failure, moisture damag |
+| FS-01 | Funstation 1 | Home console | FS1 Game Disc | Main logic PCB (L, Medium); CD drive PCB (S, Sparse) | Lid switch intermittency, aged pickup, failed spindle driver, damaged memory-card pins, cracked AV connector, regulator drift. |
+| FS-02 | Funstation 2 | Home console | FS2 Game Disc | Main logic PCB (L, High); DVD mechanism PCB (S, Medium); Power PCB (M, Sparse) | Tray gear/sliding rail damage, lens contamination, optical ribbon fracture, USB controller failure, unstable supply rails, worn fan connector. |
+| FS-03 | Funstation 3 | Home console | FS3 Game Disc | Main performance PCB (XL, Very high); Blu-ray mechanism PCB (S, Medium); Power PCB (M, Medium) | GPU/processor power failures, overheated regulators, HDMI port and ESD faults, degraded optical pickup, feed-roller wear, corrupted firmware. |
+| FS-04 | Funstation 4 | Home console | FS4 Game Disc | Main logic PCB (XL, Very high); Drive interface PCB (S, Medium); Power PCB (M, Medium) | Shorted VRM MOSFETs, broken HDMI connector, USB ESD IC shorts, SSD connector damage, fan tach faults, disc feed-roller slip, drive-pairing mismatch. |
+| SB-01 | Sbox 1 | Home console | SB1 Game Disc | Main system PCB (L, Medium); DVD PCB (S, Sparse); Power PCB (M, Sparse) | Clock capacitor leakage, front socket damage, hard-drive interface faults, tray belt failure, aged power capacitors, disc read failures. |
+| SB-02 | Sbox 2 | Home console | SB2 Game Disc | Main system PCB (L, High); DVD PCB (S, Medium); Power PCB (M, Sparse) | Video-output failure, weak standby power, optical pickup degradation, bad storage detection, damaged USB connectors, cooling faults. |
+| SB-720 | Sbox 720 | Home console | SB720 Game Disc | Main high-performance PCB (XL, High); DVD servo PCB (S, Medium); Power PCB (M, Medium) | Thermal faults and intermittent processor connections, failed VRM phase, optical tray jams, GPU power instability, console-overheat faults, HDMI solder cracking |
+| SB-10 | Sbox 10 | Home console | SB10 Game Disc | Integrated system PCB (XL, Very high); Blu-ray PCB (S, Medium); Power PCB (M, Medium) | Power-stage shorts, HDMI IC failures, storage port faults, laser degradation, defective optical-load sensors, wireless module and fan power faults. |
+| SB-S | Sbox S | Home console | SBS Game Disc | Compact mainboard (L, High); Low-profile drive PCB (S, Medium) | Thermal pad/dust overheating, failed compact buck converters, flex connector fractures, disc feed problems, shorts at rear USB-C/USB ports, fan driver failure. |
+| SB-1X | Sbox One X | Home console | SB1X Game Disc | Premium mainboard (XXL, Extreme); High-capacity disc PCB (S, Medium); High-power supply PCB (L, Medium) | Multiple VRM faults, HDMI retimer failure, high-speed storage rail defects, overheated RAM, optical drive authentication faults, fan control and power input fai |
+| BPY-01 | Bintendo Pyramid | Home console | Bintendo Mini-Disc | Pyramid mainboard (L, High); Mini-disc mechanism PCB (S, Medium); Power and front I/O PCB (S, Sparse) | Mini-disc optical pickup degradation, scratched game media, spindle wobble, drive lid/slot switch failure, fragile drive flex, overheating under pyramid shell,  |
+
+### Controllers to create (21 stand-alone designs, 21 controller PCBs)
+Handhelds have integrated controls and no separate controller (DiscJockie Pocket, Dream Boy family, Button Lite,
+Retrobit RB35, Bintendo Pocket Joy Advance, Homey Sinnusus). Seven controllers are for consoles that already exist or are
+planned elsewhere (BES, B64, Vega Exodus, Paltari, Funstation 5, Game Orb, Swamarami). The built DualPulse, Sbox pad and
+Button Grip stay as they are.
+
+| ID | Console it serves | Shell silhouette | PCB size | Density | Connection |
+|---|---|---|---|---|---|
+| BES-CTRL | Bintendo Entertainment System | Flat squared-off baton shell with hard rectangular edges | S | Sparse | Wired proprietary cable |
+| B64-CTRL | Bintendo 64 | Three-pronged trident grip with large central analog-stick pod | M | Medium | Wired proprietary cable |
+| VEGA-CTRL | Vega Exodus | Broad boomerang pad with short inward-curved horns | S | Sparse | Wired proprietary cable |
+| PAL-CTRL | Paltari Family Console | Long narrow paddle slab with raised circular rotary-control wells | M | Sparse | Wired proprietary cable |
+| ORB-CTRL | Bintentendo Game Orb | Round center pad enclosed by two shallow crescent grip fins | M | Medium | Wired proprietary cable |
+| SWAM-CTRL | Swamarami All-In-One | Asymmetric chunky rectangular brick with one oversized side handhold | M | Sparse | Wired generic USB or house-specific plug |
+| DJ1-CTRL | DiscJockie 1 | Low oval shield with tall shoulder humps and short stubs for grips | M | Medium | Wired proprietary connector |
+| DJ2-CTRL | DiscJockie 2 | Split hexagon shell with sharp angled palm wedges | M | Medium | Wired USB or proprietary connector |
+| DJ3-CTRL | DiscJockie 3 | Thin crescent shell with extended low hook grips | M | High | Wireless with charging port |
+| FS1-CTRL | Funstation 1 | Classic narrow twin-wing pad with small bulbous handgrips | M | Sparse | Wired proprietary cable |
+| FS2-CTRL | Funstation 2 | Tall dual-grip pad with extended center notch and scalloped top | M | Medium | Wired proprietary cable |
+| FS3-CTRL | Funstation 3 | Broad shallow octagonal body with sweeping lower grip flares | M | High | Wireless with USB charge/data |
+| FS4-CTRL | Funstation 4 | Flat angular wing body with a large central touch surface | L | High | Wireless with USB charge/data |
+| FS5-CTRL | Funstation 5 | Wide futuristic twin-wing pad with prominent central touch bridge | L | Very high | Wireless with USB-C charge/data |
+| SB1-CTRL | Sbox 1 | Large thick X-inspired shell with bulky offset palm grips | M | Medium | Wired proprietary cable |
+| SB2-CTRL | Sbox 2 | Trapezoid body with diagonal upper shoulders and compact lower grips | M | Medium | Wired proprietary connector |
+| SB720-CTRL | Sbox 720 | Wide M-shaped controller with outward-swept handles and central illuminated ring | M | High | Wireless via proprietary RF with battery |
+| SB10-CTRL | Sbox 10 | Structured hourglass shell with a thick central spine and textured diagonal grips | M | High | Wireless with USB connection |
+| SBS-CTRL | Sbox S | Slim capsule-like body with hooked index-finger rests | M | High | Wireless with USB connection |
+| SB1X-CTRL | Sbox One X | Premium broad shield pad with tapering underside tail and deep grips | L | Very high | Wireless with USB-C charge/data |
+| BPY-CTRL | Bintendo Pyramid | Triangular three-corner pad with sloped face and undercut palm wings | M | Medium | Wired proprietary cable |
+
+### Media registry to create (15 formats)
+| Media id | Physical style | Systems |
+|---|---|---|
+| DJ1_DISC | Full-size CD style | DiscJockie 1 |
+| DJ2_DISC | Full-size DVD style | DiscJockie 2 |
+| DJ3_DISC | Full-size high-density disc | DiscJockie 3 |
+| DJ_POCKET_MINI_DISC | Mini optical disc | DiscJockie Pocket |
+| FS1_DISC | Full-size CD style | Funstation 1 |
+| FS2_DISC | Full-size DVD style | Funstation 2 |
+| FS3_DISC | Full-size Blu-ray style | Funstation 3 |
+| FS4_DISC | Full-size high-capacity disc | Funstation 4 |
+| SB1_DISC | Full-size DVD style | Sbox 1 |
+| SB2_DISC | Full-size DVD style | Sbox 2 |
+| SB720_DISC | Full-size DVD style | Sbox 720 |
+| SB10_DISC | Full-size Blu-ray style | Sbox 10 |
+| SBS_DISC | Full-size Blu-ray style | Sbox S |
+| SB1X_DISC | Full-size ultra-high-capacity disc | Sbox One X |
+| BINTENDO_MINI_DISC | Proprietary mini optical disc | Bintendo Pyramid |
+
+Bintentendo Game Orb already has its own optical-disc format and the Pocket Joy cartridge interface (earlier catalog).
 
 ## 3. Your original list, itemised (every repairable board)
 From `Bench_Tech_Though-Upl_Device_List_Detailed_Variants.md`. Each row is one repairable PCB; products with two or
@@ -379,9 +458,12 @@ carry a premium plus a pretentious-customer fee; Zeeya is economy.
 | F-14 | StormGuard WX-Alert Deluxe | T3 | M | Moderate |
 
 ## 5. How many devices that is
-Built 34. Earlier plans about 25. Your original list 90 boards. The GPT catalog 58. Roughly **207 devices** in all, far past the Steam bar, so the order matters.
+Built 34. Earlier plans about 25. New consoles and controllers 15 + 21. Your original list 90 boards. The GPT catalog 58. Roughly **243 devices** in all, far past the Steam bar, so the order matters.
 
 ## 6. Build waves (suggested)
+0. **Wave 0, the game consoles and their controllers (section 2b):** the disc consoles (DiscJockie 1-3 + Pocket, Funstation 1-4,
+   Sbox 1, 2, 720, 10, S, One X), Bintendo Pyramid (own Mini-Disc), their disc-drive boards, and the 21 unique controllers
+   with colour variants. Their game library (1,396 titles) and media are in `GAME_LIBRARY.md`; the art is being made.
 1. **Wave 1, reuse existing blocks (quick):** the four Bluetooth speakers, alarm clocks, universal remotes, garage
    openers, key fobs, baby monitor, LCD TV supplies, cordless-tool trigger boards (C-01, C-02, C-08), mouse and
    keyboard (D-01, D-03), arcade stick (D-09), transistor / weather radios (F-05, F-13).

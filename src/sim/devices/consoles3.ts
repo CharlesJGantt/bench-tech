@@ -2,6 +2,7 @@
  * Bintendo 64, Vega Exodus and Paltari Family Console (fictional), each with its cartridge
  * board. Built on the retro-console factory; each adds its own parts and faults.
  */
+import { titlesOf } from '../games';
 import { c } from '../board';
 import type { Variant } from '../faults';
 import { cartridge } from './retro';
@@ -82,12 +83,7 @@ export const B64_CART = cartridge({
   save: false,
   quoteBase: 18,
   minReputation: 5,
-  titles: [
-    { name: 'Pipe Brothers 64', value: 35 },
-    { name: 'Kart Smash 64', value: 30 },
-    { name: 'Golden Agent 64', value: 25 },
-    { name: 'Star Pilot 64', value: 20 },
-  ],
+  titles: titlesOf('B64'),
 });
 
 export const VEGA = retroConsole({
@@ -118,12 +114,7 @@ export const VEGA_CART = cartridge({
   lockout: false,
   save: true,
   quoteBase: 16,
-  titles: [
-    { name: 'Blur the Hedgepig', value: 12 },
-    { name: 'Streets of Rumble', value: 30 },
-    { name: 'Mortal Tussle', value: 18 },
-    { name: 'Dragon Road', value: 40 },
-  ],
+  titles: titlesOf('VEGA'),
 });
 
 export const PALTARI = retroConsole({
@@ -153,11 +144,6 @@ export const PALTARI_CART = cartridge({
   lockout: false,
   save: false,
   quoteBase: 12,
-  titles: [
-    { name: 'Asteroid Belt', value: 8 },
-    { name: 'Paddle Duel', value: 6 },
-    { name: 'Pit Runner', value: 12 },
-    { name: 'Space Rescue', value: 10 },
-  ],
+  titles: titlesOf('PALT'),
 });
 

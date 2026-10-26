@@ -4,6 +4,7 @@
  * mm), varied per model. Battery → power switch → logic; CPU, cartridge slot, LCD on a
  * ribbon, speaker amp. Plus their two cartridge types.
  */
+import { titlesOf } from '../games';
 import { device, place } from '../blocks/core';
 import { liIonCharger, usbInput } from '../blocks/usb';
 import { c, type ComponentDef, type DeviceDef, type FaceSpec } from '../board';
@@ -388,12 +389,7 @@ export const DB_CART = cartridge({
   lockout: false,
   save: true,
   quoteBase: 14,
-  titles: [
-    { name: 'Blockfall', value: 8 },
-    { name: 'Critter Catchers Red', value: 35 },
-    { name: 'Pocket Plumber Land', value: 15 },
-    { name: 'Moonlit Quest', value: 20 },
-  ],
+  titles: titlesOf('DB'),
 });
 
 export const DBA_CART = cartridge({
@@ -406,10 +402,5 @@ export const DBA_CART = cartridge({
   save: true,
   quoteBase: 16,
   minReputation: 3,
-  titles: [
-    { name: 'Critter Catchers Sapphire', value: 40 },
-    { name: 'Kart Smash Advance', value: 18 },
-    { name: 'Moonlit Quest II', value: 22 },
-    { name: 'Metro Hunter Fusion', value: 30 },
-  ],
+  titles: titlesOf('DBA'),
 });

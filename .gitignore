@@ -11,3 +11,7 @@ Repair Video Transcripts/
 .DS_Store
 screenshots/
 .voice-work/
+
+# Game artwork: the raw files are made elsewhere (hundreds of MB); optimised copies are generated into public/games
+assets/Game Cart and Disk and Loading Images/
+public/games/
