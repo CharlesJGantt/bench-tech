@@ -247,10 +247,11 @@ function tools(s: Session): string {
   const card = (t: (typeof TOOLS)[number]) => {
     const owned = st.tools.includes(t.id);
     return `<div class="of-card ${owned ? 'hl' : ''}"><h3>${esc(t.name)}</h3><div class="price">${t.cost ? money(t.cost) : 'Stock'}</div>
-      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' || t.kind === 'microscope' || t.kind === 'testconsole' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
+      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' || t.kind === 'microscope' || t.kind === 'testconsole' || t.kind === 'cleaning' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
       ${owned ? '<span class="pill">owned</span>' : `<button class="primary" data-act="buy-tool" data-id="${t.id}" ${st.cash < t.cost ? 'disabled title="Not enough cash"' : ''}>Buy ${money(t.cost)}</button>`}</div>`;
   };
   return `<p>Better tools give you capabilities, not stat boosts: a bigger tip melts ground pads quickly, a focused nozzle spares the neighbours. Pick what to use in the microscope's kit selectors.</p>
+    <h3>Cleaning tools</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'cleaning').map(card).join('')}</div>
     <h3>Diagnostic instruments</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'instrument').map(card).join('')}</div>
     <h3>Test consoles (for the 📺 Test Station)</h3><p class="muted small">Without one, cartridges go home untested: the customer pays, and if it does not boot they come back for 10% and a re-fix.</p><div class="of-grid">${TOOLS.filter((t) => t.kind === 'testconsole').map(card).join('')}</div>
     <h3>Microscope upgrades</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'microscope').map(card).join('')}</div>

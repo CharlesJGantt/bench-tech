@@ -19,6 +19,8 @@ export type SupplyId =
   | 'magic-sponge'
   | 'pad-bright'
   | 'wipes'
+  | 'swabs'
+  | 'ipa-wipes'
   | 'brushes';
 
 export interface SupplyDef {
@@ -140,6 +142,8 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
     blurb: 'Fizzes the green/white crust of liquid damage into a sludge. Scrub it with the brush, then rinse with IPA and wipe it away — leftover sludge dries back into crust.',
   },
   wipes: { id: 'wipes', name: 'Lint-free wipes', unit: 'wipes', pack: { qty: 50, cost: 4, label: 'pack of 50' }, start: 20, low: 5, blurb: 'Each wipe soaks up a little dissolved flux before it is spent.' },
+  swabs: { id: 'swabs', name: 'Cleaning swabs', unit: 'swabs', pack: { qty: 100, cost: 3, label: 'bag of 100' }, start: 20, low: 5, blurb: 'Foam and cotton swabs for getting into corners, fan hubs and port housings. One swab, one spot.' },
+  'ipa-wipes': { id: 'ipa-wipes', name: 'IPA wipes', unit: 'wipes', pack: { qty: 50, cost: 6, label: 'tub of 50' }, start: 10, low: 3, blurb: 'Pre-soaked with isopropyl alcohol: quick for wiping cases, screens and cartridge shells without opening a bottle.' },
   brushes: { id: 'brushes', name: 'Anti-static scrub brushes', unit: 'brushes', pack: { qty: 3, cost: 5, label: 'pack of 3' }, start: 1, low: 1, blurb: 'Stiff ESD-safe bristles. They splay and wear out with scrubbing.' },
 };
 
@@ -214,7 +218,7 @@ export const WICKS: Record<WickDef['supply'], WickDef> = {
 
 export interface ToolDef {
   id: string;
-  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope' | 'testconsole';
+  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope' | 'testconsole' | 'cleaning';
   name: string;
   cost: number;
   blurb: string;
@@ -231,6 +235,7 @@ export const TOOLS: ToolDef[] = [
   { id: 'tip-knife', kind: 'tip', name: 'Knife tip', cost: 14, heat: 1.15, radius: 0.8, blurb: 'Long edge — drag along a row of pins, or heat both ends of a small part at once.' },
   { id: 'nozzle-5', kind: 'nozzle', name: '5 mm hot-air nozzle', cost: 0, heat: 1, radius: 3.5, blurb: 'The stock nozzle.' },
   { id: 'nozzle-3', kind: 'nozzle', name: '3 mm hot-air nozzle', cost: 9, heat: 1.4, radius: 2, blurb: 'Focused: heats a small part without cooking its neighbours.' },
+  { id: 'air-blower', kind: 'cleaning', name: 'Compressed air blower', cost: 30, heat: 0, radius: 0, blurb: 'Blows dust out of fans, vents and heatsinks. The tool for cleaning an overheating device; no mess, and it never runs out.' },
   { id: 'esr-meter', kind: 'instrument', name: 'ESR meter', cost: 45, heat: 0, radius: 0, blurb: 'Measures a capacitor\'s ESR in circuit. A dried-out cap still reads fine on a multimeter — this shows it at a glance. Adds an ESR mode to the meter.' },
   { id: 'oscilloscope', kind: 'instrument', name: 'Oscilloscope', cost: 140, heat: 0, radius: 0, blurb: 'See signals, not just voltages: is that chip putting out data? Is the rail rippling? Is the regulator switching? Adds the Scope tool (7).' },
   { id: 'thermal-cam', kind: 'instrument', name: 'Thermal camera', cost: 220, heat: 0, radius: 0, blurb: 'Watch the powered board in heat colours: shorted parts glow. Pairs well with injecting a low voltage from the bench supply. Dead parts that get no power stay cold, so it does not catch everything.' },
