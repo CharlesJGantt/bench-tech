@@ -31,6 +31,7 @@ export interface SavedBoard {
   >;
   traces: Record<string, { broken: boolean }>;
   liftedPads: string[];
+  cutPads?: string[];
   jumpers: Jumper[];
   nextJumperId: number;
   pcbDamage: BoardState['pcbDamage'];
@@ -57,6 +58,7 @@ export function saveBoard(b: BoardState): SavedBoard {
     comps,
     traces: structuredClone(b.traces),
     liftedPads: [...b.liftedPads],
+    cutPads: [...(b.cutPads ?? [])],
     jumpers: structuredClone(b.jumpers),
     nextJumperId: b.nextJumperId,
     pcbDamage: structuredClone(b.pcbDamage),
@@ -88,6 +90,7 @@ export function loadBoard(s: SavedBoard): BoardState {
   }
   b.traces = structuredClone(s.traces);
   b.liftedPads = [...s.liftedPads];
+  b.cutPads = [...(s.cutPads ?? [])];
   b.jumpers = structuredClone(s.jumpers);
   b.nextJumperId = s.nextJumperId;
   b.pcbDamage = structuredClone(s.pcbDamage ?? []);

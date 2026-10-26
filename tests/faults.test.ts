@@ -28,7 +28,7 @@ function canonicalRepair(job: Job): BoardState {
     installPart(b, ref, c.def.partNo, false, 'good');
     c.unplugged = false;
   }
-  for (const key of [...b.liftedPads]) {
+  for (const key of [...b.liftedPads, ...(b.cutPads ?? [])]) {
     // A ripped pad: wire the component leg back to its net.
     const [ref, pin] = key.split('.');
     const net = b.comps[ref].def.pins[pin];
@@ -56,7 +56,9 @@ for (const device of DEVICE_LIST) {
     });
     for (const v of device.variants) {
       it(`${v.id}: produces a symptom and the canonical repair fixes it`, () => {
-        for (let seed = 1; seed <= 8; seed++) {
+        // the generic pad / trace faults are the same on every device: fewer seeds each
+        const seeds = ['pad-lifted', 'trace-cut', 'pad-eaten'].includes(v.id) ? 3 : 8;
+        for (let seed = 1; seed <= seeds; seed++) {
           const job = generateJob(device, seed * 7919, { variant: v.id });
           expect(job.complaint.length).toBeGreaterThan(5);
           const broken = functionalTest(cloneBoard(job.board));

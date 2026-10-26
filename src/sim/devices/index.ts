@@ -13,6 +13,7 @@ import { BUTTON_GRIP, DUALPULSE, SBOX_PAD } from './controllers';
 import { DB_CART, DBA_CART, DREAMBOY, DREAMBOY_ADVANCE, DREAMBOY_COLOR, DREAMBOY_MICRO, DREAMBOY_POCKET, DREAMBOY_SP } from './dreamboy';
 import { B64, B64_CART, PALTARI, PALTARI_CART, VEGA, VEGA_CART } from './consoles3';
 import { ENCLOSURES } from '../enclosures';
+import { PAD_VARIANTS } from '../padfaults';
 
 /** Every device the shop can see, by id. */
 export const DEVICES: Record<string, DeviceDef> = {
@@ -54,7 +55,10 @@ export const DEVICES: Record<string, DeviceDef> = {
 
 export const DEVICE_LIST: DeviceDef[] = Object.values(DEVICES);
 
-// Every device comes in a case.
-for (const d of DEVICE_LIST) d.enclosure ??= ENCLOSURES[d.id];
+// Every device comes in a case, and any board can suffer pad and trace damage.
+for (const d of DEVICE_LIST) {
+  d.enclosure ??= ENCLOSURES[d.id];
+  if (!d.variants.some((v) => v.id === 'pad-lifted') && !d.id.endsWith('_cart')) d.variants.push(...PAD_VARIANTS);
+}
 
 export { B64, B64_CART, PALTARI, PALTARI_CART, VEGA, VEGA_CART, BES, BES_CART, BOOMPUCK, BUTTON, DL12, FS5, SBOX, VIEWMAX };

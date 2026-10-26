@@ -39,3 +39,25 @@ describe('trace repair with copper wire', () => {
     expect(evaluate(good.job, good.b, 0).outcome).toBe('fixed');
   });
 });
+
+describe('pad and trace damage', () => {
+  it('a lifted pad and a cut trace are repaired with wire, and need sealing', async () => {
+    const { DL12 } = await import('../src/sim/devices');
+    for (const variant of ['pad-lifted', 'trace-cut']) {
+      const job = generateJob(DL12, 9, { variant });
+      const b = cloneBoard(job.board);
+      const key = (variant === 'pad-lifted' ? b.liftedPads : b.cutPads!)[0];
+      expect(key).toBeTruthy();
+      const [ref, pin] = key.split('.');
+      const net = b.comps[ref].def.pins[pin];
+      const other = Object.values(b.comps).find((c) => !c.def.mates && c.ref !== ref && Object.values(c.def.pins).includes(net))!;
+      const opin = Object.entries(other.def.pins).find(([, n]) => n === net)![0];
+      addJumper(b, { ref, pin }, { ref: other.ref, pin: opin }, 'good', { gauge: 34, scraped: true });
+      const unsealed = evaluate(job, b, 0);
+      expect(unsealed.report.passed, variant).toBe(true);
+      expect(unsealed.outcome).toBe('comeback');
+      sealJumper(b, b.jumpers[0].id);
+      expect(evaluate(job, b, 0).outcome, variant).toBe('fixed');
+    }
+  });
+});

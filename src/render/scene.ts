@@ -905,6 +905,7 @@ export class BenchScene {
       Object.values(b.comps).map((c) => [c.part?.partNo, c.reversed, c.marks, c.burnt, c.joints, c.unplugged, c.corr, c.oxide]),
       b.traces,
       b.liftedPads,
+      b.cutPads,
       b.jumpers,
     ]);
   }

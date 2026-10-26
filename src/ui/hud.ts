@@ -1375,6 +1375,10 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     if (p && p.partNo !== c.def.partNo && magnified && p.marking !== fp.marking) obs.push(`Marked "${p.marking}" — the parts list says this should be "${fp.marking || fp.label}".`);
     const lifted = s.board.liftedPads.filter((k) => k.startsWith(`${ref}.`)).map((k) => k.split('.')[1]);
     for (const pin of lifted) obs.push(`The ${pin} pad has been torn off the board!`);
+    for (const k of s.board.cutPads ?? []) {
+      if (!k.startsWith(`${ref}.`)) continue;
+      obs.push(magnified ? `🔍 A fine scratch cuts straight through the copper trace running to pin ${k.split('.')[1]}.` : '<span class="muted">Zoom in along the tracks to look for a scratch.</span>');
+    }
     const joints = Object.entries(c.joints);
     if (p && !p.plugIn) {
       if (magnified) {

@@ -123,6 +123,8 @@ export interface BoardState {
   traces: Record<string, { broken: boolean }>;
   /** "REF.PIN" pads that have been torn off the board. */
   liftedPads: string[];
+  /** Pads whose copper trace is scratched through ("ref.pin"): the pad is intact but cut off from its net. */
+  cutPads?: string[];
   jumpers: Jumper[];
   mcu: McuState;
   /** Buttons currently held down (component refs). */
@@ -281,7 +283,7 @@ export function compile(b: BoardState, power: PowerConfig, meter?: { red: PointR
   };
 
   // Pad nodes: a lifted pad is isolated from its net.
-  const lifted = new Set(b.liftedPads);
+  const lifted = new Set([...b.liftedPads, ...(b.cutPads ?? [])]);
   const padNode = new Map<string, number>();
   const getPad = (c: CompState, pin: string): number => {
     const key = `${c.ref}.${pin}`;
