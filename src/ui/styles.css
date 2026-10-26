@@ -1421,3 +1421,5 @@ body.tut-locked #rw-canvas:not(.tut-ok) { cursor: not-allowed; }
 .of-body .bars .bar { width: 18px; background: #3fae6a; border-radius: 2px 2px 0 0; }
 .of-body .bars .bar.neg { background: #c9504a; }
 .of-body table.sales td, .of-body table.sales th { padding: 3px 8px; }
+
+.usb-meter { margin-top: 4px; padding: 4px 6px; background: #14202b; border-radius: 4px; font-size: 12px; }

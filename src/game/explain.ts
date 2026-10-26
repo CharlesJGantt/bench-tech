@@ -125,3 +125,27 @@ export function explainReading(s: Session, r: MeterReading, red: PointRef, black
   if (r.mode === 'dcv' && !powered) return 'No power is connected, so every voltage reads 0.';
   return '';
 }
+
+export interface UsbMeterReading {
+  volts: number;
+  amps: number;
+  watts: number;
+  /** Plain-language reading of what the numbers mean. */
+  verdict: string;
+  ok: boolean;
+}
+
+/**
+ * What a USB power meter between the charger and the device shows, and what it means.
+ * A healthy charge pulls a steady few hundred mA or more at about 5 V; no draw means the
+ * power never gets in; a trickle means charging is stuck; a collapsed voltage means a short.
+ */
+export function usbMeterReading(volts: number, amps: number): UsbMeterReading {
+  const v = Math.max(0, volts);
+  const a = Math.max(0, amps);
+  const base = { volts: v, amps: a, watts: v * a };
+  if (v < 3.5 && a > 0.05) return { ...base, ok: false, verdict: 'The voltage collapses as soon as it is plugged in: something is shorted, and the charger is limiting its current. Look for a hot part or a failed capacitor.' };
+  if (a < 0.005) return { ...base, ok: false, verdict: 'Nothing is drawn at all. The power is not getting in: check the port, the input fuse and the charger chip, or the device may simply be full.' };
+  if (a < 0.1) return { ...base, ok: false, verdict: 'Only a trickle. Charging is stuck at a low current: a deeply discharged or worn battery, a weak charger chip, or a poor contact in the path.' };
+  return { ...base, ok: true, verdict: 'Charging normally: a healthy current at about 5 V.' };
+}

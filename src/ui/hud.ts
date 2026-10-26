@@ -16,6 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
+import { usbMeterReading } from '../game/explain';
 import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -945,6 +946,14 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     this.renderOffice();
   }
 
+  /** The USB power meter's little display (adapter / jack power only). */
+  private usbMeterHtml(op: { srcV: number; srcI: number }): string {
+    const s = this.s;
+    if (!s.owns('usb-meter') || (s.powerMode !== 'adapter' && s.powerMode !== 'psu-jack')) return '';
+    const m = usbMeterReading(op.srcV, op.srcI);
+    return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
+  }
+
   private renderOffice(): void {
     if (!this.officeOpen) return;
     this.modal(officeHtml(this.s, this.officeTab, this.cart, this.speed), 'wide office-modal');
@@ -1126,7 +1135,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       clipsMissing
         ? '<span class="warn">⚠ PSU clips not placed — the board has no power. Use tool 5 to clip them on, or pick "PSU → input".</span>'
         : op
-          ? `${op.srcV || op.srcI ? `Input ${Math.max(0, op.srcI).toFixed(3)} A` : 'Running on its battery'}`
+          ? `${op.srcV || op.srcI ? `Input ${Math.max(0, op.srcI).toFixed(3)} A` : 'Running on its battery'}${this.usbMeterHtml(op)}`
           : 'Unpowered',
     );
     const dev = s.board.device;
