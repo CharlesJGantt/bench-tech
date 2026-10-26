@@ -197,6 +197,19 @@ Details in `GAME_LIBRARY.md`.
 | Storefront view of display cases and video game racks (looks only; racks show real stock and game labels) | TODO (planning) |
 | Walking around the shop and serving customers | LATER: DLC after Steam launch |
 
+## 18. Testing and approval (new, 2026-10-26)
+Nothing has been approved yet. Files: `TESTING_CHECKLIST.md` (how to test), `Bench_Tech_Test_Tracker.csv` (489 rows with Status / notes
+columns), `Bench_Tech_Test_Games.csv` (1,396 games), `TEST_LOG.md` (kept by Claude: results, issues, rework). Tags: NOT TESTED, PASS, FAIL,
+REWORK, BLOCKED, NOT BUILT, N/A.
+| Item | Status |
+|---|---|
+| Testing checklist, log and spreadsheets | DONE (created) |
+| Console art and console power / boot / initial loading screens for each console (Codex) | TODO |
+| Test lab boot sequence for every console and handheld (status light, boot screens, OS load, game loading screen) | TODO |
+| Approval of every repairable (incl. case fitment, alignment, hole placement), cartridge, disc, tool model, office menu | TODO (you test) |
+| Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
+| Reballing (BGA): define, build and test | TODO (not built) |
+
 ## Suggested order (not decided: we are planning)
 1. Finish planning: the order of the console wave, the start menu and the shop scenes
 2. The new consoles with their disc drives, media and controllers (backlog section 2b), once the art is done enough to use

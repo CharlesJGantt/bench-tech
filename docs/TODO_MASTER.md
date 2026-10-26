@@ -141,6 +141,30 @@ Each task has where it came from in brackets.
 80. [ ] Tests take 2-3 minutes; keep the generic fault variants on fewer seeds; watch new device counts (every device adds to the
     generic-fault test matrix).
 
+## J. Testing and approval (new: your playtest plan; see `TESTING_CHECKLIST.md`, `TEST_LOG.md` and the two test CSVs)
+81. [ ] **Console art** for every console and handheld (32 models): Codex art task. [your latest message]
+82. [ ] **Console power / booting / initial loading screens** for every console (Codex art task): the screens each console shows while
+    it powers on, boots and loads its system.
+83. [ ] **Test lab boot sequence**: every console powers on with a status light; with a game inserted it runs its boot process and shows its
+    console-specific screens; finishes the OS load; the inserted known-good game then boots and shows **its loading screen**. Handhelds the
+    same way. (Today the cart test station only shows whether a title screen appears.)
+84. [ ] **Approve every repairable** (34 built, about 200 planned): PCB density, component layout, PCB shape and size, screen size and
+    placement, buttons / switches / ports / battery placement, case shape and design, screw shape and design, disassembly steps, case colour,
+    logo and silkscreen placement, **case fitment, case alignment, and button holes, screen holes, port holes, speaker holes, vents and
+    battery compartments**. Fix whatever you reject. (231 rows in the tracker.)
+85. [ ] **Approve every cartridge** (look, label placement, disassembly, PCB layout and components, edge finger count; per platform and PCB
+    layout) and **every disc game** (label placement; **label must not cover the centre hole**). One row per game in `Bench_Tech_Test_Games.csv`.
+86. [ ] **Inspect every visible 3D tool** and **every office menu**; fix what you reject.
+87. [ ] **Test every buy and sell action**, **every repair process**, **the store-room and donor board process** (really desolder parts from a donor,
+    remove cases, replace broken parts), the **customer call scenarios**, the **locations, bench upgrades, storefronts and employees**.
+88. [ ] **Reballing (BGA) does not exist**: define it with you and build it (remove chip, clean pads, stencil, balls, reflow, test), then test it.
+89. [ ] **Customer call scenarios "Stop repair" and "Finish repair"** (today the calls are: express delivery, standard delivery and wait, wait for a
+    donor, buy as spares at 10 / 15 / 25 %, expensive parts): decide whether to add them as call options.
+90. [ ] Items you may have missed, now in the checklist: settings and pause menu, accessibility, browser and window-size checks, performance in long
+    sessions, naming and licence checks (parody names only; music, voice and fonts), economy balance over 30 and 100 days, edge cases, crash recovery,
+    gamepad / touch, Steam readiness (achievements, cloud saves, controller support), credits screen.
+91. [ ] Act on every FAIL and REWORK in `TEST_LOG.md` as you report it; keep the tracker CSV and the log in step.
+
 ---
 
 ## Decisions I need from you (collected from everything above)
