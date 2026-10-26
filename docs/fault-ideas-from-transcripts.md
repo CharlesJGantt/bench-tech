@@ -33,3 +33,16 @@ Diagnosis tooling
 - **Diode-mode map per pin** with a board-view / schematic overlay (the XZZ-style tool in the Switch video).
 - **Low-melt solder (138 °C)** to loosen lead-free solder before removing a port (Switch video): a supply plus a technique step.
 - **Opened-before evidence**: broken warranty stickers, a flipped screw order, a connector left out.
+
+## From "Can I Make a Profit Fixing This? S2E71" (ROG Ally-style handheld)
+Built:
+- **Stuck PPTC polyfuse on the microSD slot supply** (the Retrobit RB35 now has one, F4): reads tens of ohms instead of ~0.2 Ω, reset by heat from a hot-air station (about 200 °C slowly, 300-400 °C at once; solder starts to melt near 400), do not measure it while it is resetting. There are two on the real board (3.3 V and 1.8 V, for different card speed classes).
+- A **one-shot thermal fuse** cannot be reset: it is replaced.
+Ideas:
+- **Bad SD card blows the fuse** (the intended design): a customer's card shorts and trips it again.
+- **Heat source behind the failure**: the fuse trips because the VRM on the other side runs hot; check the heatsink pad (PTM phase-change pad, not paste). A revived fuse should sometimes trip again.
+- **Hidden parts**: the fuses sit under tape or putty; finding them is part of the job.
+- **EC reset** as the first thing to try (already the hard-reset job).
+- **BIOS setting service job**: secure boot disabled or a wrong boot order gives "please select boot device"; fix in the BIOS menu.
+- **Blank NVMe**: format it, then install from a cloud recovery image (the drive service).
+- **Warranty for a cautious repair**: a one-month warranty on a borderline fix.

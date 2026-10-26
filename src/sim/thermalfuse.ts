@@ -57,12 +57,12 @@ export const PPTC_DEGRADED: Variant = {
   weight: 0.8,
   apply(b, rng) {
     const ref = rng.pick(pptcRefs(b.device));
-    b.comps[ref].fault = { type: 'high', r: Math.round(rng.range(60, 140)) };
+    b.comps[ref].fault = { type: 'high', r: Math.round(rng.range(65, 110)) };
     addMark(b, ref, 'pptc-high');
     return {
-      summary: `The resettable (PPTC) fuse ${ref} is stuck at a high resistance (tens to a hundred ohms instead of a fraction of an ohm), so what it feeds never gets enough power. Heating it with hot air (mask the plastic parts around it with Kapton first) often brings it back; replacing it is the more reliable repair.`,
+      summary: `The resettable (PPTC) fuse ${ref} on the microSD slot's supply is stuck at a high resistance (tens of ohms instead of about 0.2 Ω), so the card reader never gets enough power. Heat from the parts around it (or a bad card) tripped it and it did not recover. Heating it with hot air at about 200-300 °C (small nozzle, mask the plastic parts around it with Kapton first) resets it, and so does a replacement; the heat source is still there, so it can trip again.`,
       refs: [ref],
-      hint: `Power goes in but the voltage after ${ref} is low. With the board off, measure across it: a healthy polyfuse reads under 1 Ω. Repairers heat these up with hot air to revive them.`,
+      hint: `The card reader gets no power. With the board off, measure across the small fuse ${ref} by the slot (it may be hidden under tape or putty): a healthy polyfuse reads about 0.2 Ω, a stuck one tens of ohms. Heat it with hot air to reset it. Do not measure it while it is resetting: the meter's test current makes it stick.`,
       flavor: rng.pick(['It worked, then one day the card reader (or the video port) just stopped. Nothing else is wrong.', 'The port was fine until it got hot while I was playing. Now it does not work at all.', 'Part of it stopped working after a long gaming session and never came back.']),
     };
   },
