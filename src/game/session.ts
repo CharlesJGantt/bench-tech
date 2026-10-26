@@ -26,7 +26,7 @@ import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
-import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { applyPaste, boardReachable, casePartPrice, cleanDust, fitNewCasePart, fitNewRibbon, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { cleanPort, isPort, type PortTool } from '../sim/portclean';
 import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd } from '../sim/accessories';
 import { bootCurve, BOOT_SECONDS, type BootKind, capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
@@ -34,6 +34,7 @@ import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, 
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
 import {
+  book,
   completeCustomerJob,
   cartHomeFailure,
   createShop,
@@ -874,6 +875,36 @@ export class Session {
     if (!blower && this.shop.supplies.swabs < 4) return { ok: false, text: 'You need a compressed air blower (Equipment tab) or a few cleaning swabs (Supplies) to clean the dust out.' };
     const r = cleanDust(def, st, blower ? 'blower' : 'swabs');
     if (r.ok && !blower) useSupply(this.shop, 'swabs', 4);
+    return this.encDone(r);
+  }
+
+  /** Fit a new case part in place of a cracked one: bought at cost now, billed to the customer on top of the quote. */
+  encFitNew(id: string): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    const it = def.items.find((i) => i.id === id);
+    const r = fitNewCasePart(def, st, id);
+    if (r.ok && it) {
+      const cost = casePartPrice(it, this.job.device.marketValue);
+      book(this.shop, 'parts', -cost, `Case part for ${this.job.customer}: ${it.label}`);
+    }
+    return this.encDone(r);
+  }
+
+  /** Fit a new ribbon cable in place of a torn one: the line it carried comes back. */
+  encFitRibbon(id: string): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    const it = def.items.find((i) => i.id === id);
+    const r = fitNewRibbon(def, st, id);
+    if (r.ok && it) {
+      const mod = it.module ? this.board.comps[it.module] : null;
+      const conn = mod?.def.mates ? this.board.comps[mod.def.mates] : null;
+      if (conn && conn.fault?.type === 'pins-open') conn.fault = null;
+      book(this.shop, 'parts', -casePartPrice(it, this.job.device.marketValue), `Ribbon cable for ${this.job.customer}`);
+    }
     return this.encDone(r);
   }
 

@@ -45,6 +45,7 @@ const MARK_TEXT: Record<string, string> = {
   scratch: 'Light scratches in the green solder mask nearby.',
   bulged: 'The top of the can is bulging.',
   loose: 'The connector wobbles when you push it.',
+  'cracked-screen': 'The glass is cracked: a spider web of cracks spreads out from one corner.',
   'bent-pin': 'Looking into the socket, the centre pin looks bent and cracked.',
   tarnish: 'The contacts are dull, dark and blotchy — oxidised. Scrub them clean (eraser), then Pad-Bright.',
   corrosion: 'Crusty corrosion (green, white, yellow and dark flecks) on its pads — liquid got in here. Solder will not stick to it: treat it with corrosion cleaner, scrub, rinse with IPA and wipe.',

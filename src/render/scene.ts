@@ -61,6 +61,15 @@ interface Puff {
   vz: number;
 }
 
+/** Screen glass per template: [width, height, y offset (layout), top (mm)] for the crack decal. */
+const SCREEN_GLASS: Record<string, [number, number, number, number]> = {
+  pkg_SCREEN: [39, 22, -1, 2.8],
+  pkg_SCREEN_S: [64, 36, -2, 3],
+  pkg_SCREEN_M: [46, 27, -1, 2.8],
+  pkg_SCREEN_L: [71, 53, 0, 2.8],
+  pkg_SCREEN_W: [113, 65, 0, 2.8],
+};
+
 export class BenchScene {
   readonly app: pc.Application;
   private camera!: pc.Entity;
@@ -579,6 +588,13 @@ export class BenchScene {
       // Handhelds / controllers: the covering shell is a proper front with windows and caps
       if (dev.face && it.covers && (it.kind === 'shell' || it.kind === 'clips')) {
         const g = this.buildFace(dev, def.color);
+        if (this.session.enc?.cracked?.includes(it.id) && this.templates.has('decal_crack')) {
+          const crack = this.clone('decal_crack');
+          crack.name = 'case-crack';
+          crack.setLocalPosition(0, (dev.face.height ?? 9) + 0.1, 0);
+          crack.setLocalScale(dev.width / 14, 1, dev.height / 14);
+          g.addChild(crack);
+        }
         this.boardGroup.addChild(g);
         this.encEnts.set(it.id, g);
         continue;
@@ -634,6 +650,13 @@ export class BenchScene {
         }
       }
       e.setLocalPosition(W(it.at[0]), y, H(it.at[1]));
+      if ((it.kind === 'shell' || it.kind === 'clips') && this.session.enc?.cracked?.includes(it.id) && this.templates.has('decal_crack')) {
+        const crack = this.clone('decal_crack');
+        crack.name = 'case-crack';
+        crack.setLocalPosition(0, 16.1, 0);
+        crack.setLocalScale(8, 1, 8);
+        e.addChild(crack);
+      }
       this.boardGroup.addChild(e);
       this.encEnts.set(it.id, e);
     }
@@ -990,6 +1013,16 @@ export class BenchScene {
       v.entity = e;
       v.cap = (e.findByName(`${tpl}_cap`) as pc.Entity | null) ?? null;
       this.addMarking(e, c.part);
+      // A cracked screen: the Blender crack decal over the glass, sized to it
+      if (c.marks.includes('cracked-screen')) {
+        const glass = SCREEN_GLASS[tpl];
+        if (glass) {
+          const crack = this.clone('decal_crack');
+          crack.setLocalPosition(0, glass[3], glass[2]);
+          crack.setLocalScale(glass[0] / 10, 1, glass[1] / 10);
+          e.addChild(crack);
+        }
+      }
       for (const r of e.findComponents('render') as pc.RenderComponent[]) {
         for (const mi of r.meshInstances) {
           if (r.entity.name.endsWith('_lens')) {
@@ -1301,7 +1334,11 @@ export class BenchScene {
     this.syncComponents();
     // Case items: shown while they are on (no case at all on idle / old jobs)
     const enc = s.enc;
-    for (const [id, e] of this.encEnts) e.enabled = !!enc && !enc.removed.includes(id);
+    for (const [id, e] of this.encEnts) {
+      e.enabled = !!enc && !enc.removed.includes(id);
+      const crack = e.findByName('case-crack');
+      if (crack) crack.enabled = !enc?.fitted?.includes(id);
+    }
 
     // LEDs + lamp
     const op = s.op;

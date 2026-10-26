@@ -5,7 +5,7 @@
  */
 import { usesUsbCharger } from './accessories';
 import type { DeviceDef } from './board';
-import { newEnclosure, type EnclosureDef, type EnclosureState } from './enclosure';
+import { breakable, newEnclosure, type EnclosureDef, type EnclosureState } from './enclosure';
 import { CORROSION_COLORS, corrode } from './corrosion';
 import { createBoard, functionalTest, type BoardState, type DamageEvent, type Mark } from './circuit';
 
@@ -67,6 +67,8 @@ export interface AppliedFault {
   /** Optional complaint flavour that overrides the symptom-derived text. */
   flavor?: string;
   previousRepair?: boolean;
+  /** Case items (ribbon cables) that arrive torn: fitting a new one clears the fault. */
+  torn?: string[];
 }
 
 export interface Variant {
@@ -94,6 +96,25 @@ function dustyEnclosure(def: EnclosureDef): EnclosureState {
   const st = newEnclosure(def);
   st.dusty = true;
   st.dried = def.items.filter((i) => i.kind === 'heatsink').map((i) => i.id);
+  return st;
+}
+
+/** A dropped device: the shell is cracked and sometimes the clips are snapped too. */
+function crackedEnclosure(def: EnclosureDef, rng: Rng): EnclosureState {
+  const st = newEnclosure(def);
+  const parts = breakable(def);
+  const shells = parts.filter((p) => p.kind === 'shell');
+  const clips = parts.filter((p) => p.kind === 'clips');
+  st.cracked = [];
+  if (shells.length) st.cracked.push(rng.pick(shells).id);
+  if (clips.length && (!st.cracked.length || rng.next() < 0.5)) st.cracked.push(rng.pick(clips).id);
+  return st;
+}
+
+/** A device with a damaged ribbon: a closed case, the ribbon marked torn. */
+function tornEnclosure(def: EnclosureDef, torn: string[]): EnclosureState {
+  const st = newEnclosure(def);
+  st.torn = [...torn];
   return st;
 }
 
@@ -213,7 +234,7 @@ export interface JobOptions {
   unrepairable?: boolean;
   kind?: Job['kind'];
   /** A cleaning service rather than a fault: an overheating device that needs its dust cleared and fresh paste. */
-  service?: 'overheat' | 'accessory';
+  service?: 'overheat' | 'accessory' | 'case';
 }
 
 /** Can this device have its cooling serviced (does it have a heatsink)? */
@@ -226,7 +247,8 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   const board = createBoard(device);
   const maxTier = opts.maxTier ?? 2;
   const accessoryJob = opts.service === 'accessory' && usesUsbCharger(device);
-  const service = (opts.service === 'overheat' && canServiceCooling(device)) || accessoryJob;
+  const caseJob = opts.service === 'case' && !!device.enclosure && breakable(device.enclosure).length > 0;
+  const service = (opts.service === 'overheat' && canServiceCooling(device)) || accessoryJob || caseJob;
   let accessory: Job['accessory'];
   let fault: AppliedFault;
   if (accessoryJob) {
@@ -240,6 +262,16 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
       refs: [],
       hint: "Plug the device in with your own charger and cable: if it charges normally, the customer's accessory is the problem. Swap them one at a time on the USB meter to find which is bad, then sell a replacement.",
       flavor: rng.pick(['It will not charge any more, or only if I hold the cable just right.', 'It takes forever to charge now, and sometimes does not charge at all.', 'My phone charger stopped working with this. Is it broken?']),
+    };
+  } else if (caseJob) {
+    fault = {
+      variant: 'service-case',
+      family: 'Broken case',
+      tier: 1,
+      summary: 'Nothing is wrong with the electronics: it was dropped and the case is cracked. Open it, take the cracked part off, fit a new one and close it up again.',
+      refs: [],
+      hint: 'Open the case (🔧 Case on the ticket), take off the cracked part, use "Fit new" in the case window and put it back together.',
+      flavor: rng.pick(['I dropped it and the back has a big crack in it. It still works, but it rattles.', 'The case split along the seam when it hit the floor. Can you fix the shell?', 'It fell off the shelf. The plastic is cracked and the clips are broken.']),
     };
   } else if (service) {
     fault = {
@@ -299,7 +331,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     customer,
     kind: opts.kind ?? 'customer',
     ...(accessory ? { accessory } : {}),
-    ...(device.enclosure ? { enclosure: service && !accessory ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
+    ...(device.enclosure ? { enclosure: fault.torn ? tornEnclosure(device.enclosure, fault.torn) : caseJob ? crackedEnclosure(device.enclosure, rng) : fault.variant === 'screen-cracked' && rng.next() < 0.45 ? crackedEnclosure(device.enclosure, rng) : service && !accessory ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
     ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };
 }

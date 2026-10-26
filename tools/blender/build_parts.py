@@ -1068,6 +1068,53 @@ uv_lamp()
 port_tester()
 
 # ---------------------------------------------------------------------------
+# Damage decals (placed over parts at runtime; nominal 10 x 10 mm, scaled to the part)
+# ---------------------------------------------------------------------------
+
+M["crack"] = mat("glass_crack", srgb("e9eef5"), 0.0, 0.2, emissive=srgb("e9eef5"))
+M["crackdark"] = mat("glass_crack_dark", srgb("0b0c0e"), 0.0, 0.3)
+
+
+def seg(name, parent, material, x0, y0, x1, y1, w, z):
+    """A thin flat strip from (x0, y0) to (x1, y1) in layout space (any angle), width w."""
+    dx, dy = x1 - x0, y1 - y0
+    ln = math.hypot(dx, dy) or 1e-6
+    nx, ny = -dy / ln * w / 2, dx / ln * w / 2
+    vs = [L(x0 - nx, y0 - ny, z), L(x0 + nx, y0 + ny, z), L(x1 + nx, y1 + ny, z), L(x1 - nx, y1 - ny, z)]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(vs, [], [(0, 3, 2, 1)])
+    me.validate()
+    for p in me.polygons:
+        p.use_smooth = False
+    return _link(name, me, parent, material)
+
+
+def glass_crack():
+    n = "decal_crack"
+    e = item(n)
+    # spider crack from an impact point off-centre: radial cracks that fork, plus two rings
+    cx, cy = -1.2, 0.8
+    rays = [(0.0, 5.5), (0.7, 4.6), (1.5, 5.8), (2.3, 3.9), (3.1, 5.2), (3.9, 4.4), (4.7, 5.6), (5.5, 3.8)]
+    z = 0.02
+    for i, (a, r) in enumerate(rays):
+        x1, y1 = cx + r * math.cos(a), cy + r * math.sin(a)
+        seg(f"{n}_ray{i}", e, M["crackdark"], cx, cy, x1, y1, 0.16, z)
+        seg(f"{n}_rayw{i}", e, M["crack"], cx, cy, x1, y1, 0.06, z + 0.01)
+        # a fork near the end
+        fx, fy = cx + r * 0.6 * math.cos(a), cy + r * 0.6 * math.sin(a)
+        seg(f"{n}_fork{i}", e, M["crack"], fx, fy, fx + 1.5 * math.cos(a + 0.6), fy + 1.5 * math.sin(a + 0.6), 0.05, z + 0.01)
+    for k, rr in enumerate((1.3, 2.6)):
+        pts = [(cx + rr * math.cos(t * math.pi / 4 + 0.2 * k), cy + rr * math.sin(t * math.pi / 4 + 0.2 * k)) for t in range(9)]
+        for j in range(8):
+            if (j + k) % 3 == 2:
+                continue
+            seg(f"{n}_ring{k}_{j}", e, M["crack"], *pts[j], *pts[j + 1], 0.05, z + 0.01)
+    cyl(f"{n}_hit", e, M["crackdark"], cx, cy, z, 0.35, 0.02, n=12)
+
+
+glass_crack()
+
+# ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
 

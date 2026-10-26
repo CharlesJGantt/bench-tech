@@ -3,7 +3,7 @@
  * what you want off; switch to "Put back" to reassemble. Loose screws wait on the mat.
  */
 import type { Session } from '../game/session';
-import { assembled, canInstall, canRemove, nextOpenStep, riskOf, rightTool, type EncItem, type EncTool } from '../sim/enclosure';
+import { assembled, canInstall, casePartPrice, canRemove, nextOpenStep, riskOf, rightTool, type EncItem, type EncTool } from '../sim/enclosure';
 
 type Mode = EncTool | 'install';
 
@@ -80,6 +80,10 @@ export class TeardownStation {
       }
       const p = t.closest<HTMLElement>('[data-td-paste]');
       if (p) this.say([s.encPaste(p.dataset.tdPaste!, p.dataset.tdLm ? 'lm' : 'paste').text]);
+      const rib = t.closest<HTMLElement>('[data-td-ribbon]');
+      if (rib) this.say([s.encFitRibbon(rib.dataset.tdRibbon!).text]);
+      const fit = t.closest<HTMLElement>('[data-td-fit]');
+      if (fit) this.say([s.encFitNew(fit.dataset.tdFit!).text]);
       if (t.closest('[data-td-dust]')) this.say([s.encCleanDust().text]);
       const d = t.closest<HTMLElement>('[data-td-drill]');
       if (d) this.say([s.encDrill(d.dataset.tdDrill!).text]);
@@ -207,6 +211,29 @@ export class TeardownStation {
       extra.push(`<button data-td-len="-1" class="${this.pick === -1 && this.mode === 'install' ? 'on primary' : ''}" title="A new screw of the right length">📦 Spare screw from the box (${Math.floor(s.shop.supplies['spare-screws'])} left)</button>`);
     if (st.dusty)
       extra.push(`<p class="note small">The fan and heatsink fins are clogged with dust.</p><button data-td-dust="1">🌬 Clean the dust out (${s.owns('air-blower') ? 'air blower' : `4 swabs, ${Math.floor(s.shop.supplies.swabs)} left`})</button>`);
+    for (const id of st.torn ?? []) {
+      const it = def.items.find((i) => i.id === id);
+      if (!it) continue;
+      extra.push(
+        st.fitted?.includes(id)
+          ? `<p class="small">✓ New ${esc(it.label.toLowerCase())} ready.</p>`
+          : st.removed.includes(id)
+            ? `<button data-td-ribbon="${id}">🆕 Fit a new ${esc(it.label.toLowerCase())} ($${casePartPrice(it, s.job.device.marketValue)})</button>`
+            : `<p class="note small">The ${esc(it.label.toLowerCase())} looks torn: unplug it (open the latch, then pull), then fit a new one.</p>`,
+      );
+    }
+    for (const id of st.cracked ?? []) {
+      const it = def.items.find((i) => i.id === id);
+      if (!it) continue;
+      const price = casePartPrice(it, s.job.device.marketValue);
+      extra.push(
+        st.fitted?.includes(id)
+          ? `<p class="small">✓ New ${esc(it.label.toLowerCase())} ready.</p>`
+          : st.removed.includes(id)
+            ? `<button data-td-fit="${id}">🆕 Fit a new ${esc(it.label.toLowerCase())} ($${price})</button>`
+            : `<p class="note small">The ${esc(it.label.toLowerCase())} is cracked: take it off, then fit a new one.</p>`,
+      );
+    }
     for (const it of def.items)
       if (it.kind === 'heatsink' && st.removed.includes(it.id))
         extra.push(

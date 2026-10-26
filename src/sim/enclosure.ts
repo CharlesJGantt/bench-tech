@@ -76,6 +76,12 @@ export interface EnclosureState {
   dusty?: boolean;
   /** Heatsinks whose old paste has dried out: lift them and re-paste. */
   dried?: string[];
+  /** Case parts broken when it was dropped (shell cracked, clips snapped): they need replacing. */
+  cracked?: string[];
+  /** Case parts you have fitted a new one of. */
+  fitted?: string[];
+  /** Ribbon cables that arrived torn (fit a new one). */
+  torn?: string[];
 }
 
 export interface EncOptions {
@@ -97,6 +103,34 @@ const item = (def: EnclosureDef, id: string) => {
   if (!it) throw new Error(`No enclosure item ${id}`);
   return it;
 };
+
+/** What a replacement case part costs (the customer is billed 1.5 times this). */
+export function casePartPrice(it: EncItem, marketValue: number): number {
+  return it.kind === 'clips' || it.kind === 'cable' ? 4 : Math.max(8, Math.round(marketValue * 0.08));
+}
+
+/** Case parts that can be broken by a drop. */
+export const breakable = (def: EnclosureDef): EncItem[] => def.items.filter((i) => i.kind === 'shell' || i.kind === 'clips');
+
+/** Fit a new case part in place of a cracked one (it must be off the device). */
+export function fitNewCasePart(def: EnclosureDef, st: EnclosureState, id: string): EncResult {
+  const it = item(def, id);
+  if (!st.cracked?.includes(id)) return { ok: false, text: `The ${it.label.toLowerCase()} is not broken: no need for a new one.` };
+  if (st.fitted?.includes(id)) return { ok: false, text: 'You already fitted a new one.' };
+  if (!st.removed.includes(id)) return { ok: false, text: `Take the cracked ${it.label.toLowerCase()} off first.` };
+  (st.fitted ??= []).push(id);
+  return { ok: true, text: `A new ${it.label.toLowerCase()} is ready to go on.` };
+}
+
+/** Fit a new ribbon cable in place of a torn one (it must be unplugged). Returns the module's connector ref to clear. */
+export function fitNewRibbon(def: EnclosureDef, st: EnclosureState, id: string): EncResult & { conn?: string } {
+  const it = item(def, id);
+  if (!st.torn?.includes(id)) return { ok: false, text: `The ${it.label.toLowerCase()} is fine: no need for a new one.` };
+  if (st.fitted?.includes(id)) return { ok: false, text: 'You already fitted a new one.' };
+  if (!st.removed.includes(id)) return { ok: false, text: `Unplug the torn ${it.label.toLowerCase()} first.` };
+  (st.fitted ??= []).push(id);
+  return { ok: true, text: `A fresh ${it.label.toLowerCase()} is ready to plug in.`, conn: it.module };
+}
 
 /** A freshly closed device as it came from the factory. */
 export function newEnclosure(def: EnclosureDef): EnclosureState {
@@ -464,6 +498,9 @@ export function enclosureIssues(def: EnclosureDef | undefined, st: EnclosureStat
   const hidden: string[] = [];
   const notes: string[] = [];
   if (!def || !st) return { hidden, notes };
+  for (const id of st.cracked ?? []) {
+    if (!st.fitted?.includes(id)) notes.push(`The ${def.items.find((i) => i.id === id)?.label.toLowerCase() ?? 'case part'} is still cracked.`);
+  }
   if (st.dusty) hidden.push('The fan and heatsink are still full of dust — it will overheat again.');
   if (st.dried?.length) hidden.push('The old, dried-out thermal paste was never replaced — it still runs hot.');
   if (st.removed.length) hidden.push('The device was handed back with its case not fully reassembled.');

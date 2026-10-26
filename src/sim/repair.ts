@@ -2,7 +2,7 @@ import { cloneBoard, functionalTest, padNames, type BoardState, type FunctionalR
 import type { Job } from './faults';
 import { PIN_NAMES, part } from './parts';
 import { CLEAN_CRUST, corrodedRefs } from './corrosion';
-import { enclosureIssues } from './enclosure';
+import { casePartPrice, enclosureIssues } from './enclosure';
 import { contactIssues } from './contacts';
 import { ACCESSORY_PRICE, cable, charger } from './accessories';
 
@@ -154,6 +154,12 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
     report.checks.push({ label: 'Runs cool after the service', ok: false });
     report.passed = false;
   }
+  // A case-repair job is only done when every cracked part has been replaced
+  const encSt = job.enclosure;
+  if (job.faults.some((f) => f.variant === 'service-case') && encSt?.cracked?.some((id) => !encSt.fitted?.includes(id))) {
+    report.checks.push({ label: 'The cracked case parts are replaced', ok: false });
+    report.passed = false;
+  }
   // An accessory service is only done once every worn-out charger or cable has been replaced
   const acc = job.accessory;
   if (acc) {
@@ -208,7 +214,8 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   const residuePenalty = uniqueNotes.some((n) => n.startsWith('Sticky flux')) ? 1 : 0;
   // Parts you fitted are charged at cost plus 50 %, on top of the quote (the labour)
   const partsBilledParts = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
-  const partsBilled = partsBilledParts + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
+  const caseBilled = Math.round((encSt?.fitted ?? []).reduce((t, id) => t + (job.device.enclosure?.items.find((i) => i.id === id) ? casePartPrice(job.device.enclosure.items.find((i) => i.id === id)!, job.device.marketValue) * 1.5 : 0), 0));
+  const partsBilled = partsBilledParts + caseBilled + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
   const payout = outcome === 'not-fixed' ? 0 : job.quote + partsBilled;
   const reputation = outcome === 'fixed' ? 5 - residuePenalty : outcome === 'comeback' ? -4 : -3;
   return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation };
