@@ -1,7 +1,22 @@
 # Bench Tech: reballing and BGA work (design proposal, 2026-10-26)
 
-Status: **next feature to build** (you confirmed: devices are about to include BGA chips). This is a proposal to agree before the code
-starts: the recommendations are mine, change anything. Nothing here is built.
+Status: **being built (2026-10-26)**. Your answers to the five questions are in section "Decisions" below and override the proposal text.
+
+## Decisions (your answers, 2026-10-26)
+1. **Ball maps: both.** Some chips are simple (outer ring carries signals, inner balls are a ground array); some have real ball maps.
+   **Laser-cut stainless steel stencils**, one per chip type (about **10 types**). Each stencil has the **ball size and chip code etched on it**. **Stencils
+   can warp if over-heated** (then they need replacing). The stencil sits on top of the chip held in the **reballing vise**. Two ways to fill it:
+   - **Balls (always works):** thin layer of flux, then pick balls of the correct size from the pile with tweezers and place **one ball in each hole**.
+     The balls are the perfect amount every time and melt into perfect bumps on every pad.
+   - **Solder paste (fast):** smear paste onto the stencil, scrape the excess off with a scraper. No extra flux needed (the paste has flux in it). **About a 20 %
+     chance** that some pads get too little paste (no proper bump) or too much (a **bridge** between pads when the stencil comes off).
+   The hot air melts the solder; this is where the stencil can warp if it gets too hot.
+2. **Always available, but you must buy the equipment:** **reballing vise $150**, **stencils $40 each** (can be damaged by warping, then replaced), solder balls
+   (correct sizes), solder paste and a paste scraper. The balls under a chip are hidden until the chip is off.
+3. **Heat: a staged heat bar** (like the soldering bar), not a free temperature graph.
+4. **Reflow in place:** the player may try it (flux must be used). **Less than a 50 % chance** to fix the problem.
+5. **First BGA devices:** mid-range and modern consoles, phones, tablets, all the exotics and military electronics. (The first BGA in an existing device is the
+   Rogue Pal handheld PC's APU; the new consoles, phones and exotic boards bring many more.)
 
 ## What the player can do with a BGA chip
 A BGA chip sits on a grid of solder balls under the chip, so the joints cannot be seen or touched. The player's options, cheapest first:

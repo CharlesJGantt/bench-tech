@@ -157,7 +157,7 @@ Each task has where it came from in brackets.
 86. [ ] **Inspect every visible 3D tool** and **every office menu**; fix what you reject.
 87. [ ] **Test every buy and sell action**, **every repair process**, **the store-room and donor board process** (really desolder parts from a donor,
     remove cases, replace broken parts), the **customer call scenarios**, the **locations, bench upgrades, storefronts and employees**.
-88. [ ] **Reballing / BGA work: NEXT feature to build** (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
+88. [~] **Reballing / BGA work: BEING BUILT** (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
     (reflow in place, remove, clean pads, stencil and balls, fit, test; BGA parts, tools and consumables; new faults). Needs your answers to its 5 questions.
 89. [ ] **Customer says no to a pricey part (replaces "Stop repair / Finish repair")**: when you call and quote a part ("this chip will cost $48", more depending on
     chip, shipping method, markup, rarity and certification), the customer may say **"that's too much, the repair is not worth it"** and **stop the
@@ -200,6 +200,13 @@ Only for what the player buys and sells, not for what customers pay for repairs.
 112. [ ] **Restoration cleaning**: **Electro-Bright** plastics cleaner (new supply) for yellowing; **hot air on its lowest setting** to lift stickers (prolonged heat discolours or
     singes the label); **light IPA** for permanent marker and for dirt and grime; a feel and a risk model for each.
 113. [ ] Show condition on marketplace listings and when selling (description and a photo-style view), and apply it in every sale channel.
+
+## M. Customer reviews, happiness and reputation (new)
+114. [ ] **Customer review rating** for every job (a star rating and a short review), shown in the office and in the shop's ratings history.
+115. [ ] **Customer happiness tracked separately from reputation** (a measure of how satisfied customers are, kept next to the reputation score).
+116. [ ] **A very high, excellent reputation is required for higher-end repairs and the exotic repairs** (consoles of the newest tiers, phones, tablets, certified
+    avionics, military and premium automotive): combine reputation, reviews and happiness for the unlock gates (today only reputation gates jobs).
+117. [ ] Hook reviews into the existing outcomes: fixed well, comeback, refused part, late rush job, fragile repair, price quote, communication on calls.
 
 ---
 

@@ -208,7 +208,7 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Test lab boot sequence for every console and handheld (status light, boot screens, OS load, game loading screen) | TODO |
 | Approval of every repairable (incl. case fitment, alignment, hole placement), cartridge, disc, tool model, office menu | TODO (you test) |
 | Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
-| Reballing / BGA: **next to build** (design proposal in `REBALLING_DESIGN.md`, 5 questions for you) | NEXT |
+| Reballing / BGA: **being built** (decisions in `REBALLING_DESIGN.md`: stencils, vise, balls or paste, heat bar, reflow in place under 50 %) | IN PROGRESS |
 | Test lab: immersive boot sequence plus WiFi and Bluetooth testing on the test screen | TODO |
 | Call flow: the customer refuses a pricey part and stops the repair; you buy it for spares or return it | TODO |
 
@@ -230,6 +230,13 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | UV solder mask coating over the finished trace / pad repair area, cured with the UV lamp | TODO (today wires are sealed one by one) |
 | Restoration: Electro-Bright for yellowing, low heat hot air for stickers (prolonged heat singes the label), light IPA for marker and grime | TODO |
 | Logic analyzer tool (research first, then build) | TODO |
+
+## 21. Customer reviews, happiness and gates (new, 2026-10-26)
+| Item | Status |
+|---|---|
+| Customer review ratings for every job | TODO |
+| Customer happiness tracked alongside reputation | TODO |
+| Excellent reputation (with reviews and happiness) required for high-end and exotic repairs | TODO |
 
 ## Suggested order (not decided: we are planning)
 0. **Reballing / BGA** (you said: next), then the test lab boot sequence with WiFi / Bluetooth testing
