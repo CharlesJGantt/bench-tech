@@ -16,6 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
+import { portRef, portTest } from '../sim/porttest';
 import { ACCESSORY_PRICE } from '../sim/accessories';
 import { capacityVerdict, usbMeterNow } from '../game/explain';
 import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
@@ -406,6 +407,12 @@ export class Hud {
         this.toast(r.text, r.ok ? undefined : 'bad');
         break;
       }
+      case 'port-tester':
+        this.showPortTester();
+        break;
+      case 'port-flip':
+        this.showPortTester(d.flipped === '1');
+        break;
       case 'meter-charger':
         s.cycleCharger();
         break;
@@ -1276,6 +1283,27 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   }
 
   /** Case status and the button to the teardown station. */
+  private portRow(): string {
+    const s = this.s;
+    return s.owns('port-tester') && portRef(s.board) ? '<div class="row"><button data-act="port-tester" title="Check every pin of the charging port against a healthy board (board unpowered)">🔌 USB port tester</button></div>' : '';
+  }
+
+  /** The pocket diode tester: a dot per port pin, red where it reads differently from a healthy board. */
+  private showPortTester(flipped = false): void {
+    const s = this.s;
+    if (s.powerMode !== 'off') {
+      this.toast('Unplug everything and switch the board off before using the port tester.', 'bad');
+      return;
+    }
+    const rep = portTest(s.board);
+    if (!rep) return;
+    this.modal(`<h2>🔌 USB port tester</h2>
+      <p class="muted">Clipped onto ${esc(rep.ref)}, side ${flipped ? 'B' : 'A'}. Each pin is checked in diode mode against a healthy board of this device: green matches, red reads wrong. A USB-C port has two sides; flip the tester and a red dot that stays put points at the board, not the connector.</p>
+      <div class="port-dots">${rep.pins.map((p) => `<div class="pdot ${p.ok ? 'ok' : 'bad'}"><b>${esc(p.pin)}</b><span>${p.ok ? '●' : '●'}</span><small>${esc(p.reading)}</small>${s.guided ? `<small class="muted">good: ${esc(p.reference)}</small>` : ''}</div>`).join('')}</div>
+      ${s.guided ? `<p class="note small">${rep.pins.every((p) => p.ok) ? 'Every pin matches a healthy board.' : rep.pins.filter((p) => !p.ok).map((p) => `${esc(p.pin)} is ${p.state === 'short' ? 'shorted to ground' : p.state === 'open' ? 'open (no connection)' : 'reading differently'}`).join('; ') + '. Follow that line on the service sheet to the part that shorts or breaks it.'}</p>` : ''}
+      <div class="row"><button data-act="port-flip" data-flipped="${flipped ? '0' : '1'}">↻ Flip the tester</button><button data-act="close">Done</button></div>`);
+  }
+
   /** Accessory-service jobs: sell the customer a new charger / cable once the meter shows theirs is worn out. */
   private accessoryRow(): string {
     const acc = this.s.job.accessory;
@@ -1323,7 +1351,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ${job.previousRepairNote ? `<p class="quote">“${esc(job.previousRepairNote)}”</p>` : ''}
       <p class="complaint">“${esc(job.complaint)}”</p>
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
-      ${debug}${nudge}${this.accessoryRow()}${this.caseRow()}
+      ${debug}${nudge}${this.accessoryRow()}${this.portRow()}${this.caseRow()}
       ${job.device.cartFor ? '<div class="row"><button data-act="station">📺 Test Station</button></div>' : ''}
       <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>

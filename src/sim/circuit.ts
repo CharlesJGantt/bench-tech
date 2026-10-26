@@ -1201,6 +1201,6 @@ export function chargeTest(b: BoardState, chargeWatts: number): CapacityResult |
   if (!c?.part || chargeWatts < 0.25) return null;
   const rated = ratedMah(c.part);
   const health = batteryHealth(c);
-  const delivered = Math.round(rated * health * 1.05);
+  const delivered = Math.round(rated * health * 0.97);
   return { ref: c.ref, ratedMah: rated, deliveredMah: delivered, health, hours: ((delivered / 1000) * 3.8) / (chargeWatts * 0.9) };
 }

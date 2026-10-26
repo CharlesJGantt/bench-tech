@@ -1423,3 +1423,9 @@ body.tut-locked #rw-canvas:not(.tut-ok) { cursor: not-allowed; }
 .of-body table.sales td, .of-body table.sales th { padding: 3px 8px; }
 
 .usb-meter { margin-top: 4px; padding: 4px 6px; background: #14202b; border-radius: 4px; font-size: 12px; }
+
+.port-dots { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.pdot { display: grid; justify-items: center; padding: 8px 12px; background: #141c26; border-radius: 6px; min-width: 70px; }
+.pdot span { font-size: 26px; line-height: 1; }
+.pdot.ok span { color: #3fae6a; }
+.pdot.bad span { color: #e0463f; }
