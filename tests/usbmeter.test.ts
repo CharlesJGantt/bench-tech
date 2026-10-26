@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { METER_CHARGE_START, usbMeterCurrent, usbMeterNow, usbMeterReading } from '../src/game/explain';
+import { bootCurve, METER_CHARGE_START, usbMeterCurrent, usbMeterNow, usbMeterReading } from '../src/game/explain';
 
 describe('USB power meter', () => {
   it('tells charging, no draw, trickle and short apart', () => {
@@ -62,5 +62,23 @@ describe('battery capacity test', () => {
     }
     expect(tested).toBeGreaterThan(0);
     expect(chargeTest(generateJob(DEVICE_LIST[0], 1).board, 0.01)).toBeNull();
+  });
+});
+
+describe('prompt to boot', () => {
+  const at = (kind: Parameters<typeof bootCurve>[3], t: number) => bootCurve(t, 0.3, 1.5, kind);
+  it('a healthy board starts small, grows, peaks and settles lower', () => {
+    const start = at('healthy', 1);
+    const peak = Math.max(...Array.from({ length: 60 }, (_, i) => at('healthy', 2 + i * 0.05)));
+    const end = at('healthy', 8.5);
+    expect(start).toBeLessThan(0.2);
+    expect(peak).toBeGreaterThan(end * 1.4);
+    expect(end).toBeCloseTo(0.3, 1);
+  });
+  it('a stalled board hangs on a low plateau; dead draws nothing; a short pulls the limit at once', () => {
+    expect(at('stuck', 8)).toBeGreaterThan(0.07);
+    expect(at('stuck', 8)).toBeLessThan(0.25);
+    expect(at('dead', 5)).toBe(0);
+    expect(at('short', 0)).toBeGreaterThan(1.4);
   });
 });

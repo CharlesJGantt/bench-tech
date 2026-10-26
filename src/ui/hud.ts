@@ -401,6 +401,11 @@ export class Hud {
       case 'attach':
         s.toggleAttach(d.id!);
         break;
+      case 'boot-prompt': {
+        const r = s.promptBoot();
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
       case 'meter-charger':
         s.cycleCharger();
         break;
@@ -1128,14 +1133,16 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ['psu-clips', 'PSU probes'],
     ];
     const psuLive = s.powerMode.startsWith('psu') && op;
-    const cc = psuLive && op!.srcI > s.psu.ilim * 0.98;
+    const shownI = psuLive ? s.displaySrcI(op!) : 0;
+    const cc = psuLive && shownI > s.psu.ilim * 0.98;
     this.set(
       '#power-modes',
-      modesP.map(([m, label]) => `<button data-act="power" data-mode="${m}" class="${s.powerMode === m ? 'on' : ''}">${label}</button>`).join(''),
+      modesP.map(([m, label]) => `<button data-act="power" data-mode="${m}" class="${s.powerMode === m ? 'on' : ''}">${label}</button>`).join('') +
+        (psuLive ? `<button data-act="boot-prompt" title="Press the power button and watch the supply current: small, growing, then settling is a healthy boot">▶ Prompt to boot</button>` : ''),
     );
     this.set(
       '#psu-read',
-      `<span class="seg">${psuLive ? Math.max(0, op!.srcV).toFixed(2) : '--.--'}<small>V</small></span><span class="seg">${psuLive ? Math.max(0, op!.srcI).toFixed(3) : '-.---'}<small>A</small></span>${cc ? '<span class="cc">CC</span>' : ''}`,
+      `<span class="seg">${psuLive ? Math.max(0, op!.srcV).toFixed(2) : '--.--'}<small>V</small></span><span class="seg">${psuLive ? Math.max(0, shownI).toFixed(3) : '-.---'}<small>A</small></span>${cc ? '<span class="cc">CC</span>' : ''}`,
     );
     const vIn = $<HTMLInputElement>('#psu-v');
     const iIn = $<HTMLInputElement>('#psu-i');

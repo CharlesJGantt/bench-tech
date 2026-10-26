@@ -205,3 +205,35 @@ export function capacityVerdict(r: CapacityResult): { text: string; ok: boolean 
   if (pct >= 60) return { ok: true, text: `${pct} % of its rated capacity: ageing but usable. Expect shorter runtime.` };
   return { ok: false, text: `Only ${pct} % of its rated capacity: end of life. This is why it dies so quickly. Replace the battery.` };
 }
+
+export type BootKind = 'healthy' | 'stuck' | 'dead' | 'short';
+
+/** How long the "prompt to boot" display plays (s). */
+export const BOOT_SECONDS = 9;
+
+/**
+ * The current a bench supply shows when you "prompt to boot" a board (power button pressed, battery replaced by the
+ * supply): a healthy board starts small, grows in steps as rails come up, peaks and falls back to a settled draw;
+ * a board that stalls climbs to a plateau and hangs there; a dead one draws nothing; a short on a main rail pulls
+ * the supply's limit before the button is even pressed.
+ */
+export function bootCurve(t: number, final: number, ilim: number, kind: BootKind): number {
+  if (kind === 'short') return ilim * (0.97 + 0.03 * Math.sin(t * 5));
+  if (kind === 'dead') return 0;
+  const wob = (f: number) => 1 + 0.06 * Math.sin(t * f) * Math.cos(t * f * 0.37);
+  if (kind === 'stuck') {
+    const plateau = Math.max(0.09, Math.min(final, 0.2));
+    const k = Math.min(1, Math.max(0, (t - 0.5) / 1.2));
+    return plateau * k * wob(6);
+  }
+  const f = Math.max(0.05, final);
+  const peak = Math.max(f * 1.9, f + 0.12);
+  if (t < 0.5) return 0.004;
+  if (t < 1.8) return (0.05 + 0.1 * ((t - 0.5) / 1.3)) * wob(9);
+  if (t < 3.6) return (0.15 + (peak - 0.15) * ((t - 1.8) / 1.8)) * wob(11);
+  if (t < 6) {
+    const k = (t - 3.6) / 2.4;
+    return (peak + (f - peak) * k * k * (3 - 2 * k)) * wob(7);
+  }
+  return f * wob(3);
+}

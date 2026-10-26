@@ -28,7 +28,7 @@ import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd } from '../sim/accessories';
-import { capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
+import { bootCurve, BOOT_SECONDS, type BootKind, capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -529,6 +529,35 @@ export class Session {
     return { ok: true, text };
   }
 
+  /** Seconds into a "prompt to boot" (null = not running). */
+  bootT: number | null = null;
+
+  /** The supply's current as shown: the boot curve while a prompt is playing, else the solved steady draw. */
+  displaySrcI(op: { srcI: number }): number {
+    if (!this.powerMode.startsWith('psu')) return op.srcI;
+    const kind = this.bootKind(op);
+    if (kind === 'short') return bootCurve(this.bootT ?? 0, op.srcI, this.psu.ilim, 'short');
+    if (this.bootT === null) return op.srcI;
+    return bootCurve(this.bootT, op.srcI, this.psu.ilim, kind);
+  }
+
+  /** A short on a main rail pulls the supply limit before you press anything; otherwise the board boots, stalls or does nothing. */
+  bootKind(op: { srcI: number }): BootKind {
+    if (op.srcI > this.psu.ilim * 0.9 && this.psu.ilim >= 0.5) return 'short';
+    if (op.srcI < 0.002) return 'dead';
+    const fw = this.board.device.firmware;
+    const ok = fw ? this.board.mcu.running || !fw.ref : this.op?.powered;
+    return ok ? 'healthy' : 'stuck';
+  }
+
+  promptBoot(): { ok: boolean; text: string } {
+    if (!this.powerMode.startsWith('psu') || !this.op) return { ok: false, text: 'Connect the bench supply first (PSU → jack or PSU probes), then prompt to boot.' };
+    this.bootT = 0;
+    this.addLog('action', 'Prompt to boot (power button pressed on the bench supply)');
+    this.emit();
+    return { ok: true, text: 'Watch the supply current as the board boots: it should start small, grow in steps, then settle.' };
+  }
+
   /** Seconds since the device was plugged in (drives the USB meter's boot / settle / charge curve). */
   meterT = 0;
   /** Charge counted by the USB meter since plug-in (mAh), and the last capacity test. */
@@ -556,6 +585,7 @@ export class Session {
     this.meterMah = 0;
     if (m === 'off') this.board.mcu.tripped = false;
     const names: Record<PowerMode, string> = { off: 'Power off', adapter: 'Plugged in the 12 V adapter', 'psu-jack': 'Bench PSU connected to the DC jack', 'psu-clips': 'Bench PSU on clip leads' };
+    this.bootT = null;
     this.addLog('action', names[m]);
     this.recompute();
   }
@@ -689,6 +719,11 @@ export class Session {
   /** Advance time: thermal lag, thermal damage, IPA evaporation, electricity use. */
   tick(dt: number): void {
     if (this.op) this.shop.usage.powerSeconds += dt;
+    if (this.bootT !== null) {
+      this.bootT += dt;
+      if (this.bootT > BOOT_SECONDS) this.bootT = null;
+      this.emit();
+    }
     if (this.op && this.owns('usb-meter') && (this.powerMode === 'adapter' || this.powerMode === 'psu-jack') && this.meterT < METER_CHARGE_START + METER_RAMP + 0.5) {
       this.meterT += dt;
       this.meterMah += (usbMeterCurrent(this.meterT, this.chargeView(this.op.srcI).path.amps, this.chargingIntoNothing).amps * dt * 1000) / 3600;
