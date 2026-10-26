@@ -25,4 +25,14 @@ describe('USB power meter', () => {
     expect(late.amps).toBeLessThan(0.05);
     expect(late.ok).toBe(false);
   });
+  it('with no battery to charge the current never holds steady; with one it does', () => {
+    const sample = (unsteady: boolean) => Array.from({ length: 20 }, (_, i) => usbMeterCurrent(8 + i * 0.37, 0.8, unsteady).amps);
+    const spread = (a: number[]) => Math.max(...a) - Math.min(...a);
+    expect(spread(sample(true))).toBeGreaterThan(0.4);
+    expect(spread(sample(false))).toBeLessThan(0.01);
+    expect(usbMeterNow(20, 5, 0.8, true).verdict).toContain('fluctuating');
+  });
+  it('a hard short makes the meter brown out', () => {
+    expect(usbMeterReading(0.4, 1.5).verdict).toContain('browns out');
+  });
 });

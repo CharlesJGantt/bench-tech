@@ -465,6 +465,12 @@ export class Session {
     }
   }
 
+  /** A battery slot with no working battery on it (missing, unplugged, dead): the USB meter's current hunts. */
+  get chargingIntoNothing(): boolean {
+    const slots = Object.values(this.board.comps).filter((c) => part(c.def.partNo).kind === 'battery' && part(c.def.partNo).pkg !== 'COIN');
+    return slots.length > 0 && slots.every((c) => !batteryConnected(this.board, c) || c.fault?.type === 'worn');
+  }
+
   /** Seconds since the device was plugged in (drives the USB meter's boot / settle / charge curve). */
   meterT = 0;
 

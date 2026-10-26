@@ -144,9 +144,10 @@ export function usbMeterReading(volts: number, amps: number): UsbMeterReading {
   const v = Math.max(0, volts);
   const a = Math.max(0, amps);
   const base = { volts: v, amps: a, watts: v * a };
+  if (v < 1 && a > 0.05) return { ...base, ok: false, verdict: 'The meter itself browns out or will not even light up: the 5 V line is dragged to nothing. A hard short right at the port or on the 5 V rail.' };
   if (v < 3.5 && a > 0.05) return { ...base, ok: false, verdict: 'The voltage collapses as soon as it is plugged in: something is shorted, and the charger is limiting its current. Look for a hot part or a failed capacitor.' };
   if (v >= 3.5 && v < 4.4 && a > 0.1) return { ...base, ok: false, verdict: 'The voltage sags below the 4.4 V a healthy USB port gives under load: a worn cable, a weak charger or a high-resistance joint in the way in.' };
-  if (a < 0.005) return { ...base, ok: false, verdict: 'Nothing is drawn at all. The power is not getting in: check the port, the input fuse and the charger chip, or the device may simply be full.' };
+  if (a < 0.005) return { ...base, ok: false, verdict: 'Nothing is drawn at all (all zeros). There is no connection from the cable to the board: check the port and its pads, the input fuse and the charger chip, or the device may simply be full.' };
   if (a < 0.1) return { ...base, ok: false, verdict: 'Only a trickle. Charging is stuck at a low current: a deeply discharged or worn battery, a weak charger chip, or a poor contact in the path. A steady low number that does not change is a fingerprint: note it and compare it with the next device that behaves the same way.' };
   return { ...base, ok: true, verdict: 'Charging normally: a healthy current at about 5 V.' };
 }
@@ -163,7 +164,7 @@ export type MeterStage = 'boot' | 'settled' | 'charging';
  * low standby draw, then (if the charge controller works) a ramp up to the real charging current.
  * `finalA` is the steady-state draw the circuit solver gives.
  */
-export function usbMeterCurrent(t: number, finalA: number): { amps: number; stage: MeterStage } {
+export function usbMeterCurrent(t: number, finalA: number, unsteady = false): { amps: number; stage: MeterStage } {
   const final = Math.max(0, finalA);
   const standby = Math.min(final, 0.035);
   const jitter = 1 + 0.03 * Math.sin(t * 9.3) * Math.cos(t * 3.1);
@@ -174,14 +175,18 @@ export function usbMeterCurrent(t: number, finalA: number): { amps: number; stag
   }
   const k = Math.min(1, (t - METER_CHARGE_START) / METER_RAMP);
   const smooth = k * k * (3 - 2 * k);
-  return { amps: (standby + (final - standby) * smooth) * (k >= 1 ? 1 : jitter), stage: 'charging' };
+  // No battery to charge (missing, unplugged or dead): the controller hunts, so the current never holds steady
+  const hunt = unsteady ? 1 + 0.9 * Math.sin(t * 7.1) * Math.cos(t * 2.3 + 1) : k >= 1 ? 1 : jitter;
+  return { amps: Math.max(0, (standby + (final - standby) * smooth) * hunt), stage: 'charging' };
 }
 
 /** The live meter display: the changing current, the stage, and (once the controller has had its chance) the verdict. */
-export function usbMeterNow(t: number, volts: number, finalA: number): UsbMeterReading & { stage: MeterStage; done: boolean; note: string } {
-  const { amps, stage } = usbMeterCurrent(t, finalA);
+export function usbMeterNow(t: number, volts: number, finalA: number, unsteady = false): UsbMeterReading & { stage: MeterStage; done: boolean; note: string } {
+  const { amps, stage } = usbMeterCurrent(t, finalA, unsteady);
   const done = t >= METER_CHARGE_START + METER_RAMP;
-  const end = usbMeterReading(volts, finalA);
+  const end = unsteady && finalA >= 0.005 && volts >= 3.5
+    ? { ...usbMeterReading(volts, finalA), ok: false, verdict: 'The current is constantly fluctuating and never holds steady. The board is charging into nothing: the battery is missing, unplugged or dead.' }
+    : usbMeterReading(volts, finalA);
   const note =
     stage === 'boot'
       ? 'The device pulls a burst of current as it wakes up…'

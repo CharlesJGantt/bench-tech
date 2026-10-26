@@ -950,7 +950,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   private usbMeterHtml(op: { srcV: number; srcI: number }): string {
     const s = this.s;
     if (!s.owns('usb-meter') || (s.powerMode !== 'adapter' && s.powerMode !== 'psu-jack')) return '';
-    const m = usbMeterNow(s.meterT, op.srcV, op.srcI);
+    const m = usbMeterNow(s.meterT, op.srcV, op.srcI, s.chargingIntoNothing);
     return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
   }
 
