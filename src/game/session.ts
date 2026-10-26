@@ -78,6 +78,7 @@ export interface LogEntry {
 
 /** What happened when a job left the bench (shown in the debrief). */
 export type WorkResult =
+  | { kind: 'cert-failed'; job: Job; lines: { ok: boolean; text: string }[]; fee: number }
   | { kind: 'customer'; evaluation: Evaluation; job: Job }
   | { kind: 'listed'; price: number; channel: SaleChannel; evaluation: Evaluation; job: Job }
   | { kind: 'scrapped'; salvaged: string[]; job: Job }
@@ -354,9 +355,37 @@ export class Session {
   }
 
   /** Hand a customer / warranty job back. */
+  /** Certified work: pay the lab fee and have the repair analysed. Returns a failure result, or null when it passed. */
+  private runCertification(): WorkResult | null {
+    const job = this.job;
+    const spec = job.device.cert!;
+    book(this.shop, 'fees', -spec.fee, `${spec.authority} analysis for ${job.customer}: ${job.device.name}`);
+    const ev = evaluate(job, this.board, 0);
+    job.cert!.attempts++;
+    const passed = ev.outcome === 'fixed' && ev.certLines.every((l) => l.ok);
+    job.cert!.report = { passed, lines: ev.certLines };
+    if (passed) {
+      // A rush job handed in after its deadline pays less
+      if (job.cert!.dueDay !== undefined && this.shop.day > job.cert!.dueDay) {
+        job.quote = Math.round(job.quote * 0.6);
+        this.addLog('event', 'Delivered after the customer deadline: they pay 40 % less.');
+      }
+      return null;
+    }
+    this.lastResult = { kind: 'cert-failed', job, lines: ev.certLines, fee: spec.fee };
+    this.addLog('event', `${spec.authority} analysis failed (fee $${spec.fee}).`);
+    this.save();
+    this.emit();
+    return this.lastResult;
+  }
+
   returnToCustomer(): WorkResult {
     this.setPowerMode('off');
     const job = this.job;
+    if (job.cert && job.kind === 'customer') {
+      const failed = this.runCertification();
+      if (failed) return failed;
+    }
     const ev = evaluate(job, this.board, 0);
     let payout = job.kind === 'warranty' ? 0 : ev.payout;
     let rep = job.kind === 'warranty' ? (ev.outcome === 'fixed' ? 1 : ev.reputation) : ev.reputation;
@@ -529,6 +558,46 @@ export class Session {
     }
     const text = `Sold the customer a new ${kind} ($${ACCESSORY_PRICE[kind]}).`;
     this.addLog('action', text);
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** Board parts near a repair spot: the conformal-coating repair area (mm). */
+  private coatArea(ref: string, radius = 11): string[] {
+    const c = this.board.comps[ref].def;
+    return Object.values(this.board.comps)
+      .filter((n) => !n.def.mates && Math.hypot(n.def.x - c.x, n.def.y - c.y) <= radius)
+      .map((n) => n.ref);
+  }
+
+  /** Take the conformal coating off around a part (pen grinder + coating remover) so it can be reworked. */
+  removeCoating(ref: string): { ok: boolean; text: string } {
+    const c = this.board.comps[ref];
+    if (!c || c.coat !== 'on') return { ok: false, text: 'There is no coating to remove here.' };
+    if (this.powerMode !== 'off') return { ok: false, text: 'Switch the board off first.' };
+    if (!this.reachable) return { ok: false, text: 'Take the board out of its case first (🔧 Case on the ticket).' };
+    if (!this.owns('pen-grinder')) return { ok: false, text: 'You need the pen grinder (Equipment tab) to take coating off.' };
+    if (this.shop.supplies['coating-remover'] < 3) return { ok: false, text: 'Not enough conformal coating remover (Supplies tab): 3 ml needed.' };
+    useSupply(this.shop, 'coating-remover', 3);
+    const area = this.coatArea(ref).filter((r) => this.board.comps[r].coat === 'on');
+    for (const r of area) this.board.comps[r].coat = 'removed';
+    const text = `The coating is softened with remover and ground away around ${ref} (${area.length} part${area.length === 1 ? '' : 's'} bare). Put it back when the rework is done.`;
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** Put the conformal coating back over the repair area (UV cure). */
+  reapplyCoating(ref: string): { ok: boolean; text: string } {
+    const c = this.board.comps[ref];
+    if (!c || c.coat !== 'removed') return { ok: false, text: 'The coating here is already intact.' };
+    if (this.powerMode !== 'off') return { ok: false, text: 'Switch the board off first.' };
+    if (!this.owns('uv-lamp')) return { ok: false, text: 'You need the UV lamp (Equipment tab) to cure the coating.' };
+    if (this.shop.supplies['conformal-coat'] < 2) return { ok: false, text: 'Not enough conformal coating (Supplies tab): 2 ml needed.' };
+    // The IPA must have cleaned the flux off first: coating over flux traps it
+    useSupply(this.shop, 'conformal-coat', 2);
+    const area = this.coatArea(ref).filter((r) => this.board.comps[r].coat === 'removed');
+    for (const r of area) this.board.comps[r].coat = 'reapplied';
+    const text = `A thin even film of coating over ${area.length} part${area.length === 1 ? '' : 's'}, cured under the UV lamp.`;
     this.afterRepair(text);
     return { ok: true, text };
   }
@@ -1162,7 +1231,8 @@ export class Session {
       nozzle: { heat: nozzle.heat, radius: nozzle.radius, name: nozzle.name },
       wick: WICKS[k.wick as keyof typeof WICKS] ?? WICKS['wick-2'],
       flux: (k.flux in FLUX_GRADES ? k.flux : 'flux-rosin') as Kit['flux'],
-      solder: k.solder === 'lowmelt' ? 'lowmelt' : 'solder',
+      solder: k.solder === 'lowmelt' ? 'lowmelt' : k.solder === 'solder-cert' ? 'solder-cert' : 'solder',
+      strict: !!this.job?.cert && this.job.device.cert?.strictHeat !== false,
       liquid: (LIQUIDS as readonly string[]).includes(k.liquid ?? '') ? (k.liquid as Kit['liquid']) : 'ipa',
       brushWear: this.shop.brushWear,
       wickLoad: this.shop.wickLoad[k.wick] ?? 0,
@@ -1190,6 +1260,14 @@ export class Session {
   /** Apply a finished rework-station session: consumables are deducted, parts were taken from stock. */
   doRework(st: ReworkState): string {
     this.consume(st);
+    // Certified work allows only certified solder and flux
+    const spec = this.job.cert && this.job.device.cert;
+    if (this.job.cert && spec?.certifiedConsumables !== false) {
+      for (const id of Object.keys(st.used)) {
+        if (id.startsWith('flux-') && id !== 'flux-cert' && id !== 'flux-cleaner') this.job.cert.violations.push('uncertified flux');
+        if (id === 'solder' || id === 'lowmelt') this.job.cert.violations.push('uncertified solder');
+      }
+    }
     // Salvage: a healthy part that came off in one piece goes in the used-parts bin.
     const before = this.board.comps[st.ref];
     let salvaged = '';
@@ -1204,7 +1282,7 @@ export class Session {
   }
 
   /** A rework session was cancelled: put untouched parts back in stock, but consumables are still used. */
-  cancelRework(st: ReworkState, taken: { partNo: string; kind: 'new' | 'used' }[]): void {
+  cancelRework(st: ReworkState, taken: { partNo: string; kind: 'new' | 'used' | 'cert' }[]): void {
     this.consume(st);
     for (const t of taken) returnPart(this.shop, t.partNo, t.kind);
     this.save();
@@ -1223,7 +1301,13 @@ export class Session {
 
   /** Where does the wire for a jumper come from? Proper copper repair wire if there is any, else loose hookup wire. */
   doJumper(a: PointRef, b: PointRef, q: SolderQuality): string {
-    useSupply(this.shop, 'solder', 0.4);
+    if (this.job.cert && this.job.device.cert?.certifiedConsumables !== false) {
+      if (this.shop.supplies['solder-cert'] >= 0.4) useSupply(this.shop, 'solder-cert', 0.4);
+      else {
+        useSupply(this.shop, 'solder', 0.4);
+        this.job.cert.violations.push('uncertified solder');
+      }
+    } else useSupply(this.shop, 'solder', 0.4);
     const id = `wire-${this.wireGauge}` as SupplyId;
     const cm = wireLength(this.board, a, b) / 10;
     const proper = this.shop.supplies[id] >= cm;

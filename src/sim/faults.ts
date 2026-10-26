@@ -209,6 +209,8 @@ export interface Job {
   title?: string;
   /** What the customer originally paid (cartridge home-test refunds are 10 % of it). */
   paid?: number;
+  /** Certified work on this job: what has been done, and the analysis results so far. */
+  cert?: JobCert;
   /** An accessory-service job: the device is fine, the customer's charger and/or cable is not. */
   accessory?: { charger: string; cable: string; chargerSold?: boolean; cableSold?: boolean };
   /** A frozen device that just needs a hard reset (hold the power button, or pull the battery). */
@@ -258,6 +260,20 @@ function scratchedDisc(rng: Rng): DiscState {
   return { scratches, passes: 0 };
 }
 
+/** The certification record carried by a job whose device needs sign-off. */
+export interface JobCert {
+  authority: string;
+  fee: number;
+  coated: boolean;
+  /** Last day the customer will wait (set when the job arrives). */
+  dueDay?: number;
+  /** Things done that a certified repair does not allow (uncertified solder or flux, ...). */
+  violations: string[];
+  /** How many analyses have been paid for, and the last report. */
+  attempts: number;
+  report?: { passed: boolean; lines: { ok: boolean; text: string }[] };
+}
+
 const CUSTOMERS = ['Dana P.', 'Marcus L.', 'Priya S.', 'Tom W.', 'Ines R.', 'Kofi A.', 'Jun H.', 'Sam B.', 'Alex M.', 'Rosa G.', 'Leah K.', 'Omar F.', 'Wren T.', 'Yuki N.'];
 
 export interface JobOptions {
@@ -283,6 +299,7 @@ export function canServiceCooling(device: DeviceDef): boolean {
 export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = {}): Job {
   const rng = new Rng(seed);
   const board = createBoard(device);
+  if (device.cert?.coated) for (const c of Object.values(board.comps)) if (!c.def.mates) c.coat = 'on';
   const maxTier = opts.maxTier ?? 2;
   const accessoryJob = opts.service === 'accessory' && usesUsbCharger(device);
   const caseJob = opts.service === 'case' && !!device.enclosure && breakable(device.enclosure).length > 0;
@@ -395,7 +412,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   // Labour: the device's base rate plus the difficulty of the fault; a valuable device is never quoted
   // below a share of its worth (a significant repair on a $1000 console is $200-300).
   const labour = device.quoteBase + 10 * fault.tier + 5 * rng.int(0, 3) + (history.length ? 10 : 0);
-  const quote = Math.max(labour, Math.round((device.marketValue * (0.08 + 0.06 * fault.tier)) / 5) * 5);
+  const quote = Math.round(Math.max(labour, Math.round((device.marketValue * (0.08 + 0.06 * fault.tier)) / 5) * 5) * (device.cert?.premium ?? 1));
   const customer = rng.pick(CUSTOMERS);
   return {
     seed,
@@ -409,6 +426,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     quote,
     customer,
     kind: opts.kind ?? 'customer',
+    ...(device.cert ? { cert: { authority: device.cert.authority, fee: device.cert.fee, coated: device.cert.coated, violations: [], attempts: 0 } } : {}),
     ...(accessory ? { accessory } : {}),
     ...(hung ? { hung } : {}),
     ...(drive ? { drive } : {}),

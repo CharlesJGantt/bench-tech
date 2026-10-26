@@ -129,12 +129,38 @@ export interface FaceSpec {
   hinge?: number;
 }
 
+/**
+ * Certified work (avionics, orbital, military, some automotive): the repair has to be analysed and signed off before
+ * the customer pays. Certified parts and consumables only, no flux left behind, conformal coating restored, and
+ * stricter heat limits on the joints.
+ */
+export interface CertSpec {
+  /** Who signs it off (fictional): JEFFA, MIL-SPEC, ORBITAL... */
+  authority: string;
+  /** The customer pays this multiple of the normal quote. */
+  premium: number;
+  /** Lab fee for each analysis (paid up front, lost on a fail). */
+  fee: number;
+  /** Conformal-coated board: the coating must come off the repair area and go back on. */
+  coated: boolean;
+  /** Rush work: a short deadline (days) and overnight delivery of parts expected. */
+  dueDays: number;
+  /** Only certified parts may be fitted (default true). */
+  certifiedParts?: boolean;
+  /** Only certified solder and flux (default true). */
+  certifiedConsumables?: boolean;
+  /** Stricter heat limits on pads (default true). */
+  strictHeat?: boolean;
+}
+
 export interface DeviceDef {
   id: string;
   name: string;
   category: string;
   /** One line for the marketplace / tickets. */
   tagline: string;
+  /** Certified work: analysed and signed off before payment (see CertSpec). */
+  cert?: CertSpec;
   width: number;
   height: number;
   components: ComponentDef[];

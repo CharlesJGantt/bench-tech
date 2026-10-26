@@ -29,6 +29,8 @@ export interface SavedBoard {
       brightened?: string[];
       debris?: { lint: number; packed: number; loose: number };
       bent?: string[];
+      certified?: boolean;
+      coat?: 'on' | 'removed' | 'reapplied';
     }
   >;
   traces: Record<string, { broken: boolean }>;
@@ -53,7 +55,7 @@ export function saveBoard(b: BoardState): SavedBoard {
     const joints: SavedBoard['comps'][string]['joints'] = {};
     for (const [pin, j] of Object.entries(c.joints)) joints[pin] = { ...j, r: encR(j.r) };
     const fault = c.fault?.type === 'short' ? { ...c.fault } : c.fault;
-    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}), ...(c.oxide ? { oxide: { ...c.oxide }, brightened: [...(c.brightened ?? [])] } : {}), ...(c.debris ? { debris: { ...c.debris } } : {}), ...(c.bent ? { bent: [...c.bent] } : {}) };
+    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}), ...(c.oxide ? { oxide: { ...c.oxide }, brightened: [...(c.brightened ?? [])] } : {}), ...(c.debris ? { debris: { ...c.debris } } : {}), ...(c.bent ? { bent: [...c.bent] } : {}), ...(c.certified ? { certified: true } : {}), ...(c.coat ? { coat: c.coat } : {}) };
   }
   return {
     deviceId: b.device.id,
@@ -90,6 +92,8 @@ export function loadBoard(s: SavedBoard): BoardState {
     }
     if (c.debris) comp.debris = { ...c.debris };
     if (c.bent) comp.bent = [...c.bent];
+    if (c.certified) comp.certified = true;
+    if (c.coat) comp.coat = c.coat;
     migrateCorrosion(comp);
   }
   b.traces = structuredClone(s.traces);

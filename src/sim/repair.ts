@@ -5,6 +5,7 @@ import { CLEAN_CRUST, corrodedRefs } from './corrosion';
 import { casePartPrice, enclosureIssues } from './enclosure';
 import { contactIssues } from './contacts';
 import { ACCESSORY_PRICE, cable, charger } from './accessories';
+import { certPrice } from '../business/economy';
 
 /** Outcome of a soldering action, from the soldering minigame. */
 export type SolderQuality = 'good' | 'cold' | 'overheated';
@@ -145,6 +146,8 @@ export interface Evaluation {
   /** Parts fitted during the repair, billed to the customer on top of the labour quote. */
   partsBilled: number;
   partsCost: number;
+  /** Certified work: the analysis lines (empty for ordinary jobs). */
+  certLines: { ok: boolean; text: string }[];
   reputation: number;
 }
 
@@ -154,6 +157,32 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   if (job.faults.some((f) => f.variant === 'service-overheat') && (job.enclosure?.dusty || job.enclosure?.dried?.length)) {
     report.checks.push({ label: 'Runs cool after the service', ok: false });
     report.passed = false;
+  }
+  // Certified work: certified parts and consumables only, no flux left, coating restored
+  const certLines: { ok: boolean; text: string }[] = [];
+  if (job.cert) {
+    const spec = job.device.cert;
+    certLines.push({ ok: report.passed, text: 'Functional acceptance test' });
+    if (spec?.certifiedParts !== false) {
+      const bad = Object.values(b.comps).filter((c) => c.replaced && c.part && c.part.kind !== 'testpoint' && !c.certified).map((c) => c.ref);
+      certLines.push({ ok: !bad.length, text: bad.length ? `Uncertified parts fitted: ${bad.join(', ')}` : 'Only certified parts fitted' });
+    }
+    if (spec?.certifiedConsumables !== false) {
+      const v = job.cert.violations;
+      certLines.push({ ok: !v.length, text: v.length ? `Uncertified consumables used (${[...new Set(v)].join(', ')})` : 'Only certified solder and flux used' });
+    }
+    const dirty = Object.values(b.comps).filter((c) => c.marks.includes('rework-residue') || c.marks.includes('residue') && c.replaced).map((c) => c.ref);
+    certLines.push({ ok: !dirty.length, text: dirty.length ? `Flux residue left on the board (${dirty.join(', ')})` : 'No flux residue' });
+    const burnt = Object.values(b.comps).filter((c) => c.burnt || c.marks.includes('scorch')).map((c) => c.ref);
+    certLines.push({ ok: !burnt.length, text: burnt.length ? `Heat damage found at ${burnt.join(', ')}` : 'No heat damage at the joints' });
+    if (job.cert.coated) {
+      const open = Object.values(b.comps).filter((c) => c.coat === 'removed').map((c) => c.ref);
+      certLines.push({ ok: !open.length, text: open.length ? `Conformal coating not restored at ${open.join(', ')}` : 'Conformal coating intact' });
+    }
+    if (certLines.some((l) => !l.ok)) {
+      report.checks.push({ label: 'Certification analysis', ok: false });
+      report.passed = false;
+    }
   }
   // Service jobs on a healthy device: hard reset, drive, disc
   if (job.hung) {
@@ -234,11 +263,11 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
 
   const residuePenalty = uniqueNotes.some((n) => n.startsWith('Sticky flux')) ? 1 : 0;
   // Parts you fitted are charged at cost plus 50 %, on top of the quote (the labour)
-  const partsBilledParts = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
+  const partsBilledParts = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? (c.certified ? certPrice(c.part.cost) : c.part.cost) * 1.5 : 0), 0));
   const caseBilled = Math.round((encSt?.fitted ?? []).reduce((t, id) => t + (job.device.enclosure?.items.find((i) => i.id === id) ? casePartPrice(job.device.enclosure.items.find((i) => i.id === id)!, job.device.marketValue) * 1.5 : 0), 0));
   const driveBilled = dr?.replaced ? Math.round(Math.max(25, job.device.marketValue * 0.12) * 1.5) : 0;
   const partsBilled = partsBilledParts + caseBilled + driveBilled + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
   const payout = outcome === 'not-fixed' ? 0 : job.quote + partsBilled;
   const reputation = outcome === 'fixed' ? 5 - residuePenalty : outcome === 'comeback' ? -4 : -3;
-  return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation };
+  return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation, certLines };
 }

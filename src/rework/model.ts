@@ -83,6 +83,8 @@ export interface PlacedPart {
   angle: number;
   /** The part that was on the board when the session started. */
   original: boolean;
+  /** A certified (lot-traceable) part taken from certified stock. */
+  certified?: boolean;
   /** Body temperature (°C) and plastic damage for heat-sensitive parts. */
   bodyTemp: number;
   heatDamage: number;
@@ -95,7 +97,9 @@ export interface Kit {
   nozzle: { heat: number; radius: number; name: string };
   wick: WickDef;
   flux: FluxSupply;
-  solder: 'solder' | 'lowmelt';
+  solder: 'solder' | 'lowmelt' | 'solder-cert';
+  /** Certified work: pads take less heat before they are damaged. */
+  strict?: boolean;
   /** Liquid the IPA tool applies. */
   liquid: Liquid;
   /** Current brush wear, 0 (new) .. 1 (worn out). */
@@ -303,11 +307,12 @@ export function rotatable(p: PlacedPart): boolean {
   return pinsOf(p.spec).length === 2;
 }
 
-export function pickFromTray(st: ReworkState, partNo: string): void {
+export function pickFromTray(st: ReworkState, partNo: string, certified = false): void {
   if (st.held) say(st, 'You are already holding a part.');
   else if (!fits(st, partNo)) say(st, 'That part does not fit this footprint.');
   else {
     st.held = newPlaced(part(partNo), false);
+    if (certified) st.held.certified = true;
     st.partsUsed.push(partNo);
     say(st, `Picked up a ${part(partNo).label} with the tweezers.`);
   }
@@ -599,8 +604,9 @@ export function step(st: ReworkState, dt: number, input: ReworkInput): void {
     }
 
     // Heat damage: too hot, or held molten too long
-    if (p.temp > 380) p.damage += dt * ((p.temp - 380) / 45);
-    if (p.molten > 6) p.damage += dt * 0.18;
+    const hot = st.kit.strict ? 345 : 380;
+    if (p.temp > hot) p.damage += dt * ((p.temp - hot) / 45);
+    if (p.molten > (st.kit.strict ? 4 : 6)) p.damage += dt * 0.18;
     if (p.damage >= 1 && !p.lifted) {
       p.lifted = true;
       p.solder = 0;
@@ -766,6 +772,7 @@ export function applyRework(b: BoardState, st: ReworkState): string {
       c.fault = null;
       c.burnt = false;
       c.replaced = true;
+      c.certified = !!st.part.certified;
       c.marks = c.marks.filter((m) => !['crooked', 'loose', 'bent-pin', 'bulged', 'discolored'].includes(m));
       notes.push(`fitted ${st.part.spec.label}${st.part.reversed ? ' (turned round)' : ''}`);
     }

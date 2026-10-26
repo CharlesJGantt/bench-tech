@@ -415,6 +415,12 @@ export class Hud {
         this.toast(r.text, r.ok ? undefined : 'bad');
         break;
       }
+      case 'coat-remove':
+      case 'coat-reapply': {
+        const r = act === 'coat-remove' ? s.removeCoating(d.ref!) : s.reapplyCoating(d.ref!);
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
       case 'hard-reset':
       case 'drive-image':
       case 'drive-replace': {
@@ -757,6 +763,10 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       this.toast('Open the case first (🔧 Case on the ticket) — you cannot get a microscope on a board inside its case.');
       return;
     }
+    if (s.board.comps[ref]?.coat === 'on') {
+      this.toast('This area is under conformal coating. Remove the coating first (grinding pen + coating remover, in the part panel), then rework it.', 'bad');
+      return;
+    }
     if (!this.liveBoardCheck(ref)) return;
     const m = $('#modal');
     m.className = 'show rework';
@@ -1089,6 +1099,14 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       .join('');
     const hint = job.faults[0] ? `<p class="muted">A pro would start with: ${esc(job.faults[0].hint)}</p>` : '';
 
+    if (res.kind === 'cert-failed') {
+      const spec = job.device.cert;
+      this.modal(`<h2>🏛 ${esc(spec?.authority ?? 'Certification')} analysis: FAILED</h2>
+        <p>The lab took its $${res.fee} fee and found problems. The customer will not pay until the repair passes. Fix these and submit again (another fee).</p>
+        <ul class="checks">${res.lines.map((l) => line(l.ok, esc(l.text))).join('')}</ul>
+        <div class="row"><button class="big primary" data-act="close">Back to the bench</button></div>`, 'wide');
+      return;
+    }
     if (res.kind === 'gave-up') {
       this.modal(`<h2>Handed back unrepaired</h2><p>${esc(job.customer)} takes it away. No payment, and a small dent in your reputation.</p><h3>What was actually wrong</h3>${truth}${hint}${back}`, 'wide');
       return;
@@ -1104,7 +1122,8 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     }
     const ev = res.evaluation;
     const r = ev.report;
-    const tests = `<h3>Functional test</h3><ul class="checks">
+    const certHtml = job.cert?.report?.passed ? `<h3>🏛 ${esc(job.device.cert?.authority ?? 'Certification')} certificate</h3><ul class="checks">${job.cert.report.lines.map((l) => line(l.ok, esc(l.text))).join('')}</ul>` : '';
+    const tests = `${certHtml}<h3>Functional test</h3><ul class="checks">
         ${r.checks.map((c) => line(c.ok, esc(c.label))).join('')}
         ${r.events.length ? line(false, `Something failed during use: ${r.events.map((e) => esc(e.message)).join(', ')}`) : ''}
       </ul>
@@ -1371,6 +1390,16 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       <div class="row"><button data-act="port-flip" data-flipped="${flipped ? '0' : '1'}">↻ Flip the tester</button><button data-act="close">Done</button></div>`);
   }
 
+  /** Certified work: what the sign-off needs, and the deadline. */
+  private certRow(): string {
+    const s = this.s;
+    const job = s.job;
+    const spec = job.device.cert;
+    if (!job.cert || !spec) return '';
+    const left = job.cert.dueDay !== undefined ? job.cert.dueDay - s.shop.day : null;
+    return `<div class="note small cert-note"><b>🏛 ${esc(spec.authority)} certified work.</b> Certified parts and certified solder and flux only; no flux residue left; ${spec.coated ? 'conformal coating taken off the repair area and put back; ' : ''}gentler heat on the joints. The customer pays only after the lab passes it ($${spec.fee} per analysis).${left !== null ? ` Rush job: ${left >= 0 ? `due in ${left} day${left === 1 ? '' : 's'}` : `${-left} day${left === -1 ? '' : 's'} overdue (40 % less pay)`}.` : ''}${job.cert.attempts ? ` Analyses so far: ${job.cert.attempts}.` : ''}</div>`;
+  }
+
   /** Hard reset, drive and disc service jobs. */
   private serviceRow(): string {
     const job = this.s.job;
@@ -1432,7 +1461,8 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
       ${debug}${nudge}${this.accessoryRow()}${this.serviceRow()}${this.portRow()}${this.caseRow()}
       ${job.device.cartFor ? '<div class="row"><button data-act="station">📺 Test Station</button></div>' : ''}
-      <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
+      ${this.certRow()}
+      <div class="row"><button class="primary" data-act="return">${job.cert ? `🏛 Submit for certification ($${job.device.cert?.fee ?? 0})` : 'Return to customer'}</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>
       <div class="row"><button data-act="pause">Pause → office</button>${job.kind === 'customer' ? '<button data-act="give-up">Give up</button>' : ''}</div>`;
   }
@@ -1514,6 +1544,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
+        ${c.coat === 'on' ? `<button data-act="coat-remove" data-ref="${ref}" title="Grinding pen and coating remover: the coating comes off around this part">🧴 Remove the conformal coating (3 ml)</button>` : ''}${c.coat === 'removed' ? `<button data-act="coat-reapply" data-ref="${ref}" title="Re-seal the repair area (UV cure)">🛡 Put the coating back (2 ml)</button>` : ''}
         ${c.marks.includes('pptc-high') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Heat it with the hot air, nothing masked">🔥 Heat it with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then heat (${KAPTON_PER_RESET} cm)</button>` : ''}
         ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port through the microscope">🔦 Look into the port (microscope)</button>` : ''}
       </div>`

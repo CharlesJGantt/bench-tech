@@ -129,6 +129,21 @@ Second and third locations run by staff (stretch goal): TODO.
 | Liquid damage indicator stickers on the PCB (beside ports, battery connector, game slot, main chip): white when dry, red where liquid reached; the inspector points at a red one | DONE |
 | Real 3D camera tip-up of the board (the end view is a drawn view, not a camera move) | PARTIAL |
 
+## 11b. Certified work (new request: avionics, orbital, military, some automotive)
+| Request | Status |
+|---|---|
+| Certified parts (a higher tier of existing parts at a higher price): certified stock per part, ordered separately at 8x the price, picked in the rework tray, billed at certified prices | DONE |
+| Certified consumables that cost a lot more: certified solder (25 g, $120), certified no-residue flux ($95) | DONE |
+| Repair analysed and certified before payment: lab fee per analysis, itemised pass / fail report, customer pays only on a pass | DONE |
+| Conformal coating: remove around the repair area (pen grinder + remover), put it back (coating + UV lamp), analysis fails if left off | DONE |
+| Flux must not be left on the board; stricter heat limit on the joints; uncertified solder / flux recorded as violations | DONE |
+| Premium quote, rush deadline (late hand-in pays 40 % less; customer leaves after the deadline), certified jobs excluded from the service jobs | DONE |
+| Overnight delivery requirement for rush parts | PARTIAL (the deadline makes express orders the only option; no hard rule) |
+| `DeviceDef.cert` flag so any new device can be certified work | DONE |
+| The certified devices themselves (Fessna, Eagle, F28, Scamborgeenee, MeHari, D Wagon Flex, Zeeya, NIGHTGLASS, naval, orbital, launch) | TODO (see DEVICE_BACKLOG.md) |
+| Radio / IR tester tool for remotes and key fobs; CAN diagnostics pad for engine modules | TODO |
+| Extra service fees ("pretentious customer fee") on high-end automotive | TODO |
+
 ## 12. USB meter and diagnosis tools (messages 129-132 and the pasted list)
 Boot pull / settle / charge ramp, no-battery fluctuation, short brown-out, fast-charge negotiation, charger and cable
 comparison, charge counter and capacity test, prompt-to-boot current curve, USB port diode tester, drive imager:

@@ -25,7 +25,7 @@ import {
 } from '../rework/model';
 import type { Session } from '../game/session';
 import { FLUX_GRADES, NOT_SOLD, SUPPLIES, TOOLS as KIT_TOOLS, WICKS, tool as toolDef, type SupplyId } from '../business/economy';
-import { isSpecialOrder, returnPart, rushBuy, rushPrice, stockOf, takePart } from '../business/shop';
+import { isSpecialOrder, returnPart, rushBuy, rushPrice, stockOf, takeCertPart, takePart } from '../business/shop';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -319,7 +319,7 @@ export class ReworkStation {
       sel('nozzle', 'Nozzle', owned('nozzle'), k.nozzle),
       sel('wick', 'Wick', stocked(Object.keys(WICKS) as SupplyId[]), k.wick),
       sel('flux', 'Flux', stocked(Object.keys(FLUX_GRADES) as SupplyId[]), k.flux),
-      sel('solder', 'Solder', stocked(['solder', 'lowmelt']), k.solder),
+      sel('solder', 'Solder', stocked(['solder', 'lowmelt', 'solder-cert']), k.solder),
       sel('liquid', 'Cleaning liquid', stocked(['ipa', 'flux-cleaner', 'corrosion-cleaner']), k.liquid ?? 'ipa'),
     ].join('');
   }
@@ -339,7 +339,7 @@ export class ReworkStation {
 
   private trayParts: string[] = [];
   /** Parts taken from shop stock during this session (returned on Cancel). */
-  private taken: { partNo: string; kind: 'new' | 'used' }[] = [];
+  private taken: { partNo: string; kind: 'new' | 'used' | 'cert' }[] = [];
 
   /** Parts tray backed by the shop's real stock. */
   private renderTray(): void {
@@ -351,6 +351,8 @@ export class ReworkStation {
         const p = PARTS[partNo];
         const sl = stockOf(shop, partNo);
         const btns: string[] = [];
+        if (this.session.job.cert && sl.cert) btns.push(`<button data-rw-part="${partNo}" data-rw-kind="cert" title="Certified, lot-traceable part">Certified (${sl.cert})</button>`);
+        if (this.session.job.cert && !sl.cert) btns.push('<span class="muted small">no certified stock: order it (Supplies tab)</span>');
         if (sl.new) btns.push(`<button data-rw-part="${partNo}" data-rw-kind="new">New (${sl.new})</button>`);
         if (sl.used) btns.push(`<button data-rw-part="${partNo}" data-rw-kind="used" title="Salvaged from a donor board">Used (${sl.used})</button>`);
         if (!sl.new && !sl.used)
@@ -366,13 +368,22 @@ export class ReworkStation {
       .join('');
   }
 
-  private takeFromTray(partNo: string, kind: 'new' | 'used' | 'rush'): void {
+  private takeFromTray(partNo: string, kind: 'new' | 'used' | 'rush' | 'cert'): void {
     const shop = this.session.shop;
     if (this.st.held) {
       pickFromTray(this.st, partNo); // explains that the tweezers are full
       return;
     }
     if (kind === 'rush' && !rushBuy(shop, partNo)) return;
+    if (kind === 'cert') {
+      if (!takeCertPart(shop, partNo)) return;
+      this.taken.push({ partNo, kind: 'cert' });
+      pickFromTray(this.st, partNo, true);
+      this.setTool('tweezers');
+      this.renderTray();
+      this.session.save();
+      return;
+    }
     const got = takePart(shop, partNo, kind === 'used' ? 'used' : 'new');
     if (!got) return;
     this.taken.push({ partNo, kind: got });

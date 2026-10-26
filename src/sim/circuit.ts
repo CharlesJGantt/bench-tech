@@ -78,6 +78,10 @@ export interface CompState {
   corr?: Corrosion;
   /** Connector contacts: oxide film per pin, 0..1 (see contacts.ts). */
   oxide?: Record<string, number>;
+  /** A certified (lot-traceable) part was fitted here. */
+  certified?: boolean;
+  /** Conformal coating: on, removed for the repair, or re-applied. */
+  coat?: 'on' | 'removed' | 'reapplied';
   /** Port packed with lint and grime (see portclean.ts). */
   debris?: { lint: number; packed: number; loose: number };
   /** Port contacts bent flat: only a new port fixes them. */

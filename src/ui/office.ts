@@ -1,4 +1,4 @@
-import { ADS, LOCATIONS, locationDef, STAFF_CAP, STAFF_LEVELS, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
+import { certPrice, ADS, LOCATIONS, locationDef, STAFF_CAP, STAFF_LEVELS, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
 import {
   adTier,
   availableDevices,
@@ -55,7 +55,7 @@ export function cartLines(cart: Cart): OrderLine[] {
     .filter(([, q]) => q > 0)
     .map(([k, qty]) => {
       const [kind, id] = k.split(':');
-      return { kind: kind as 'part' | 'supply', id, qty };
+      return kind === 'cpart' ? { kind: 'part' as const, id, qty, cert: true } : { kind: kind as 'part' | 'supply', id, qty };
     });
 }
 
@@ -274,6 +274,8 @@ function stock(s: Session, cart: Cart, speed: DeliveryId): string {
         <td class="num ${lvl <= d.low ? 'bad' : ''}">${lvl} ${d.unit}</td><td class="small muted">${esc(d.pack.label)} · ${money(d.pack.cost)}</td><td>${qtyCtl(`supply:${id}`)}</td></tr>`;
     })
     .join('');
+  // Parts that certified boards use: those can also be ordered as certified (lot-traceable) stock
+  const certParts = new Set(DEVICE_LIST.filter((d) => d.cert).flatMap((d) => d.components.map((c) => c.partNo)));
   const parts = Object.values(PARTS)
     .filter((p) => p.kind !== 'testpoint')
     .map((p) => {
@@ -288,7 +290,7 @@ function stock(s: Session, cart: Cart, speed: DeliveryId): string {
       return `<tr><td><b>${esc(p.label)}</b> <span class="muted small">${p.pkg}${p.marking ? ` · "${esc(p.marking)}"` : ''}</span></td>
         <td class="num ${sl.new + sl.used === 0 ? 'bad' : ''}">${sl.new}${sl.used ? ` <span class="muted">+${sl.used} used</span>` : ''}</td>
         <td class="small muted">${price}</td>
-        <td>${notSold ? '' : qtyCtl(`part:${p.partNo}`)}</td></tr>`;
+        <td>${notSold ? '' : qtyCtl(`part:${p.partNo}`)}${certParts.has(p.partNo) && !notSold ? `<div class="small muted">certified ${sl.cert ?? 0} · ${money(certPrice(p.cost))} ea</div>${qtyCtl(`cpart:${p.partNo}`)}` : ''}</td></tr>`;
     })
     .join('');
   const lines = cartLines(cart);
@@ -304,7 +306,7 @@ function stock(s: Session, cart: Cart, speed: DeliveryId): string {
       ${
         lines.length
           ? `<table class="bom">${lines
-              .map((l) => `<tr><td>${l.qty}× ${esc(l.kind === 'part' ? part(l.id).label : SUPPLIES[l.id as SupplyId].pack.label + ' ' + SUPPLIES[l.id as SupplyId].name.toLowerCase())}</td></tr>`)
+              .map((l) => `<tr><td>${l.qty}× ${esc(l.kind === 'part' ? (l.cert ? 'certified ' : '') + part(l.id).label : SUPPLIES[l.id as SupplyId].pack.label + ' ' + SUPPLIES[l.id as SupplyId].name.toLowerCase())}</td></tr>`)
               .join('')}<tr><td class="muted">${esc(ship.name)} shipping ${money(ship.cost)}</td></tr><tr class="total"><td><b>Total ${money(total)}</b></td></tr></table>
              <div class="speed-pick">${speeds}</div>
              <div class="row"><button class="primary" data-act="place-order">Place order — arrives ${ship.days === 1 ? 'tomorrow' : `day ${s.shop.day + ship.days}`}</button><button data-act="clear-cart">Clear</button></div>`

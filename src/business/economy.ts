@@ -30,7 +30,11 @@ export type SupplyId =
   | 'mask-blue'
   | 'mask-black'
   | 'kapton'
-  | 'disc-polish';
+  | 'disc-polish'
+  | 'solder-cert'
+  | 'flux-cert'
+  | 'coating-remover'
+  | 'conformal-coat';
 
 export interface SupplyDef {
   id: SupplyId;
@@ -162,6 +166,10 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
   'mask-blue': { id: 'mask-blue', name: 'UV solder mask, blue', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a blue solder mask.' },
   'mask-black': { id: 'mask-black', name: 'UV solder mask, black', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a black solder mask.' },
   kapton: { id: 'kapton', name: 'Kapton heat tape', unit: 'cm', pack: { qty: 1000, cost: 5, label: '10 m roll' }, start: 0, low: 0, blurb: 'Heat-proof tape: cover plastic connectors and parts that melt next to your hot air, then peel it off.' },
+  'solder-cert': { id: 'solder-cert', name: 'Certified solder (traceable lot)', unit: 'g', pack: { qty: 25, cost: 120, label: '25 g certified spool' }, start: 0, low: 0, blurb: 'Lot-traceable, certified alloy. Required for aviation, orbital and military boards. Far dearer than ordinary solder.' },
+  'flux-cert': { id: 'flux-cert', name: 'Certified no-residue flux', unit: 'ml', pack: { qty: 10, cost: 95, label: '10 ml certified syringe' }, start: 0, low: 0, blurb: 'Certified flux that cleans off completely. Required for certified boards, where flux must never be left behind.' },
+  'coating-remover': { id: 'coating-remover', name: 'Conformal coating remover', unit: 'ml', pack: { qty: 60, cost: 55, label: '60 ml bottle' }, start: 0, low: 0, blurb: 'Softens conformal coating around a repair area, used with the pen grinder. Needed before reworking a coated board.' },
+  'conformal-coat': { id: 'conformal-coat', name: 'Conformal coating (UV cure)', unit: 'ml', pack: { qty: 30, cost: 70, label: '30 ml bottle' }, start: 0, low: 0, blurb: 'Re-seals the repair area after rework; cured under the UV lamp. A certified board is not finished until its coating is back.' },
   'disc-polish': { id: 'disc-polish', name: 'Disc polishing compound', unit: 'ml', pack: { qty: 100, cost: 7, label: '100 ml bottle' }, start: 10, low: 0, blurb: 'Used with the disc buffer to polish scratches out of game discs.' },
 };
 
@@ -212,7 +220,8 @@ export const UNKNOWN_FLUX: FluxGrade = { wet: 0.7, clean: 0.08, residue: 1.4, bu
 export const LIQUIDS = ['ipa', 'flux-cleaner', 'corrosion-cleaner'] as const;
 export type Liquid = (typeof LIQUIDS)[number];
 
-export const FLUX_GRADES: Record<'flux-rosin' | 'flux-noclean' | 'flux-premium', FluxGrade> = {
+export const FLUX_GRADES: Record<'flux-rosin' | 'flux-noclean' | 'flux-premium' | 'flux-cert', FluxGrade> = {
+  'flux-cert': { wet: 1.4, clean: 2.2, residue: 0.25, burn: 0.55 },
   'flux-rosin': { wet: 0.8, clean: 0.45, residue: 1.6, burn: 1.3 },
   'flux-noclean': { wet: 1, clean: 1, residue: 1, burn: 1 },
   'flux-premium': { wet: 1.3, clean: 1.8, residue: 0.5, burn: 0.65 },
@@ -473,3 +482,7 @@ export const STARTING_STOCK: Record<string, number> = {
   'M-SPK4': 1,
 };
 
+
+/** Certified parts cost this many times the ordinary price (lot-traceable stock). */
+export const CERT_PART_MULT = 8;
+export const certPrice = (cost: number): number => Math.max(12, Math.round(cost * CERT_PART_MULT * 100) / 100);

@@ -6,7 +6,7 @@
 import type { DeviceDef } from '../sim/board';
 import { DEVICE_LIST, DEVICES } from '../sim/devices';
 import { cloneBoard, functionalTest, type BoardState } from '../sim/circuit';
-import { STAFF_CAP, STAFF_LEVELS } from './economy';
+import { certPrice, STAFF_CAP, STAFF_LEVELS } from './economy';
 import { usesUsbCharger } from '../sim/accessories';
 import { canServiceCooling, generateJob, Rng, type Job, type Tier } from '../sim/faults';
 import { part, PARTS } from '../sim/parts';
@@ -51,12 +51,16 @@ export interface StockLevel {
   new: number;
   /** Salvaged from donor boards. */
   used: number;
+  /** Certified, lot-traceable parts (for certified work only). */
+  cert?: number;
 }
 
 export interface OrderLine {
   kind: 'part' | 'supply';
   id: string;
   qty: number;
+  /** A certified part (costs several times more). */
+  cert?: boolean;
 }
 
 export interface Order {
@@ -414,8 +418,18 @@ export function takePart(st: ShopState, partNo: string, prefer: 'new' | 'used' =
   return null;
 }
 
-export function returnPart(st: ShopState, partNo: string, kind: 'new' | 'used'): void {
-  (st.stock[partNo] ??= { new: 0, used: 0 })[kind]++;
+export function returnPart(st: ShopState, partNo: string, kind: 'new' | 'used' | 'cert'): void {
+  const sl = (st.stock[partNo] ??= { new: 0, used: 0 });
+  if (kind === 'cert') sl.cert = (sl.cert ?? 0) + 1;
+  else sl[kind]++;
+}
+
+/** Take one certified part from stock. */
+export function takeCertPart(st: ShopState, partNo: string): boolean {
+  const sl = (st.stock[partNo] ??= { new: 0, used: 0 });
+  if (!sl.cert) return false;
+  sl.cert--;
+  return true;
 }
 
 export function rushPrice(partNo: string): number {
@@ -489,7 +503,7 @@ export function migrateShop(st: ShopState): ShopState {
 /** Price an order (shipping charged once per order, by delivery service). */
 export function orderCost(lines: OrderLine[], speed: DeliveryId = 'standard'): number {
   let cost = 0;
-  for (const l of lines) cost += l.kind === 'part' ? part(l.id).cost * l.qty : SUPPLIES[l.id as SupplyId].pack.cost * l.qty;
+  for (const l of lines) cost += l.kind === 'part' ? (l.cert ? certPrice(part(l.id).cost) : part(l.id).cost) * l.qty : SUPPLIES[l.id as SupplyId].pack.cost * l.qty;
   return round2(cost + (lines.length ? delivery(speed).cost : 0));
 }
 
@@ -500,7 +514,7 @@ export function placeOrder(st: ShopState, lines: OrderLine[], speed: DeliveryId 
   const cost = orderCost(lines, speed);
   const o: Order = { id: st.nextId++, placed: st.day, arrives: st.day + delivery(speed).days, lines, cost, speed };
   st.orders.push(o);
-  const desc = lines.map((l) => (l.kind === 'part' ? `${l.qty}× ${part(l.id).label}` : `${l.qty}× ${SUPPLIES[l.id as SupplyId].pack.label} ${SUPPLIES[l.id as SupplyId].name.toLowerCase()}`)).join(', ');
+  const desc = lines.map((l) => (l.kind === 'part' ? `${l.qty}× ${l.cert ? 'certified ' : ''}${part(l.id).label}` : `${l.qty}× ${SUPPLIES[l.id as SupplyId].pack.label} ${SUPPLIES[l.id as SupplyId].name.toLowerCase()}`)).join(', ');
   book(st, lines.every((l) => l.kind === 'supply') ? 'supplies' : 'parts', -cost, `Supplier order #${o.id}: ${desc}`);
   return o;
 }
@@ -534,7 +548,7 @@ function newCustomer(st: ShopState): QueuedJob {
   const dev = pickDevice(st, r);
   // Now and then the complaint is just "it gets too hot": a cleaning service, not a fault
   const roll = r.next();
-  const service =
+  const service = dev.cert ? undefined :
     canServiceCooling(dev) && roll < 0.2
       ? ('overheat' as const)
       : usesUsbCharger(dev) && roll > 0.88
@@ -548,6 +562,7 @@ function newCustomer(st: ShopState): QueuedJob {
               : undefined;
   const job = generateJob(dev, Math.floor(r.next() * 1e9), { maxTier: maxTier(st.reputation), service });
   job.quote = Math.round(job.quote * adTier(st).quoteMult);
+  if (job.cert && dev.cert) job.cert.dueDay = st.day + dev.cert.dueDays;
   return { id: st.nextId++, kind: 'customer', customer: job.customer, complaint: job.complaint, quote: job.quote, arrived: st.day, job: saveJob(job) };
 }
 
@@ -973,7 +988,11 @@ export function endDay(st: ShopState): DayReport {
 
   for (const o of st.orders.filter((x) => x.arrives <= st.day)) {
     for (const l of o.lines) {
-      if (l.kind === 'part') (st.stock[l.id] ??= { new: 0, used: 0 }).new += l.qty;
+      if (l.kind === 'part') {
+        const sl = (st.stock[l.id] ??= { new: 0, used: 0 });
+        if (l.cert) sl.cert = (sl.cert ?? 0) + l.qty;
+        else sl.new += l.qty;
+      }
       else st.supplies[l.id as SupplyId] = round2(st.supplies[l.id as SupplyId] + SUPPLIES[l.id as SupplyId].pack.qty * l.qty);
     }
     report.deliveries.push(`Order #${o.id} delivered`);
@@ -1019,7 +1038,7 @@ export function endDay(st: ShopState): DayReport {
 
   // Customers who waited too long walk out
   const before2 = st.queue.length;
-  const patient = (q: QueuedJob) => (q.hold ? st.day <= q.hold.until : st.day - q.arrived <= 3);
+  const patient = (q: QueuedJob) => (q.hold ? st.day <= q.hold.until : q.job.cert?.dueDay !== undefined ? st.day <= q.job.cert.dueDay : st.day - q.arrived <= 3);
   st.queue = st.queue.filter((q) => q.kind === 'warranty' || patient(q) || (st.active?.kind === 'customer' && st.active.id === q.id));
   report.walkouts = before2 - st.queue.length;
   st.reputation = Math.max(0, st.reputation - report.walkouts);
