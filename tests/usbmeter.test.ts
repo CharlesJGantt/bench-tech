@@ -48,7 +48,7 @@ describe('battery capacity test', () => {
       const v = d.variants.find((x) => x.id.endsWith('battery-worn'));
       if (!v) continue;
       const job = generateJob(d, 3, { variant: v.id });
-      const worn = chargeTest(job.board, 0.8);
+      const worn = chargeTest(job.board, 3);
       const bad = Object.values(job.board.comps).find((c) => c.fault?.type === 'worn')!;
       expect(batteryHealth(bad)).toBeLessThan(0.6);
       if (worn) {
@@ -56,7 +56,7 @@ describe('battery capacity test', () => {
         expect(capacityVerdict(worn).ok).toBe(false);
       }
       bad.fault = null;
-      const fine = chargeTest(job.board, 0.8);
+      const fine = chargeTest(job.board, 3);
       if (fine) expect(capacityVerdict(fine).ok).toBe(true);
       tested++;
     }

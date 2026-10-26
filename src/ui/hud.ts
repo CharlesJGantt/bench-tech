@@ -16,6 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
+import { ACCESSORY_PRICE } from '../sim/accessories';
 import { capacityVerdict, usbMeterNow } from '../game/explain';
 import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
 
@@ -400,6 +401,17 @@ export class Hud {
       case 'attach':
         s.toggleAttach(d.id!);
         break;
+      case 'meter-charger':
+        s.cycleCharger();
+        break;
+      case 'meter-cable':
+        s.cycleCable();
+        break;
+      case 'sell-accessory': {
+        const r = s.sellAccessory(d.kind as 'charger' | 'cable');
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
       case 'meter-capacity': {
         const r = s.runCapacityTest();
         this.toast(r.text, r.ok ? undefined : 'bad');
@@ -955,8 +967,9 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   private usbMeterHtml(op: { srcV: number; srcI: number }): string {
     const s = this.s;
     if (!s.owns('usb-meter') || (s.powerMode !== 'adapter' && s.powerMode !== 'psu-jack')) return '';
-    const m = usbMeterNow(s.meterT, op.srcV, op.srcI, s.chargingIntoNothing);
-    return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W<br><span class="small">Counted ${s.meterMah.toFixed(2)} mAh · ${(s.meterMah * 0.005).toFixed(3)} Wh</span> <button data-act="meter-capacity" title="Fast-forward a full charge from empty and read the total">⏱ Capacity test</button>${s.lastCapacity ? `<br><span class="small ${capacityVerdict(s.lastCapacity).ok ? 'good' : 'warn'}"><b>${s.lastCapacity.deliveredMah} mAh</b> of ${s.lastCapacity.ratedMah} rated${s.guided ? ` — ${esc(capacityVerdict(s.lastCapacity).text)}` : ''}</span>` : ''}${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
+    const view = s.chargeView(op.srcI);
+    const m = usbMeterNow(s.meterT, view.path.volts, view.path.amps, s.chargingIntoNothing);
+    return `<div class="usb-meter"><b>🔌 USB meter</b> <button data-act="meter-charger" title="Try a different charger">⚡ ${esc(view.charger.name)}</button><button data-act="meter-cable" title="Try a different cable">🔗 ${esc(view.cable.name)}</button><br>${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W<br><span class="small">Counted ${s.meterMah.toFixed(2)} mAh · ${(s.meterMah * 0.005).toFixed(3)} Wh</span> <button data-act="meter-capacity" title="Fast-forward a full charge from empty and read the total">⏱ Capacity test</button>${s.lastCapacity ? `<br><span class="small ${capacityVerdict(s.lastCapacity).ok ? 'good' : 'warn'}"><b>${s.lastCapacity.deliveredMah} mAh</b> of ${s.lastCapacity.ratedMah} rated${s.guided ? ` — ${esc(capacityVerdict(s.lastCapacity).text)}` : ''}</span>` : ''}${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>${m.done ? `<br><span class="small">${esc(view.path.note)}</span>` : ''}` : ''}</div>`;
   }
 
   private renderOffice(): void {
@@ -1256,6 +1269,14 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   }
 
   /** Case status and the button to the teardown station. */
+  /** Accessory-service jobs: sell the customer a new charger / cable once the meter shows theirs is worn out. */
+  private accessoryRow(): string {
+    const acc = this.s.job.accessory;
+    if (!acc) return '';
+    const btn = (kind: 'charger' | 'cable', sold?: boolean) => `<button data-act="sell-accessory" data-kind="${kind}" ${sold ? 'disabled' : ''}>${sold ? `✔ New ${kind} sold` : `Sell a new ${kind} ($${ACCESSORY_PRICE[kind]})`}</button>`;
+    return `<p class="note small">They brought their own charger and cable. Try them on the USB meter (⚡ and 🔗 buttons) against yours.</p><div class="row">${btn('charger', acc.chargerSold)}${btn('cable', acc.cableSold)}</div>`;
+  }
+
   private caseRow(): string {
     const s = this.s;
     const def = s.encDef;
@@ -1295,7 +1316,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ${job.previousRepairNote ? `<p class="quote">“${esc(job.previousRepairNote)}”</p>` : ''}
       <p class="complaint">“${esc(job.complaint)}”</p>
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
-      ${debug}${nudge}${this.caseRow()}
+      ${debug}${nudge}${this.accessoryRow()}${this.caseRow()}
       ${job.device.cartFor ? '<div class="row"><button data-act="station">📺 Test Station</button></div>' : ''}
       <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>

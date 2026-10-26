@@ -27,6 +27,7 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd } from '../sim/accessories';
 import { capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
@@ -223,6 +224,8 @@ export class Session {
     this.jumperStart = null;
     this.lastCapacity = null;
     this.meterMah = 0;
+    this.testCharger = 'bench-pd';
+    this.testCable = 'good';
     this.selected = null;
     this.scopePoint = null;
     this.jumperStart = null;
@@ -475,6 +478,57 @@ export class Session {
     return slots.length > 0 && slots.every((c) => !batteryConnected(this.board, c) || c.fault?.type === 'worn');
   }
 
+  /** Bench charger and cable the USB meter is plugged through (cycle them to compare). */
+  testCharger = 'bench-pd';
+  testCable = 'good';
+
+  get chargerChoices(): string[] {
+    return [...CHARGERS.filter((c) => !c.bad).map((c) => c.id), ...(this.job.accessory ? [this.job.accessory.charger] : [])];
+  }
+  get cableChoices(): string[] {
+    return [...CABLES.filter((c) => !c.bad).map((c) => c.id), ...(this.job.accessory ? [this.job.accessory.cable] : [])];
+  }
+
+  cycleCharger(): void {
+    const l = this.chargerChoices;
+    this.testCharger = l[(l.indexOf(this.testCharger) + 1) % l.length];
+    this.meterT = 0;
+    this.meterMah = 0;
+    this.emit();
+  }
+  cycleCable(): void {
+    const l = this.cableChoices;
+    this.testCable = l[(l.indexOf(this.testCable) + 1) % l.length];
+    this.meterT = 0;
+    this.meterMah = 0;
+    this.emit();
+  }
+
+  /** What the meter sees: the device's appetite pushed through the chosen charger and cable. */
+  chargeView(need5A: number) {
+    const path = chargePath(need5A, devicePd(this.board.device), charger(this.testCharger), cable(this.testCable));
+    return { path, charger: charger(this.testCharger), cable: cable(this.testCable) };
+  }
+
+  /** Sell the customer a new charger or cable (accessory-service jobs). */
+  sellAccessory(kind: 'charger' | 'cable'): { ok: boolean; text: string } {
+    const acc = this.job.accessory;
+    if (!acc) return { ok: false, text: 'This customer did not bring a charger or cable.' };
+    if (kind === 'charger') {
+      if (acc.chargerSold) return { ok: false, text: 'You already sold them a charger.' };
+      acc.chargerSold = true;
+      this.testCharger = 'bench-pd';
+    } else {
+      if (acc.cableSold) return { ok: false, text: 'You already sold them a cable.' };
+      acc.cableSold = true;
+      this.testCable = 'good';
+    }
+    const text = `Sold the customer a new ${kind} ($${ACCESSORY_PRICE[kind]}).`;
+    this.addLog('action', text);
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
   /** Seconds since the device was plugged in (drives the USB meter's boot / settle / charge curve). */
   meterT = 0;
   /** Charge counted by the USB meter since plug-in (mAh), and the last capacity test. */
@@ -485,7 +539,7 @@ export class Session {
   runCapacityTest(): { ok: boolean; text: string } {
     if (!this.owns('usb-meter')) return { ok: false, text: 'You need a USB power meter.' };
     if (!this.op || (this.powerMode !== 'adapter' && this.powerMode !== 'psu-jack')) return { ok: false, text: 'Plug the device in through the meter first (adapter or bench-supply jack).' };
-    const r = chargeTest(this.board, usbMeterCurrent(99, this.op.srcI).amps);
+    const r = chargeTest(this.board, this.chargeView(this.op.srcI).path.watts);
     if (!r) return { ok: false, text: 'No charge is going into a battery: nothing to measure. Is there a battery fitted, and is it charging at all?' };
     this.lastCapacity = r;
     this.shop.usage.powerSeconds += Math.min(7200, r.hours * 3600);
@@ -637,7 +691,7 @@ export class Session {
     if (this.op) this.shop.usage.powerSeconds += dt;
     if (this.op && this.owns('usb-meter') && (this.powerMode === 'adapter' || this.powerMode === 'psu-jack') && this.meterT < METER_CHARGE_START + METER_RAMP + 0.5) {
       this.meterT += dt;
-      this.meterMah += (usbMeterCurrent(this.meterT, this.op.srcI, this.chargingIntoNothing).amps * dt * 1000) / 3600;
+      this.meterMah += (usbMeterCurrent(this.meterT, this.chargeView(this.op.srcI).path.amps, this.chargingIntoNothing).amps * dt * 1000) / 3600;
       this.emit();
     }
     this.board.cooling = coolingFor(this.encDef, this.enc);

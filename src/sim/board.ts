@@ -47,6 +47,8 @@ export interface PowerInput {
   minus: string;
   /** The owner's own charger / adapter. */
   adapter: { v: number; ilim: number; rint: number; label: string };
+  /** Highest fast-charge voltage this device negotiates (default: 9 V for USB-C, none for micro-USB). */
+  pd?: number;
   /** Sensible bench-PSU settings for this device. */
   psuV: number;
   psuI: number;

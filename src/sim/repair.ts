@@ -4,6 +4,7 @@ import { PIN_NAMES, part } from './parts';
 import { CLEAN_CRUST, corrodedRefs } from './corrosion';
 import { enclosureIssues } from './enclosure';
 import { contactIssues } from './contacts';
+import { ACCESSORY_PRICE, cable, charger } from './accessories';
 
 /** Outcome of a soldering action, from the soldering minigame. */
 export type SolderQuality = 'good' | 'cold' | 'overheated';
@@ -151,6 +152,16 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
     report.checks.push({ label: 'Runs cool after the service', ok: false });
     report.passed = false;
   }
+  // An accessory service is only done once every worn-out charger or cable has been replaced
+  const acc = job.accessory;
+  if (acc) {
+    const badCharger = charger(acc.charger).bad && !acc.chargerSold;
+    const badCable = cable(acc.cable).bad && !acc.cableSold;
+    if (badCharger || badCable) {
+      report.checks.push({ label: `The customer has a working ${badCharger && badCable ? 'charger and cable' : badCharger ? 'charger' : 'cable'}`, ok: false });
+      report.passed = false;
+    }
+  }
   const hidden: string[] = [];
   const notes: string[] = [];
   for (const c of Object.values(b.comps)) {
@@ -194,7 +205,8 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
 
   const residuePenalty = uniqueNotes.some((n) => n.startsWith('Sticky flux')) ? 1 : 0;
   // Parts you fitted are charged at cost plus 50 %, on top of the quote (the labour)
-  const partsBilled = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
+  const partsBilledParts = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
+  const partsBilled = partsBilledParts + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
   const payout = outcome === 'not-fixed' ? 0 : job.quote + partsBilled;
   const reputation = outcome === 'fixed' ? 5 - residuePenalty : outcome === 'comeback' ? -4 : -3;
   return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation };

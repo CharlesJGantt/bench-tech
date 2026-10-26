@@ -1196,11 +1196,11 @@ export interface CapacityResult {
 }
 
 /** A full charge from empty on the (connected) battery, as the meter's charge counter would total it. */
-export function chargeTest(b: BoardState, chargeAmps: number): CapacityResult | null {
+export function chargeTest(b: BoardState, chargeWatts: number): CapacityResult | null {
   const c = Object.values(b.comps).find((x) => batteryConnected(b, x) && x.part!.pkg !== 'COIN');
-  if (!c?.part || chargeAmps < 0.05) return null;
+  if (!c?.part || chargeWatts < 0.25) return null;
   const rated = ratedMah(c.part);
   const health = batteryHealth(c);
   const delivered = Math.round(rated * health * 1.05);
-  return { ref: c.ref, ratedMah: rated, deliveredMah: delivered, health, hours: delivered / 1000 / chargeAmps };
+  return { ref: c.ref, ratedMah: rated, deliveredMah: delivered, health, hours: ((delivered / 1000) * 3.8) / (chargeWatts * 0.9) };
 }

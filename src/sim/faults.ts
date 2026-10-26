@@ -3,6 +3,7 @@
  * module picks one, adds red herrings and optional extras (missing parts, a burnt PCB),
  * lets the owner keep using it (so damage propagates), and writes the ticket.
  */
+import { usesUsbCharger } from './accessories';
 import type { DeviceDef } from './board';
 import { newEnclosure, type EnclosureDef, type EnclosureState } from './enclosure';
 import { CORROSION_COLORS, corrode } from './corrosion';
@@ -187,6 +188,8 @@ export interface Job {
   title?: string;
   /** What the customer originally paid (cartridge home-test refunds are 10 % of it). */
   paid?: number;
+  /** An accessory-service job: the device is fine, the customer's charger and/or cable is not. */
+  accessory?: { charger: string; cable: string; chargerSold?: boolean; cableSold?: boolean };
   /** Last Test Station run on this job: day and whether the title screen came up. */
   stationTest?: { day: number; passed: boolean };
 }
@@ -210,7 +213,7 @@ export interface JobOptions {
   unrepairable?: boolean;
   kind?: Job['kind'];
   /** A cleaning service rather than a fault: an overheating device that needs its dust cleared and fresh paste. */
-  service?: 'overheat';
+  service?: 'overheat' | 'accessory';
 }
 
 /** Can this device have its cooling serviced (does it have a heatsink)? */
@@ -222,9 +225,23 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   const rng = new Rng(seed);
   const board = createBoard(device);
   const maxTier = opts.maxTier ?? 2;
-  const service = opts.service === 'overheat' && canServiceCooling(device);
+  const accessoryJob = opts.service === 'accessory' && usesUsbCharger(device);
+  const service = (opts.service === 'overheat' && canServiceCooling(device)) || accessoryJob;
+  let accessory: Job['accessory'];
   let fault: AppliedFault;
-  if (service) {
+  if (accessoryJob) {
+    const which = rng.pick(['charger', 'cable', 'both'] as const);
+    accessory = { charger: which === 'cable' ? 'bench-pd' : rng.pick(['customer-weak', 'customer-dead']), cable: which === 'charger' ? 'good' : rng.pick(['customer-frayed', 'customer-open']) };
+    fault = {
+      variant: 'service-accessory',
+      family: 'Bad charger or cable',
+      tier: 1,
+      summary: `Nothing is wrong with the device: the customer's ${which === 'both' ? 'charger and cable are' : which === 'charger' ? 'charger is' : 'cable is'} worn out. Show them with the USB meter and sell a new ${which === 'both' ? 'charger and cable' : which}.`,
+      refs: [],
+      hint: "Plug the device in with your own charger and cable: if it charges normally, the customer's accessory is the problem. Swap them one at a time on the USB meter to find which is bad, then sell a replacement.",
+      flavor: rng.pick(['It will not charge any more, or only if I hold the cable just right.', 'It takes forever to charge now, and sometimes does not charge at all.', 'My phone charger stopped working with this. Is it broken?']),
+    };
+  } else if (service) {
     fault = {
       variant: 'service-overheat',
       family: 'Overheating: cleaning service',
@@ -281,7 +298,8 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     quote,
     customer,
     kind: opts.kind ?? 'customer',
-    ...(device.enclosure ? { enclosure: service ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
+    ...(accessory ? { accessory } : {}),
+    ...(device.enclosure ? { enclosure: service && !accessory ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
     ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };
 }
