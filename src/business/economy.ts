@@ -21,7 +21,16 @@ export type SupplyId =
   | 'wipes'
   | 'swabs'
   | 'ipa-wipes'
-  | 'brushes';
+  | 'brushes'
+  | 'wire-30'
+  | 'wire-34'
+  | 'wire-38'
+  | 'mask-green'
+  | 'mask-red'
+  | 'mask-blue'
+  | 'mask-black'
+  | 'kapton'
+  | 'disc-polish';
 
 export interface SupplyDef {
   id: SupplyId;
@@ -145,6 +154,15 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
   swabs: { id: 'swabs', name: 'Cleaning swabs', unit: 'swabs', pack: { qty: 100, cost: 3, label: 'bag of 100' }, start: 20, low: 5, blurb: 'Foam and cotton swabs for getting into corners, fan hubs and port housings. One swab, one spot.' },
   'ipa-wipes': { id: 'ipa-wipes', name: 'IPA wipes', unit: 'wipes', pack: { qty: 50, cost: 6, label: 'tub of 50' }, start: 10, low: 3, blurb: 'Pre-soaked with isopropyl alcohol: quick for wiping cases, screens and cartridge shells without opening a bottle.' },
   brushes: { id: 'brushes', name: 'Anti-static scrub brushes', unit: 'brushes', pack: { qty: 3, cost: 5, label: 'pack of 3' }, start: 1, low: 1, blurb: 'Stiff ESD-safe bristles. They splay and wear out with scrubbing.' },
+  'wire-30': { id: 'wire-30', name: 'Copper repair wire, 30 gauge', unit: 'cm', pack: { qty: 500, cost: 6, label: '5 m spool' }, start: 0, low: 0, blurb: 'Thick enamelled copper wire for rebuilding power traces that carry real current, and for long jumpers.' },
+  'wire-34': { id: 'wire-34', name: 'Copper repair wire, 34 gauge', unit: 'cm', pack: { qty: 500, cost: 7, label: '5 m spool' }, start: 0, low: 0, blurb: 'The all-rounder for signal traces and lifted pads: thin enough to route between pins.' },
+  'wire-38': { id: 'wire-38', name: 'Copper repair wire, 38 gauge', unit: 'cm', pack: { qty: 500, cost: 9, label: '5 m spool' }, start: 0, low: 0, blurb: 'Hair-thin wire for fine-pitch chips and tiny pads. Breaks if you look at it wrong.' },
+  'mask-green': { id: 'mask-green', name: 'UV solder mask, green', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'Brush it over a repaired trace and cure it with the UV lamp to seal the copper. Matches most boards.' },
+  'mask-red': { id: 'mask-red', name: 'UV solder mask, red', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a red solder mask.' },
+  'mask-blue': { id: 'mask-blue', name: 'UV solder mask, blue', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a blue solder mask.' },
+  'mask-black': { id: 'mask-black', name: 'UV solder mask, black', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a black solder mask.' },
+  kapton: { id: 'kapton', name: 'Kapton heat tape', unit: 'cm', pack: { qty: 1000, cost: 5, label: '10 m roll' }, start: 0, low: 0, blurb: 'Heat-proof tape: cover plastic connectors and parts that melt next to your hot air, then peel it off.' },
+  'disc-polish': { id: 'disc-polish', name: 'Disc polishing compound', unit: 'ml', pack: { qty: 100, cost: 7, label: '100 ml bottle' }, start: 0, low: 0, blurb: 'Used with the disc buffer to polish scratches out of game discs.' },
 };
 
 /** How much of each supply the rework tools use. */
@@ -252,6 +270,10 @@ export const TOOLS: ToolDef[] = [
   { id: 'gamebit', kind: 'instrument', name: 'Game-Bit security drivers', cost: 9, heat: 0, radius: 0, blurb: 'The odd security screws on game cartridges and retro consoles. Without them the shell stays shut.' },
   { id: 'screw-extractor', kind: 'instrument', name: 'Screw extractor bits', cost: 14, heat: 0, radius: 0, blurb: 'Reverse-cut bits that bite into a stripped screw head and back it out. The screw is ruined, but the case opens.' },
   { id: 'screw-mat', kind: 'instrument', name: 'Magnetic screw mat', cost: 12, heat: 0, radius: 0, blurb: 'A whiteboard mat with magnets: every screw stays where it came out, so each one goes back in its own hole — no more long screws in short holes.' },
+  { id: 'pen-grinder', kind: 'instrument', name: 'Pen grinder (fibreglass pen)', cost: 18, heat: 0, radius: 0, blurb: 'Scrapes the solder mask off a trace or lifted pad so you can solder repair wire straight to clean copper.' },
+  { id: 'uv-lamp', kind: 'instrument', name: 'UV curing lamp', cost: 22, heat: 0, radius: 0, blurb: 'Sets UV solder mask in seconds. Needed for sealing trace repairs.' },
+  { id: 'usb-meter', kind: 'instrument', name: 'USB power meter', cost: 16, heat: 0, radius: 0, blurb: 'Sits between the charger and the device and shows volts and amps: tells you whether a device is really charging, drawing nothing, or shorted.' },
+  { id: 'disc-buffer', kind: 'instrument', name: 'Disc buffing machine', cost: 85, heat: 0, radius: 0, blurb: 'Spins a game disc against a polishing pad to remove scratches. The core of a disc-resurfacing service.' },
   { id: 'micro-drill', kind: 'instrument', name: 'Micro drill & carbide bits', cost: 25, heat: 0, radius: 0, blurb: 'For boards a long screw has bitten into: drill the damaged via out under the microscope to separate the shorted inner layers again.' },
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
 ];
