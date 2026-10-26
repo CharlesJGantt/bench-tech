@@ -1,3 +1,4 @@
+import { bgaType, onRing, type BgaPkg } from './bgatypes';
 /**
  * Parts catalog. All part numbers and brand names are fictional.
  */
@@ -33,6 +34,7 @@ export type Kind =
   | 'stick';
 
 export type Pkg =
+  | BgaPkg
   | '0603'
   | '1206'
   | 'SMA'
@@ -567,6 +569,25 @@ export const PIN_NAMES: Record<Kind, string[]> = {
   stick: ['VCC', 'GND', 'X', 'Y'],
 };
 
+/** Pin list of a BGA part in ball order (row-major): outer-ring balls take the given names (then N1, N2...), the inner balls are the ground array G1... */
+export function bgaPinList(pkg: BgaPkg, ring: string[]): string[] {
+  const t = bgaType(pkg)!;
+  const out: string[] = [];
+  let ri = 0;
+  let gi = 0;
+  let ni = 0;
+  for (let r = 0; r < t.n; r++)
+    for (let c = 0; c < t.n; c++) out.push(onRing(t.n, r, c) ? (ring[ri++] ?? `N${++ni}`) : `G${++gi}`);
+  return out;
+}
+
+/** The nets a BGA part's inner ground-array balls connect to when placed (every G ball to ground). */
+export function bgaGround(partNo: string): Record<string, string> {
+  const p = PARTS[partNo];
+  if (!p || !bgaType(p.pkg)) return {};
+  return Object.fromEntries(pinsOf(p).filter((n) => /^G\d+$/.test(n)).map((n) => [n, 'GND']));
+}
+
 /** Pin names of a part in footprint pad order. */
 export function pinsOf(p: PartSpec): string[] {
   return p.pins ?? PIN_NAMES[p.kind];
@@ -683,11 +704,25 @@ function handheldParts(): Record<string, PartSpec> {
     pins: ['VDD', 'PWR', 'BA', 'DIN', 'LED', 'VEN', 'SND', 'EN', 'OK1', 'OK2', 'OK3', 'OK4', 'CE', 'DP', 'BB', 'GND'],
     description: `${label}: the main chip. Starts when the power button is pressed, checks its screens and boards (OK lines), then draws the picture (VEN) and plays sound (SND). Factory-programmed — donor boards only.`,
   });
+  const socRing = ['VDD', 'PWR', 'BA', 'DIN', 'LED', 'VEN', 'SND', 'EN', 'OK1', 'OK2', 'OK3', 'OK4', 'CE', 'DP', 'BB', 'GND'];
+  const bgaSoc = (partNo: string, label: string, marking: string, cost: number, pkg: BgaPkg): PartSpec => ({
+    partNo,
+    kind: 'mcu',
+    pkg,
+    value: 3.3,
+    label,
+    marking,
+    cost,
+    heatLimit: 245,
+    pins: bgaPinList(pkg, socRing),
+    description: `${label}: the main chip on a ball grid array (BGA). The solder balls are hidden under the chip: reflow, reball or replace it with the BGA station. Factory-programmed, so a replacement comes from a donor or the special-order list.`,
+  });
   const modConn = (partNo: string, label: string, pins: string[]): PartSpec => ({ partNo, kind: 'connector', pkg: 'FPC4', value: 0, label, marking: '', cost: 0.6, heatLimit: 260, pins, description: `${label} (flip-latch ribbon connector).` });
   return {
     'U-BTL-SOC': soc('U-BTL-SOC', 'Button Lite SoC', 'HDH-CPU', 45),
     'U-RB35-SOC': soc('U-RB35-SOC', 'Retrobit SoC', 'RB-A7', 12),
-    'U-RP-APU': soc('U-RP-APU', 'Rogue Pal APU', 'RP-Z1', 85),
+    'U-RP-APU': bgaSoc('U-RP-APU', 'Rogue Pal APU (BGA)', 'RP-Z1', 85, 'BGA36'),
+    'U-BGA100-SOC': bgaSoc('U-BGA100-SOC', 'Modern console SoC (BGA)', 'MX-100', 140, 'BGA100'),
     'U-DUO-SOC': soc('U-DUO-SOC', 'DuoScreen SoC', 'TWL-CPU', 40),
     'U-GNC-CPU': soc('U-GNC-CPU', 'Game & Clock CPU', 'GC-4BIT', 30),
     'U-CRT-CPU': soc('U-CRT-CPU', 'Critter Mini CPU', 'CRT-MCU', 60),

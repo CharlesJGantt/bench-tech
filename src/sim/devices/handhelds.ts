@@ -12,6 +12,7 @@ import type { EncItem, EnclosureDef } from '../enclosure';
 import { customerSession, type BoardState, type DamageEvent, type FunctionalReport, type OperatingPoint } from '../circuit';
 import { tarnish } from '../contacts';
 import { addMark, liquidDamage, type Rng, type Variant } from '../faults';
+import { bgaGround } from '../parts';
 import { cx, silk, testCart } from './retro';
 
 /**
@@ -160,7 +161,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
     c('C2', 'C-10U-6', 'POWER', 70, 18, 90, { '1': '3V3', '2': 'GND' }, '3.3 V capacitor'),
     c('TP1', 'TP', 'POWER', 4, 30, 0, { '1': 'GND' }, 'Ground'),
     c('TP2', 'TP', 'POWER', 58, 22, 0, { '1': '3V3' }, '3.3 V rail'),
-    cx('U3', sp.soc, 'SOC', 62, 36, 0, { VDD: '3V3', GND: 'GND', PWR: 'PWR', BA: 'BA', BB: 'BB', DP: 'DPAD', DIN: 'DIN', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', EN: 'MOD_EN', CE: 'CE', ...okPins }, 'Main chip'),
+    cx('U3', sp.soc, 'SOC', 62, 36, 0, { ...bgaGround(sp.soc), VDD: '3V3', GND: 'GND', PWR: 'PWR', BA: 'BA', BB: 'BB', DP: 'DPAD', DIN: 'DIN', LED: 'LED_IO', VEN: 'LCD_D', SND: 'SND', EN: 'MOD_EN', CE: 'CE', ...okPins }, 'Main chip'),
     // D-pad (four dome switches under one cap) and the other face buttons
     c('SW11', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad up'),
     c('SW12', 'SW-TACT', 'BUTTONS', 0, 0, 0, { '1': 'DPAD', '2': 'GND' }, 'D-pad down'),

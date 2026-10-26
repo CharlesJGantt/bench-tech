@@ -1,4 +1,5 @@
 import type { ComponentDef } from './board';
+import { BGA_TYPES, type BgaPkg, type BgaType } from './bgatypes';
 import { part, pinsOf, type Pkg } from './parts';
 
 /**
@@ -33,7 +34,16 @@ const dip = (n: number, row: number): Footprint => {
 const rowOf = (n: number, pitch: number, y: number, w: number, h: number, round = true) =>
   Array.from({ length: n }, (_, i) => ({ x: (-(n - 1) * pitch) / 2 + i * pitch, y, w, h, round }));
 
+/** A BGA footprint: an n x n grid of top-layer pads in row-major order (the pads are exposed only when the chip is off). */
+const bgaFootprint = (t: BgaType): Footprint => ({
+  w: (t.n - 1) * t.pitch + 1.4,
+  h: (t.n - 1) * t.pitch + 1.4,
+  height: 1.1,
+  pads: Array.from({ length: t.n * t.n }, (_, i) => ({ x: ((i % t.n) - (t.n - 1) / 2) * t.pitch, y: (Math.floor(i / t.n) - (t.n - 1) / 2) * t.pitch, w: t.ballMm * 0.9, h: t.ballMm * 0.9 })),
+});
+
 export const FOOTPRINTS: Record<Pkg, Footprint> = {
+  ...(Object.fromEntries(BGA_TYPES.map((t) => [t.pkg, bgaFootprint(t)])) as Record<BgaPkg, Footprint>),
   TO220: { w: 10.2, h: 4.6, height: 16, pads: rowOf(3, 2.54, 0, 1.8, 1.8) },
   // Laid flat on the board: body and tab lie along y, the bent legs reach down into pads past the front edge.
   TO220F: { w: 10.2, h: 14, height: 5.4, pads: rowOf(3, 2.54, 9.5, 1.8, 1.8) },
