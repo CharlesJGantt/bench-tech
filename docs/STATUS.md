@@ -1,109 +1,164 @@
-# Bench Tech: status (2026-10-25)
+# Bench Tech: complete status (2026-10-25)
 
-949 tests pass. 34 devices (goal for Steam: 60-100). All work below is committed and pushed. Not verified by eye in the
-browser: the preview pane is hidden, so 3D never redraws there; everything has been checked by tests, typecheck and
-loading the game without console errors.
+Built from re-reading all 141 of your messages in the chat and checking the code. 949 tests pass; everything below
+marked Done is committed and pushed. Not verified by eye: the preview pane is hidden, so 3D never redraws there. All
+3D (props, crack decals) was checked by tests, typecheck and loading the game without console errors only.
 
-## Completed
+Legend: DONE, PARTIAL (part of what you asked), TODO (not started), NEXT (agreed, about to build).
 
-### Foundation (earlier sessions)
-- Circuit simulator, fault generator with difficulty tiers, device blocks (power, USB, HDMI), 34 parody devices
-- Soldering / rework physics at the microscope, corrosion, connector oxide and scrubbing, cartridge test station
-- Case teardown and reassembly (screws, clips, adhesive, shields, heatsinks, fans, ribbons) and the mistakes you can make
-- Shop economy: ledger, supplies, parts stock, supplier orders, marketplace, flip projects, donor boards, advertising
-- Autorouted PCB copper, procedural board art, Blender-built parts and shells, save / load
+---
 
-### This chat: polish and presentation
-- Guided tutorial (63 steps, click lock-out, "how to interact" wording) with a narrated voice (63 clips checked
-  against the text) and a second tutorial walking through the Office
-- Loading screen (art, glowing bar, phrases, easter egg), soundtrack with mute, shuffle, volume, collapsible panel
-  and a first-time hint popup
-- Game & Clock device rework (bigger PCB and case, controls, clock/game screen, speaker holes, labels, TMWB logo and
-  URL on its silkscreen), review save (`?review`) with one job per device
-- Office and HUD layout fixes, "completed" jobs list, taller / larger Office text
+## 1. Core game and simulation (your first messages)
+| Request | Status |
+|---|---|
+| Electronics repair simulator with PlayCanvas (concept doc) | DONE |
+| Usable multimeter (one probe, then the next; probes not connected at start) | DONE |
+| Real circuit simulation (12 V, 5 V, 3.3 V rails, LEDs light, correct readings) | DONE |
+| Real PCB traces from the netlist, traces on every part, flip the board to see the bottom | DONE |
+| Microscope part removal / soldering / desoldering physics | DONE |
+| Router no longer joins power and ground at connectors | DONE |
+| Black components readable | DONE |
 
-### This chat: business
-- Quotes scale with device value and fault tier; fitted parts billed at 1.5x on top
-- Services: overheating clean + re-paste, customer charger/cable accessory jobs (sell a new one), case repair jobs,
-  hard reset, console drive re-image or replace, scratched disc buffing station
-- Sales rework: auction with reserve and bidding, buy-it-now, storefront; listing window with forecast; Sales
-  tracker tab (channel totals, 14-day profit chart, every sale); selling fees
-- Shop progression: garage, small storefront, mall (rent, fit-out, reputation, traffic, extra customers); storefront
-  sales need a shop window
-- Employees: storefront 1, mall 2; levels with wages and repairs per day, raises, daily work report, Staff tab
+## 2. Business layer (messages 14, 15, 17)
+| Request | Status |
+|---|---|
+| Business screen after a job: profit and loss, supplies, reorder, advertising, rent, electricity | DONE |
+| Buy broken electronics online to repair and sell; may be pre-repaired, missing parts, or unrepairable (keep it as a donor) | DONE |
+| Upgrades: soldering tip shapes, hot-air nozzles, low-melt solder, wick sizes, flux grades | DONE |
+| Brush looks like a toothbrush and wears out; wipes and IPA consumed per use | DONE |
+| Demand mode: popular devices sell for more; expensive parts ordered in for 1-2 days | DONE |
+| Spare-for-parts offer to the customer; next-day delivery option with the customer agreeing | DONE |
+| Waiting on a donor board; browse the internet for a donor; store-room of parts-only boards | DONE |
+| Misaligned chips visible at the microscope | DONE |
+| Wick turns silver per joint and has to be binned | DONE |
+| Bugs from message 17 (part resets after leaving the microscope, wick unusable on other boards) | DONE |
+| Reset game / reset career on day 1 with a starter pack of parts (messages 49, 51) | DONE |
+| Pink pencil eraser, magic sponge, Pad-Bright for scrubbing cartridge contacts (message 52) | DONE |
 
-### This chat: new tools and supplies
-- Air blower, swabs, IPA wipes, tweezers, pick tool, pen grinder, UV lamp, USB power meter, USB port tester, disc
-  buffer, drive imager; repair wire (3 gauges), UV solder mask (4 colours), Kapton tape, disc polish
-- Blender bench props for all of them (lying on the mat once owned; the USB meter has a live display) plus a
-  glass-crack decal
+## 3. Failure modes and tools (messages 17, 25-27)
+| Request | Status |
+|---|---|
+| Read the repair transcripts, extract scenarios; more failure modes | DONE |
+| Bad capacitors (ESR meter), fried chips (oscilloscope), damaged ports, bad inductors, transistors, retimers | DONE |
+| Voltage injection from the PSU, thermal camera (heat or no heat), diode mode, level-shifter faults | DONE |
+| Disassembly of cases (screws, clips, adhesive, shields, heatsinks, ribbons) with mistakes | DONE |
+| Corrosion cleaner, flux cleaner; corrosion looks green / yellow / purple / black mottled | DONE |
+| Previous-repair faults: solder bridges, hidden whiskers and balls under chips | DONE |
+| Microscope upgrades: stronger objectives, ring light, tilt arm | DONE |
 
-### This chat: repairs and faults
-- Trace and pad repair: pen grinder prep, wire gauge, UV mask sealing; faults for lifted pad, scratched trace,
-  corroded-away pads (tier 3), ripped-off port
-- USB meter: boot pull, settle, charge ramp; fluctuation with no battery; brown-out on a short; fast-charge
-  negotiation (5/9/15/20 V); charger and cable comparison; charge counter and battery capacity test; prompt-to-boot
-  bench-supply curve
-- USB faults: shorted surge clamp, shorted charger IC, clogged port, bent USB contacts; HDMI clogged and bent
-- Look-into-the-port window (2D) with tweezers, pick, blower and swab cleaning
-- Cracked screens with a crack decal; broken case parts to replace; torn ribbon cables (fit a new one)
-- Fuses: one-shot thermal fuse (replace) and stuck PPTC polyfuse on the microSD supply (heat reset with hot air and
-  Kapton tape; hot-air heat bar; a revived fuse is flagged as not to spec)
-- Docs and CLAUDE.md kept current; `docs/fault-ideas-from-transcripts.md` holds the transcript-derived ideas
+## 4. Devices (messages 27, 30, 32 and the Steam goal)
+Built (34): lamp, Bluetooth speaker, TV backlight board, Sbox One X power board, Button handheld, Button Lite, Funstation 5
+HDMI section, Retrobit RB35, Rogue Pal, Duo handhelds, Game & Clock, Critter mini, arcade board, the six Dream Boy
+models, BES, B64, Vega Exodus, Paltari console, DualPulse / Sbox / Button Grip controllers, and the carts for the
+retro consoles (several named games each). Retro console test station with a working console tool, customer home
+test, 10 % refund for a failed cart: DONE.
 
-## Needs to be created / worked on
+| Still to build | Status |
+|---|---|
+| Grapple Laptop and Venovo Laptop motherboards (Wi-Fi chip swap, reflow) | TODO |
+| Ding security system boards | TODO |
+| MyPhone 16 / 17 / 18 / 19 with the common phone faults | TODO |
+| SoundHalo mains power supply (dead start-up resistor, dim-bulb tester) | TODO |
+| Funstation 5 power / standby section (current-draw pattern, enable to power-good chain, unfixable lightning damage) | TODO |
+| Sbox One X main board; Funstation 5 Pro; Button main board | TODO |
+| More devices up to 60-100 (34 now); SoundHalo, VoltMax and others | TODO |
+| Retro consoles still use a generic translucent case; controller grips and recessed buttons | PARTIAL |
 
-### Missed in the first version of this list (found by re-reading every request)
-- **Devices you named early on that do not exist yet:** Grapple Laptop and Venovo Laptop motherboards (with Wi-Fi chip
-  replacement and reflow), Ding security system boards, MyPhone 16 / 17 / 18 / 19 variants (common phone faults),
-  and the SoundHalo mains power supply (a dead start-up resistor killed the switching chip; powered through a dim-bulb
-  tester). Funstation 5 is only the HDMI section and Sbox One X only the power board: still wanted are the Funstation
-  5 power / standby section (diagnosis by current-draw pattern, enable to power-good chain, unfixable lightning
-  damage), the Sbox One X main board and a Pro variant.
-- **Marketplace lots of working games** to buy and sell from the storefront next to repaired devices.
-- **Broken ribbon cable connectors** (latch snapped, connector replaced at the microscope) as a fault; only torn
-  ribbons are built.
-- **Clogged power ports** (barrel / DC jacks); only USB and HDMI ports are built.
-- **Wireless (RFID / Qi) charging coil faults**.
-- **Drive replacement beyond consoles** (laptops, handhelds): the drive service only covers console-class devices.
-- **Board rotation for the port view:** you asked for the board to be rotated to look into the port; it is a 2D window
-  with a tip-up animation, not a real 3D camera move.
-- **Quote breakdown in the ledger:** the ticket shows "Quote (labour)" and the debrief shows labour and parts rows,
-  but the ledger lines are not split the same way.
-- **Wording checks:** a few early items (such as "wireless chip replacement" on every controller, Wi-Fi chip swaps on
-  laptops) depend on the laptops existing.
+## 5. Tutorial, presentation and sound
+| Request | Status |
+|---|---|
+| Tutorial walkthrough with skip; numbered steps; click lock-out | DONE |
+| Tutorial fixes (messages 66, 69, 71: wick with flux first, fuse naming, highlights, iron timing, reflow temperature, cleanup, test, case, return) | DONE |
+| Second tutorial for the Office | DONE |
+| Narrated voice for the tutorial (63 clips, checked against the text) | DONE |
+| Loading screen (12 s, 3 phrases, glitch text, easter egg) | DONE |
+| Soundtrack: shuffle, mute, volume, collapsible panel, first-time hint, starts on a random track | DONE |
+| Review save with one job for every device (`?review`) | DONE |
+| Tutorial script review so every step says exactly how to interact | TODO (your OK needed to re-record voice) |
+| Tutorial has no steps for the newer mechanics (USB meter, port view, trace repair, services, staff) | TODO |
+| Browser autoplay blocks music and voice until the first click | TODO |
 
-### Next-up candidates (already scoped in chat)
-1. **MyPhone-style device with a wireless-charging coil**: adds the coil fault and moves toward the device goal
-2. **BIOS settings service job** (secure boot off gives "please select boot device"), from the S2E71 video
-3. **Fault ideas from the transcripts** (docs): failed noise filter (charging + HDMI, needs a part on the boards and
-   re-routing), fast-charge negotiation fault (PD controller), faulty dock, BIOS reflash with a programmer, CPU hot
-   spot at boot, backlight-only failure, bad SD card tripping the fuse again, the second polyfuse (1.8 V), a
-   fuse that comes back because the heat source remains, fuses hidden under tape / putty, bimetal thermal switch that
-   resets on cooling, a one-month warranty option for borderline fixes
-4. **HDD / SSD** beyond the console drive job (laptop drives, handheld storage, drive hardware in the parts list)
+## 6. Game & Clock and board art
+Larger PCB and case, controls, clock/game screen, speaker holes, labels, TMWB logo and URL on the silkscreen: DONE.
+The logo and URL on the other boards as they are polished: TODO (only the Game & Clock has it).
 
-### Content (Steam goal: 60-100 devices; 34 now)
-- Ideas: SoundHalo, Funstation 5 power / main / Pro, Sbox One X main, Button main, Ding, VoltMax, laptops, MyPhones;
-  later phases: intermittents, BGA work, mains power supplies
-- TMWB logo and URL on more boards as they are polished (only the Game & Clock has them)
-- Retro consoles (BES, B64, Vega, Paltari) still use a generic translucent case; controller grips and recessed buttons
-- Blender models for replacement screens and case parts; a real 3D port interior for the port window (it is 2D)
+## 7. Sales (message 110)
+Auction with reserve and bidding, buy-it-now, storefront, listing window with forecast, selling fees, Sales tracker tab:
+DONE. Buying lots of working games on the marketplace to sell next to repaired devices (message 111): TODO.
 
-### Business and progression
-- Second and third shop locations run by staff (stretch goal)
-- Balance pass: wages, rents, fit-out costs, service job frequencies, auction behaviour, staff failure rates
-- Review save (`?review`) cannot yet pick a specific fault variant, so the new faults are hard to inspect on demand
+## 8. Shop progression (message 113)
+Garage, small storefront, mall (rent, fit-out, traffic, extra customers, storefront sales gated): DONE.
+Employees (storefront 1, mall 2, wages, daily repairs, raises, Staff tab): DONE.
+Second and third locations run by staff (stretch goal): TODO.
 
-### Tutorial and onboarding
-- Tutorial script review (every step says exactly how to interact); reworded steps are silent until the voice is
-  re-recorded (`npm run voice`, then `npm run voice:verify`): waiting on your OK
-- The tutorial does not cover the new mechanics (USB meter, port window, trace repair, services, staff)
-- Browser autoplay blocks music and voice until the first click
+## 9. Services and pricing (messages 117-119)
+| Request | Status |
+|---|---|
+| Overheating cleaning and thermal-paste service | DONE |
+| Quotes scale with device value and fault difficulty; parts billed on top | DONE |
+| Quote breakdown on the ticket and in the debrief | DONE |
+| Same breakdown as separate ledger lines | PARTIAL |
+| Compressed air blower tool; cleaning swabs, wipes, IPA wipes | DONE |
+| More services built: customer accessory (charger / cable), case repair, hard reset, drive re-image or replace, scratched disc buffing station | DONE |
 
-### Quality, tooling and risks
-- Visual check of all the new 3D (props, crack decals, case cracks) in a visible browser window
-- The full test suite takes 2-3 minutes; the generic fault variants run fewer seeds to keep it down
-- The repo history holds an old set of broken music files (about 56 MB)
-- Heat reset timing: the hot-air reset uses the soldering heat bar, not a real temperature setting (the video used
-  200 °C slowly, 300-400 °C at once)
+## 10. Repair wishlist (message 111)
+| Request | Status |
+|---|---|
+| Lifted pads, scratched traces, corroded-away pads; pen grinder, copper wire gauges, UV solder mask colours, UV lamp | DONE |
+| Ripped-off port (pads torn off by a fall) | DONE |
+| Cracked screens; broken cases and plastic parts to replace | DONE |
+| Bad customer power adapter, sell a new one | DONE |
+| Scratched game discs and a buffing service (disc buffer, polish) | DONE |
+| Hard reset | DONE |
+| Thermal fuses: one-shot replaced, PPTC polyfuse revived with hot air; Kapton tape masks meltable parts | DONE |
+| USB power meter (boot pull, settle, charge ramp, fast-charge voltages, charger and cable comparison, battery capacity) | DONE |
+| Torn ribbon cables (fit a new one) | DONE |
+| Broken ribbon cable connectors that need replacing | PARTIAL (only a snapped latch from teardown mistakes) |
+| Clogged USB and HDMI ports | DONE |
+| Clogged power ports (barrel jacks) | TODO |
+| Wireless (RFID / Qi) charging coil faults | TODO |
+| HDD / SSD replacing or re-imaging | PARTIAL (consoles only) |
+| Buy lots of working games for the storefront | TODO |
+
+## 11. Port inspection and liquid damage (messages 136 and the latest)
+| Request | Status |
+|---|---|
+| Look into the USB / HDMI port with tweezers, pick, blower, swabs; debris; bent pins need a new port | PARTIAL (works, but as a pop-up window, not in the microscope view) |
+| See the port end view inside the microscope view (eyepiece, zoom, ring light) | NEXT |
+| Corrosion visible on the port pins and around liquid damage in that view | NEXT |
+| Bent and mangled pins visible in the microscope port view | PARTIAL (drawn in the window; move it into the microscope) |
+| Liquid damage indicator stickers around the board (turn red where liquid reached) to tell the player where to look for corrosion | NEXT |
+
+## 12. USB meter and diagnosis tools (messages 129-132 and the pasted list)
+Boot pull / settle / charge ramp, no-battery fluctuation, short brown-out, fast-charge negotiation, charger and cable
+comparison, charge counter and capacity test, prompt-to-boot current curve, USB port diode tester, drive imager:
+DONE. Shorted charger IC, shorted surge clamp, stuck PPTC fuse: DONE.
+
+## 13. 3D models (rule: use Blender)
+Bench props in Blender (tweezers, pick, USB meter with live display, air blower, pen grinder, UV lamp, port tester, disc
+buffer, drive imager, Kapton roll), crack decal over screens and cases: DONE.
+Blender models for replacement screens, case parts and ribbon cables as separate items: TODO. A real 3D port interior: TODO
+(the port view is 2D). Liquid-damage stickers need a Blender decal: NEXT.
+
+## 14. Ideas from the repair-video transcripts (docs/fault-ideas-from-transcripts.md)
+Noise-filter failure (charging + HDMI die together; needs a part on the boards and re-routing), fast-charge negotiation
+fault (PD chip), faulty dock, BIOS reflash with a programmer, BIOS settings job, CPU hot spot at boot, backlight-only
+failure, bad SD card tripping the fuse again, second polyfuse (1.8 V), fuse that comes back because the heat source
+remains, fuses hidden under tape or putty, bimetal switch that resets by cooling, one-month warranty option: all TODO.
+
+## 15. Quality and housekeeping
+- Visual check of all the new 3D in a visible browser window: TODO
+- Balance pass (wages, rents, fit-out, service frequency, auction behaviour, staff failure rates): TODO
+- Review save cannot pick a specific fault, so new faults are hard to inspect on demand: TODO
+- Full tests take 2-3 minutes; generic fault variants run fewer seeds to keep it down: ongoing
+- The repo history holds an old set of broken music files (about 56 MB): TODO (cleanup optional)
+- Hot-air reset uses the soldering heat bar, not a real temperature setting (the video used 200 °C slowly, 300-400 °C at once): TODO
+- Interview and pricing questions (messages 107, 114-116) were answered in chat only: nothing to build
+
+## Suggested order
+1. Port view inside the microscope with corrosion and bent pins, plus liquid damage stickers (agreed just now)
+2. MyPhone with a wireless-charging coil (adds a device and the coil fault)
+3. Laptops, Ding boards, SoundHalo supply, Funstation 5 power section (device goal and your named devices)
+4. Marketplace game lots; broken ribbon connector fault; clogged power ports; drives beyond consoles
+5. Tutorial script review and new-mechanic steps (voice re-record when you say so)
+6. Second and third locations; balance pass; transcript fault ideas
