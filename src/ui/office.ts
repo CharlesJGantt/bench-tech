@@ -13,7 +13,11 @@ import {
   rushPrice,
   stockOf,
   trendMult,
+  CHANNELS,
   type LedgerCat,
+  type Project,
+  type SaleChannel,
+  type SaleRecord,
   type OrderLine,
 } from '../business/shop';
 import { DEVICE_LIST, DEVICES } from '../sim/devices';
@@ -24,7 +28,7 @@ import type { Session } from '../game/session';
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const money = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
 
-export type OfficeTab = 'overview' | 'work' | 'stock' | 'storeroom' | 'tools' | 'market' | 'ads';
+export type OfficeTab = 'overview' | 'work' | 'stock' | 'storeroom' | 'tools' | 'market' | 'ads' | 'sales';
 
 const CAT_NAMES: Record<LedgerCat, string> = {
   repair: 'Repairs',
@@ -36,6 +40,7 @@ const CAT_NAMES: Record<LedgerCat, string> = {
   advertising: 'Advertising',
   purchase: 'Devices bought',
   refund: 'Refunds',
+  fees: 'Selling fees',
 };
 
 /** Order basket kept between renders of the office. */
@@ -59,6 +64,7 @@ export function officeHtml(s: Session, tab: OfficeTab, cart: Cart, speed: Delive
     ['storeroom', `🗄 Store-room (${donors(st).length})`],
     ['tools', '🛠 Equipment'],
     ['market', `🛒 Marketplace${Object.keys(st.trend).length ? ' 🔥' : ''}`],
+    ['sales', `💲 Sales (${(st.sales ?? []).length})`],
     ['ads', '📣 Advertising'],
   ];
   const head = `<div class="of-head">
@@ -90,8 +96,40 @@ export function officeHtml(s: Session, tab: OfficeTab, cart: Cart, speed: Delive
     case 'ads':
       body = ads(s);
       break;
+    case 'sales':
+      body = salesTab(s);
+      break;
   }
   return `<div class="office">${head}<div class="of-body">${body}</div></div>`;
+}
+
+function listedStatus(p: Project): string {
+  const ch = p.channel ?? 'buy-now';
+  if (ch === 'auction') return `auction: high bid ${money(p.highBid ?? 0)}, reserve ${money(p.reserve ?? 0)}${p.buyNow ? `, buy-it-now ${money(p.buyNow)}` : ''}, ends day ${p.endsOn}`;
+  return `${ch === 'storefront' ? 'in the storefront' : 'online, buy it now'} at ${money(p.salePrice ?? 0)} since day ${p.listedOn}`;
+}
+
+/** Spreadsheet of everything sold, newest first, with channel totals. */
+function salesTab(s: Session): string {
+  const sales = [...(s.shop.sales ?? [])].reverse();
+  if (!sales.length) return '<p class="muted">Nothing sold yet. Repair a device you bought and list it from the bench; every sale shows up here.</p>';
+  const tot = (f: (r: SaleRecord) => number, rows = sales) => rows.reduce((a, r) => a + f(r), 0);
+  const chans = (Object.keys(CHANNELS) as SaleChannel[]).map((c) => {
+    const rows = sales.filter((r) => r.channel === c);
+    if (!rows.length) return '';
+    return `<tr><td>${CHANNELS[c].name}</td><td class="num">${rows.length}</td><td class="num">${money(tot((r) => r.price, rows))}</td><td class="num">${(tot((r) => r.days, rows) / rows.length).toFixed(1)} d</td><td class="num">${money(tot((r) => r.profit, rows))}</td></tr>`;
+  }).join('');
+  const last = Math.max(...sales.map((r) => r.day));
+  const days = Array.from({ length: 14 }, (_, i) => last - 13 + i).filter((d) => d >= 1);
+  const byDay = new Map<number, number>();
+  for (const r of sales) byDay.set(r.day, (byDay.get(r.day) ?? 0) + r.profit);
+  const peak = Math.max(1, ...days.map((d) => Math.abs(byDay.get(d) ?? 0)));
+  const bars = days.map((d) => { const v = byDay.get(d) ?? 0; return `<span class="bar ${v < 0 ? 'neg' : ''}" style="height:${Math.round((Math.abs(v) / peak) * 46) + 2}px" title="Day ${d}: ${money(v)}"></span>`; }).join('');
+  return `<div class="cards"><div class="card"><b>${sales.length}</b><span>sold</span></div><div class="card"><b>${money(tot((r) => r.price))}</b><span>takings</span></div><div class="card"><b>${money(tot((r) => r.fee))}</b><span>fees</span></div><div class="card"><b class="${tot((r) => r.profit) < 0 ? 'bad' : 'good'}">${money(tot((r) => r.profit))}</b><span>profit</span></div></div>
+    <h3>By channel</h3><table class="tbl"><tr><th>Channel</th><th>Sold</th><th>Takings</th><th>Avg. time</th><th>Profit</th></tr>${chans}</table>
+    <h3>Profit, last 14 days</h3><div class="bars">${bars}</div>
+    <h3>Every sale</h3><table class="tbl sales"><tr><th>Day</th><th>Item</th><th>Channel</th><th>Listed</th><th>Days</th><th>Price</th><th>Fee</th><th>Cost</th><th>Profit</th></tr>
+    ${sales.map((r) => `<tr><td class="num">${r.day}</td><td>${esc(r.title)}</td><td>${CHANNELS[r.channel].name}</td><td class="num">${r.listedOn}</td><td class="num">${r.days}</td><td class="num">${money(r.price)}</td><td class="num">${money(r.fee)}</td><td class="num">${money(r.cost)}</td><td class="num ${r.profit < 0 ? 'bad' : 'good'}">${money(r.profit)}</td></tr>`).join('')}</table>`;
 }
 
 function pnlTable(s: Session, from: number, to: number, title: string): string {
@@ -113,7 +151,7 @@ function overview(s: Session): string {
   alerts.push(rentIn === 0 ? `🏠 Rent ($${RENT.amount}) is due tonight.` : `🏠 Rent ($${RENT.amount}) due in ${rentIn} day${rentIn === 1 ? '' : 's'}.`);
   for (const [id, t] of Object.entries(st.trend)) alerts.push(`🔥 ${esc(t.label)}: working ${esc(DEVICES[id]?.name ?? id)} units sell for ×${t.mult.toFixed(2)} until day ${t.until}.`);
   for (const o of st.orders) alerts.push(`🚚 Order #${o.id} arrives ${o.arrives - st.day <= 1 ? 'tomorrow morning' : `on day ${o.arrives}`}.`);
-  for (const p of st.projects.filter((x) => x.status === 'listed')) alerts.push(`🏷 ${esc(p.title)} is listed at ${money(p.salePrice ?? 0)}.`);
+  for (const p of st.projects.filter((x) => x.status === 'listed')) alerts.push(`🏷 ${esc(p.title)}: ${listedStatus(p)}`);
   const weekFrom = Math.max(1, st.day - 6);
   const recent = st.ledger
     .slice(-12)
@@ -177,7 +215,7 @@ function work(s: Session): string {
         action = isActive
           ? '<span class="pill">on bench</span>'
           : `<button data-act="start-work" data-kind="project" data-id="${p.id}">Work on it</button> <button data-act="store-project" data-id="${p.id}" title="Give up on it and keep it as a parts donor">To store-room</button>`;
-      } else if (p.status === 'listed') status = `listed at ${money(p.salePrice ?? 0)} — should sell by day ${p.sellsOn}`;
+      } else if (p.status === 'listed') status = listedStatus(p);
       else if (p.status === 'sold') status = `<span class="good">sold for ${money(p.salePrice ?? 0)} (profit ${money((p.salePrice ?? 0) - p.paid)})</span>`;
       else status = '<span class="muted">scrapped for parts</span>';
       return `<tr><td><b>${esc(p.title)}</b></td><td class="num">paid ${money(p.paid)}</td><td class="small">${status}</td><td>${action}</td></tr>`;

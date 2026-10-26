@@ -10,6 +10,7 @@ import {
   storeProject,
   cartHomeFailure,
   createShop,
+  dailySaleChance,
   endDay,
   listProject,
   placeOrder,
@@ -234,5 +235,39 @@ describe('review save', () => {
     expect(st.queue.length).toBe(DEVICE_LIST.length);
     expect(new Set(st.queue.map((q) => q.job.deviceId)).size).toBe(DEVICE_LIST.length);
     for (const q of st.queue) expect(loadJob(q.job).device.id).toBe(q.job.deviceId);
+  });
+
+  it('selling channels: tracker record, fees, reserve and pricing', () => {
+    const fixed = (seed: number) => {
+      const st = createShop(seed);
+      st.queue = [];
+      const l = st.market.find((x) => !x.unrepairable)!;
+      const p = buyListing(st, l.id)!;
+      const job = loadJob(p.job);
+      const fresh = generateJob(DL12, 1, { variant: 'fuse-blown' });
+      fresh.board.comps.F1.fault = null;
+      job.board = fresh.board;
+      for (const c of Object.values(job.board.comps)) c.marks = [];
+      return { st, p, job, value: resaleValue(job.board, st) };
+    };
+    // a reserve nobody will meet: the auction ends unsold and the device comes back
+    const a = fixed(21);
+    expect(listProject(a.st, a.p.id, a.job, 0, { channel: 'auction', reserve: a.value * 5, days: 3 }).ok).toBe(true);
+    for (let i = 0; i < 5; i++) endDay(a.st);
+    expect(a.p.status).toBe('owned');
+    expect(a.st.sales).toHaveLength(0);
+    // a fair auction sells, charges its fee and is recorded
+    const b = fixed(22);
+    listProject(b.st, b.p.id, b.job, 0, { channel: 'auction', reserve: 1, days: 3 });
+    for (let i = 0; i < 5; i++) endDay(b.st);
+    expect(b.p.status).toBe('sold');
+    const rec = b.st.sales![0];
+    expect(rec.channel).toBe('auction');
+    expect(rec.fee).toBeCloseTo(rec.price * 0.08, 1);
+    expect(rec.profit).toBeCloseTo(rec.price - rec.fee - b.p.paid, 1);
+    expect(profitAndLoss(b.st, 1, b.st.day).byCat.fees).toBeLessThan(0);
+    // pricing: a cheap storefront item moves faster than an overpriced one
+    expect(dailySaleChance('storefront', 0.8)).toBeGreaterThan(dailySaleChance('storefront', 1.4));
+    expect(dailySaleChance('buy-now', 1)).toBeGreaterThan(dailySaleChance('storefront', 1));
   });
 });

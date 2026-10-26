@@ -14,7 +14,7 @@ import { scrubbable } from '../sim/contacts';
 import { assembled } from '../sim/enclosure';
 import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
-import { buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
+import { CHANNELS, forecastListing, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
 import { ADS, NOT_SOLD, type DeliveryId } from '../business/economy';
 
@@ -434,8 +434,12 @@ export class Hud {
           this.showDebrief();
         }
         break;
-      case 'list-sale': {
-        const res = s.listForSale();
+      case 'list-sale':
+        this.showListing();
+        break;
+      case 'list-confirm': {
+        const opts = this.readListing();
+        const res = s.listForSale(opts);
         if (!res.ok) this.toast(res.reason ?? 'Cannot list it.', 'bad');
         else this.showDebrief();
         break;
@@ -804,6 +808,46 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     $('#modal-body').innerHTML = `<button class="x" data-act="close" aria-label="Close">×</button>${html}`;
   }
 
+  /** The "how do you want to sell it" window: channel, price, reserve, buy-it-now, length, with a live forecast. */
+  private showListing(): void {
+    const s = this.s;
+    const value = Math.round(s.listingValue());
+    this.modal(`<h2>🏷 List it for sale</h2>
+      <p class="muted">A working one is worth about <b>$${value}</b> today. Pick where to sell it.</p>
+      <div class="listing">
+        ${(Object.keys(CHANNELS) as SaleChannel[]).map((c, i) => `<label class="chan"><input type="radio" name="chan" value="${c}" ${i === 1 ? 'checked' : ''}> <b>${CHANNELS[c].name}</b><span class="small muted">${CHANNELS[c].blurb}</span></label>`).join('')}
+        <div class="fields">
+          <label data-f="price">Asking price $ <input type="number" id="lf-price" min="1" step="1" value="${value}"></label>
+          <label data-f="reserve">Reserve (lowest you accept) $ <input type="number" id="lf-reserve" min="1" step="1" value="${Math.round(value * 0.75)}"></label>
+          <label data-f="buynow">Buy-it-now $ (optional, 0 = none) <input type="number" id="lf-buynow" min="0" step="1" value="0"></label>
+          <label data-f="days">Auction length <select id="lf-days">${[3, 5, 7, 10].map((d) => `<option value="${d}" ${d === 5 ? 'selected' : ''}>${d} days</option>`).join('')}</select></label>
+        </div>
+        <p id="lf-forecast" class="note"></p>
+      </div>
+      <div class="row"><button class="big primary" data-act="list-confirm">List it</button><button data-act="close">Cancel</button></div>`, 'wide');
+    const root = $('#modal-body');
+    const update = () => {
+      const o = this.readListing();
+      root.querySelectorAll<HTMLElement>('[data-f]').forEach((el) => {
+        const f = el.dataset.f;
+        const auction = o.channel === 'auction';
+        el.style.display = f === 'price' ? (auction ? 'none' : '') : auction ? '' : 'none';
+      });
+      const f = forecastListing(value, o);
+      $('#lf-forecast').innerHTML = `Expect it to sell in <b>${f.days}</b> for <b>${f.price}</b>. Fee: ${Math.round(CHANNELS[o.channel].fee * 100)} %.`;
+    };
+    root.addEventListener('input', update);
+    root.addEventListener('change', update);
+    update();
+  }
+
+  private readListing(): ListingOptions {
+    const root = $('#modal-body');
+    const num = (id: string) => Number(root.querySelector<HTMLInputElement>(id)?.value ?? '0') || 0;
+    const channel = (root.querySelector<HTMLInputElement>('input[name=chan]:checked')?.value ?? 'buy-now') as SaleChannel;
+    return { channel, price: num('#lf-price'), reserve: num('#lf-reserve'), buyNow: num('#lf-buynow') || undefined, days: num('#lf-days') || 5 };
+  }
+
   private closeModal(): void {
     const m = $('#modal');
     this.officeOpen = false;
@@ -948,8 +992,8 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ${ev.notes.length ? `<h3>Notes</h3><ul class="checks">${ev.notes.map((n) => `<li class="muted">• ${esc(n)}</li>`).join('')}</ul>` : ''}`;
     if (res.kind === 'listed') {
       this.modal(
-        `<h2>🏷 Listed for sale at $${res.price.toFixed(2)}</h2>
-        <p>It should sell within a few days. ${ev.hidden.length ? '<span class="warn">Buyers cannot see the workmanship problems below — some of them will want a refund.</span>' : 'Clean work — buyers will be happy.'}</p>
+        `<h2>🏷 Listed ${res.channel === 'auction' ? `as an auction (reserve $${res.price.toFixed(2)})` : `for $${res.price.toFixed(2)}`}</h2>
+        <p>${res.channel === 'auction' ? 'Bidding runs for a few days; check the Work tab for the high bid.' : res.channel === 'storefront' ? 'It is on the shelf for walk-in customers.' : 'It is online at your buy-it-now price.'} ${ev.hidden.length ? '<span class="warn">Buyers cannot see the workmanship problems below — some of them will want a refund.</span>' : 'Clean work — buyers will be happy.'}</p>
         ${tests}<h3>What was wrong with it</h3>${truth}${back}`,
         'wide',
       );

@@ -33,6 +33,9 @@ import {
   cartHomeFailure,
   createShop,
   createReviewShop,
+  resaleValue,
+  type ListingOptions,
+  type SaleChannel,
   endDay,
   listProject,
   maxTier,
@@ -68,7 +71,7 @@ export interface LogEntry {
 /** What happened when a job left the bench (shown in the debrief). */
 export type WorkResult =
   | { kind: 'customer'; evaluation: Evaluation; job: Job }
-  | { kind: 'listed'; price: number; evaluation: Evaluation; job: Job }
+  | { kind: 'listed'; price: number; channel: SaleChannel; evaluation: Evaluation; job: Job }
   | { kind: 'scrapped'; salvaged: string[]; job: Job }
   | { kind: 'gave-up'; job: Job };
 
@@ -377,14 +380,19 @@ export class Session {
   }
 
   /** List the project on the bench for sale (it must work). */
-  listForSale(): { ok: boolean; reason?: string } {
+  /** What a working unit of the device on the bench would fetch today. */
+  listingValue(): number {
+    return resaleValue(this.board, this.shop);
+  }
+
+  listForSale(opts?: ListingOptions): { ok: boolean; reason?: string } {
     const a = this.shop.active;
     if (!a || a.kind !== 'project') return { ok: false, reason: 'This is not one of your projects.' };
     this.setPowerMode('off');
     const ev = evaluate(this.job, this.board, 0);
-    const res = listProject(this.shop, a.id, this.job, ev.hidden.length);
+    const res = listProject(this.shop, a.id, this.job, ev.hidden.length, opts);
     if (!res.ok) return res;
-    this.lastResult = { kind: 'listed', price: res.price!, evaluation: ev, job: this.job };
+    this.lastResult = { kind: 'listed', price: res.price!, channel: opts?.channel ?? 'buy-now', evaluation: ev, job: this.job };
     this.clearBench();
     return res;
   }

@@ -32,7 +32,7 @@ import {
   type SupplyId,
 } from './economy';
 
-export type LedgerCat = 'repair' | 'sale' | 'parts' | 'supplies' | 'rent' | 'electricity' | 'advertising' | 'purchase' | 'refund';
+export type LedgerCat = 'repair' | 'sale' | 'fees' | 'parts' | 'supplies' | 'rent' | 'electricity' | 'advertising' | 'purchase' | 'refund';
 
 export interface LedgerEntry {
   day: number;
@@ -83,6 +83,42 @@ export interface Listing {
 /** 'donor' = kept in the store-room to pull parts from. */
 export type ProjectStatus = 'owned' | 'listed' | 'sold' | 'scrapped' | 'donor';
 
+/** Where a repaired device is sold. */
+export type SaleChannel = 'auction' | 'buy-now' | 'storefront';
+
+export const CHANNELS: Record<SaleChannel, { name: string; fee: number; blurb: string }> = {
+  auction: { name: 'Auction', fee: 0.08, blurb: 'Bidding runs for a few days and the price can climb above what it is worth, or the bids stall below your reserve and it does not sell. 8 % fee.' },
+  'buy-now': { name: 'Buy it now', fee: 0.05, blurb: 'A fixed price online. Priced fairly it goes quickly; priced high it sits. 5 % fee.' },
+  storefront: { name: 'Storefront', fee: 0, blurb: 'On the shelf for walk-in customers at a fixed price: steady but slow, and no fees.' },
+};
+
+export interface ListingOptions {
+  channel: SaleChannel;
+  /** Buy-it-now / storefront price (for an auction: an optional buy-it-now price goes in `buyNow`). */
+  price?: number;
+  /** Auction reserve: it does not sell for less. */
+  reserve?: number;
+  /** Auction: an optional price a buyer can pay to end it at once. */
+  buyNow?: number;
+  /** Auction length in days. */
+  days?: number;
+}
+
+/** One finished sale, for the sales tracker. */
+export interface SaleRecord {
+  id: number;
+  day: number;
+  title: string;
+  deviceId: string;
+  channel: SaleChannel;
+  listedOn: number;
+  days: number;
+  price: number;
+  fee: number;
+  cost: number;
+  profit: number;
+}
+
 export interface Project {
   id: number;
   title: string;
@@ -94,6 +130,14 @@ export interface Project {
   hiddenIssues?: number;
   /** Bought online and still in the post: arrives this morning. */
   arrives?: number;
+  /** How it is listed (see ListingOptions) and what a working one is worth today. */
+  channel?: SaleChannel;
+  reserve?: number;
+  buyNow?: number;
+  value?: number;
+  listedOn?: number;
+  endsOn?: number;
+  highBid?: number;
   job: SavedJob;
 }
 
@@ -160,6 +204,8 @@ export interface ShopState {
   queue: QueuedJob[];
   /** Jobs handed back today (shown as completed in the office until the day ends). */
   returned?: ReturnedJob[];
+  /** Everything sold so far (the sales tracker). */
+  sales?: SaleRecord[];
   /** Comebacks that will walk back in on a later day. */
   warrantyPending: { day: number; job: SavedJob; customer: string; homeTest?: { refund: number } }[];
   /** Unhappy flip buyers. */
@@ -288,6 +334,7 @@ export function migrateShop(st: ShopState): ShopState {
   }
   for (const id of Object.keys(SUPPLIES) as SupplyId[]) if (typeof st.supplies[id] !== 'number') st.supplies[id] = SUPPLIES[id].start;
   st.tools ??= [...STARTING_TOOLS];
+  st.sales ??= [];
   st.brushWear ??= 0;
   if (!st.wickLoad) {
     // Saves from before per-joint wick use lost their roll to a per-second drain: refill it once.
@@ -627,19 +674,94 @@ export function harvestPart(st: ShopState, projectId: number, ref: string): { ok
  * List a finished project for sale. It must pass the customer test; hidden workmanship
  * problems are not visible to buyers, but some will come back as refunds.
  */
-export function listProject(st: ShopState, projectId: number, job: Job, hiddenIssues: number): { ok: boolean; reason?: string; price?: number } {
+export function listProject(st: ShopState, projectId: number, job: Job, hiddenIssues: number, opts: ListingOptions = { channel: 'buy-now' }): { ok: boolean; reason?: string; price?: number } {
   const p = st.projects.find((x) => x.id === projectId);
   if (!p) return { ok: false, reason: 'No such project.' };
   if (!functionalTest(cloneBoard(job.board)).passed) return { ok: false, reason: 'It does not pass a functional test yet — nobody will buy it.' };
-  const r = rng(st);
+  const value = resaleValue(job.board, st);
+  const price = opts.channel === 'auction' ? (opts.reserve ?? Math.round(value * 0.7)) : (opts.price ?? value);
+  if (!(price > 0)) return { ok: false, reason: 'Set a price first.' };
   p.job = saveJob(job);
   p.status = 'listed';
-  p.salePrice = resaleValue(job.board, st);
-  // Hot items sell overnight.
-  p.sellsOn = st.day + (trendMult(st, job.device.id) > 1 ? 1 : r.int(1, 3));
+  p.channel = opts.channel;
+  p.value = value;
+  p.listedOn = st.day;
+  p.salePrice = round2(price);
+  p.reserve = opts.channel === 'auction' ? round2(price) : undefined;
+  p.buyNow = opts.channel === 'auction' && opts.buyNow ? round2(opts.buyNow) : undefined;
+  p.endsOn = opts.channel === 'auction' ? st.day + Math.max(2, Math.min(10, opts.days ?? 5)) : undefined;
+  p.highBid = 0;
   p.hiddenIssues = hiddenIssues;
   if (st.active?.kind === 'project' && st.active.id === projectId) st.active = null;
   return { ok: true, price: p.salePrice };
+}
+
+/** How the walk-in / online trade responds to the asking price (1 = priced right on the money). */
+function appeal(ratio: number): number {
+  return Math.max(0, 1 - Math.max(0, ratio - 0.85) * 1.4);
+}
+
+/** Chance per day that a fixed-price listing finds a buyer. */
+export function dailySaleChance(channel: 'buy-now' | 'storefront', ratio: number, traffic = 1): number {
+  const base = channel === 'buy-now' ? 0.5 : 0.3;
+  return Math.max(0.02, Math.min(0.7, base * appeal(ratio) * traffic));
+}
+
+/** A rough forecast shown when listing: how long it may sit and what it may fetch. */
+export function forecastListing(value: number, opts: ListingOptions): { days: string; price: string } {
+  if (opts.channel === 'auction') {
+    const lo = Math.round(value * 0.6);
+    const hi = Math.round(value * 1.15);
+    const reserve = opts.reserve ?? lo;
+    const miss = reserve > value * 1.1 ? ' (a reserve that high will probably not be met)' : reserve > value * 0.9 ? ' (it may miss the reserve)' : '';
+    return { days: `${opts.days ?? 5} days`, price: `about $${lo}-$${hi}${miss}` };
+  }
+  const price = opts.price ?? value;
+  const chance = dailySaleChance(opts.channel, price / value);
+  const days = chance < 0.04 ? 'weeks, if ever' : `about ${Math.max(1, Math.round(1 / chance))} day${Math.round(1 / chance) === 1 ? '' : 's'}`;
+  return { days, price: `$${Math.round(price)}${price > value * 1.15 ? ' (well above what it is worth)' : price < value * 0.8 ? ' (a bargain: it will go fast)' : ''}` };
+}
+
+/** Sell a listed project: pay the fee, book the sale, record it for the tracker. */
+function completeSale(st: ShopState, p: Project, price: number, report: DayReport, r: Rng): void {
+  const channel = p.channel ?? 'buy-now';
+  const fee = round2(price * CHANNELS[channel].fee);
+  p.status = 'sold';
+  p.salePrice = round2(price);
+  p.sellsOn = st.day;
+  book(st, 'sale', price, `Sold ${p.title} (${CHANNELS[channel].name.toLowerCase()})`);
+  if (fee) book(st, 'fees', -fee, `${CHANNELS[channel].name} fee: ${p.title}`);
+  const days = Math.max(1, st.day - (p.listedOn ?? st.day) + 1);
+  (st.sales ??= []).push({ id: p.id, day: st.day, title: p.title, deviceId: p.job.deviceId, channel, listedOn: p.listedOn ?? st.day, days, price: round2(price), fee, cost: p.paid, profit: round2(price - fee - p.paid) });
+  report.sales.push(`${p.title} sold for $${price.toFixed(2)} (${CHANNELS[channel].name.toLowerCase()}, ${days} day${days === 1 ? '' : 's'})`);
+  if ((p.hiddenIssues ?? 0) > 0 && r.next() < 0.6) {
+    st.refundsPending.push({ day: st.day + r.int(1, 3), amount: round2(price * 0.5), text: `Buyer complaint: ${p.title} failed after a few days` });
+  }
+}
+
+/** One night of trade for a listed device. */
+function tradeListing(st: ShopState, p: Project, report: DayReport, r: Rng): void {
+  const value = p.value ?? p.salePrice ?? 0;
+  const channel = p.channel ?? 'buy-now';
+  const age = st.day - (p.listedOn ?? st.day);
+  if (channel === 'auction') {
+    const end = p.endsOn ?? st.day;
+    const length = Math.max(1, end - (p.listedOn ?? st.day));
+    const progress = Math.min(1, (age + 1) / length);
+    p.highBid = Math.max(p.highBid ?? 0, Math.round(value * r.range(0.5, 1.2) * (0.45 + 0.55 * progress)));
+    if (p.buyNow && r.next() < Math.max(0, Math.min(0.4, 0.3 * (value / p.buyNow) ** 2))) return completeSale(st, p, p.buyNow, report, r);
+    if (st.day >= end) {
+      if ((p.highBid ?? 0) >= (p.reserve ?? 0)) return completeSale(st, p, p.highBid ?? 0, report, r);
+      p.status = 'owned';
+      report.sales.push(`${p.title}: the auction ended at $${(p.highBid ?? 0).toFixed(2)}, under your $${(p.reserve ?? 0).toFixed(2)} reserve. It did not sell.`);
+    }
+    return;
+  }
+  if (r.next() < dailySaleChance(channel, (p.salePrice ?? value) / Math.max(1, value))) return completeSale(st, p, p.salePrice ?? 0, report, r);
+  if (age >= 21) {
+    p.status = 'owned';
+    report.sales.push(`${p.title} sat unsold for three weeks and was taken off the ${CHANNELS[channel].name.toLowerCase()} listing. Try a lower price.`);
+  }
 }
 
 /** Strip every good part off a board into the used-parts bin. */
@@ -719,15 +841,7 @@ export function endDay(st: ShopState): DayReport {
     report.trends.push(`📈 ${label}: working ${dev.name} units are selling for ×${mult.toFixed(2)} until day ${st.trend[dev.id].until}.`);
   }
 
-  for (const p of st.projects) {
-    if (p.status !== 'listed' || (p.sellsOn ?? Infinity) > st.day) continue;
-    p.status = 'sold';
-    book(st, 'sale', p.salePrice ?? 0, `Sold ${p.title}`);
-    report.sales.push(`${p.title} sold for $${(p.salePrice ?? 0).toFixed(2)}`);
-    if ((p.hiddenIssues ?? 0) > 0 && r.next() < 0.6) {
-      st.refundsPending.push({ day: st.day + r.int(1, 3), amount: round2((p.salePrice ?? 0) * 0.5), text: `Buyer complaint: ${p.title} failed after a few days` });
-    }
-  }
+  for (const p of st.projects) if (p.status === 'listed') tradeListing(st, p, report, r);
   for (const f of st.refundsPending.filter((x) => x.day <= st.day)) {
     book(st, 'refund', -f.amount, f.text);
     st.reputation = Math.max(0, st.reputation - 2);
@@ -828,6 +942,7 @@ export function createShop(seed = 12345): ShopState {
     queue: [],
     warrantyPending: [],
     refundsPending: [],
+    sales: [],
     active: null,
     usage: { heatSeconds: 0, powerSeconds: 0 },
     nextId: 1,

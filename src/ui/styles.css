@@ -1407,3 +1407,17 @@ body.tut-locked #rw-canvas:not(.tut-ok) { cursor: not-allowed; }
 .tut-voice-ask button.chosen { outline: 2px solid var(--accent); }
 
 .tut-ui { margin: 4px 0 8px; padding: 6px 9px; border-left: 3px solid var(--accent); background: rgba(242, 184, 28, 0.07); border-radius: 0 8px 8px 0; font-size: 0.95em; }
+
+/* sales: listing window + tracker */
+.listing .chan { display: grid; gap: 2px; padding: 8px 10px; margin: 6px 0; border: 1px solid #3a4452; border-radius: 6px; cursor: pointer; }
+.listing .chan:has(input:checked) { border-color: #4da3ff; background: #1b2735; }
+.listing .fields { display: grid; gap: 8px; margin: 10px 0; }
+.listing .fields input, .listing .fields select { width: 110px; margin-left: 6px; }
+.of-body .cards { display: flex; gap: 10px; margin: 8px 0 12px; flex-wrap: wrap; }
+.of-body .card { display: grid; padding: 8px 14px; background: #1b2330; border-radius: 6px; min-width: 90px; }
+.of-body .card b { font-size: 20px; }
+.of-body .card span { font-size: 12px; opacity: 0.7; }
+.of-body .bars { display: flex; align-items: flex-end; gap: 4px; height: 52px; }
+.of-body .bars .bar { width: 18px; background: #3fae6a; border-radius: 2px 2px 0 0; }
+.of-body .bars .bar.neg { background: #c9504a; }
+.of-body table.sales td, .of-body table.sales th { padding: 3px 8px; }
