@@ -18,6 +18,16 @@ Status: **being built (2026-10-26)**. Your answers to the five questions are in 
 5. **First BGA devices:** mid-range and modern consoles, phones, tablets, all the exotics and military electronics. (The first BGA in an existing device is the
    Rogue Pal handheld PC's APU; the new consoles, phones and exotic boards bring many more.)
 
+**Revision (2026-10-26, later):** the stencil does not carry one chip code. There are **12 stencil types** (ST-01 to ST-12) in **3 ball sizes**
+(0.30, 0.45, 0.60 mm; four stencils per size) and **24 BGA chips** (two per package), so **one stencil fits more than one chip**. Each stencil has its
+id, **the chip codes it fits** and the **ball size** etched on it (`bgatypes.ts`). Each chip has its own code (its marking, e.g. RP-Z1 = Rogue Pal APU, ST-05).
+
+**Built so far:** BGA types and footprints, ball-state model with remove / clean / reball (balls or paste, stencil warp) / fit / reflow in place
+(`src/rework/bga.ts`), generic faults (cracked, bridged, dead: `bgafaults.ts`), tools and supplies, session actions and the BGA station
+(`ui/bga.ts`, opened from a BGA part's panel). Used / donor chips arrive bare; a new chip arrives with its balls. Reflow-only repairs come back
+(hidden fault in the evaluation). Still to do: lifted-pad BGA faults repaired with wire through the exposed pads, X-ray / endoscope inspection,
+more BGA devices (consoles, phones, tablets, exotics), certified balls and paste, a ball-by-ball close-up.
+
 ## What the player can do with a BGA chip
 A BGA chip sits on a grid of solder balls under the chip, so the joints cannot be seen or touched. The player's options, cheapest first:
 

@@ -34,6 +34,7 @@ import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd
 import { bootCurve, BOOT_SECONDS, type BootKind, capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
+import { cleanBoardPads, cleanChip, fitBga, isBgaDef, reballChip, reflowInPlace, removeBga, typeOf, type FillMethod, type Heat } from '../rework/bga';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
 import {
   book,
@@ -53,6 +54,8 @@ import {
   storeProject,
   migrateShop,
   useSupply,
+  warpStencil,
+  stencilWarped,
   askCustomer,
   placeOrder,
   type CustomerAsk,
@@ -830,6 +833,139 @@ export class Session {
     this.recompute();
     this.save();
     return text;
+  }
+
+  // ------------------------------------------------------------------ BGA work
+
+  /** Why BGA work cannot start right now (null = fine). */
+  private bgaBlock(ref: string): string | null {
+    if (this.powerMode !== 'off') return 'Switch the board off first.';
+    if (!this.reachable) return 'Take the board out of its case first (🔧 Case on the ticket).';
+    if (!isBgaDef(this.board.comps[ref])) return `${ref} is not a ball grid chip.`;
+    return null;
+  }
+
+  /** Stencil state for the held / installed chip: the id it needs and whether the shelf copy is usable. */
+  bgaNeeds(ref: string): { stencil: string; ballMm: number; owned: boolean; warped: boolean } | null {
+    const c = this.board.comps[ref];
+    const t = typeOf(c);
+    if (!t) return null;
+    const id = `stencil-${t.stencil}`;
+    return { stencil: t.stencil, ballMm: t.ballMm, owned: this.owns(id), warped: stencilWarped(this.shop, t.stencil) };
+  }
+
+  private bgaDone(text: string, ok = true): { ok: boolean; text: string } {
+    this.fluxed.clear();
+    this.afterRepair(text);
+    return { ok, text };
+  }
+
+  private bgaFlux(): SupplyId {
+    return (this.shop.kit.flux ?? 'flux-rosin') as SupplyId;
+  }
+
+  /** Lay flux around / under the chip (1 ml). */
+  bgaFluxUp(ref: string): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    const f = this.bgaFlux();
+    if (this.shop.supplies[f] < 1) return { ok: false, text: 'You are out of flux (Supplies tab).' };
+    useSupply(this.shop, f, 1);
+    this.fluxed.add(ref);
+    return { ok: true, text: `Flux applied around ${ref}.` };
+  }
+
+  /** Heat the chip in place and see if the balls take (< 50 % chance to fix). */
+  bgaReflow(ref: string, heat: Heat): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    if (!this.board.comps[ref].part) return { ok: false, text: `${ref} is already off the board.` };
+    return this.bgaDone(reflowInPlace(this.board, ref, { flux: this.fluxed.has(ref), heat }));
+  }
+
+  /** Lift the chip off with hot air. */
+  bgaRemove(ref: string, heat: Heat): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    if (!this.board.comps[ref].part) return { ok: false, text: `${ref} is already off the board.` };
+    const text = removeBga(this.board, ref, { flux: this.fluxed.has(ref), heat });
+    if (!this.board.comps[ref].bga?.off) return { ok: false, text };
+    return this.bgaDone(text);
+  }
+
+  /** Clean the board pads (`what: 'pads'`) or strip the chip (`'chip'`) with flux and wick. */
+  bgaClean(ref: string, what: 'pads' | 'chip'): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    const wick = this.shop.kit.wick as SupplyId;
+    if (this.shop.supplies[wick] < 6) return { ok: false, text: 'You need solder wick (6 cm): Supplies tab.' };
+    const f = this.bgaFlux();
+    if (this.shop.supplies[f] < 0.5) return { ok: false, text: 'You are out of flux (Supplies tab).' };
+    const o = { flux: true, wick: true };
+    const text = what === 'pads' ? cleanBoardPads(this.board, ref, o) : cleanChip(this.board, ref, o);
+    if (/^(Cleaning|There is no)/.test(text) || text.includes('still on')) return { ok: false, text };
+    useSupply(this.shop, wick, 6);
+    useSupply(this.shop, f, 0.5);
+    return this.bgaDone(text);
+  }
+
+  /** Take a replacement chip from stock into the vise (a new chip has balls; a used or donor chip is bare). */
+  bgaLoadChip(ref: string, prefer: 'new' | 'used'): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    const c = this.board.comps[ref];
+    const off = c.bga?.off;
+    if (!off) return { ok: false, text: 'Lift the chip first.' };
+    const partNo = c.def.partNo;
+    const got = takePart(this.shop, partNo, prefer);
+    if (!got) return { ok: false, text: `No ${part(partNo).label} in stock: order one or pull one from a donor.` };
+    if (off.partNo && !off.burnt && !off.fault) returnPart(this.shop, off.partNo, 'used');
+    const pins = Object.keys(off.pads);
+    off.partNo = partNo;
+    off.burnt = false;
+    off.fault = null;
+    off.chip = Object.fromEntries(pins.map((p) => [p, got === 'new' ? 'good' : 'bare'])) as typeof off.chip;
+    off.cleanedChip = got === 'used';
+    return this.bgaDone(got === 'new' ? `A new ${part(partNo).label} is in the vise. It comes with its balls.` : `A used ${part(partNo).label} is in the vise. Its balls are gone: reball it before fitting.`);
+  }
+
+  /** Reball the chip in the vise with a stencil, using balls or solder paste. */
+  bgaReball(ref: string, method: FillMethod, heat: Heat): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    const need = this.bgaNeeds(ref)!;
+    const off = this.board.comps[ref].bga?.off;
+    if (!off?.partNo) return { ok: false, text: 'There is no chip in the vise.' };
+    if (!this.owns('bga-vise')) return { ok: false, text: 'You need the reballing vise (Equipment tab, $150).' };
+    if (!need.owned) return { ok: false, text: `You need stencil ${need.stencil} (Equipment tab, $40).` };
+    if (method === 'paste' && !this.owns('paste-scraper')) return { ok: false, text: 'You need the paste scraper (Equipment tab).' };
+    const n = Object.keys(off.pads).length;
+    const ballId = `bga-balls-${String(Math.round(need.ballMm * 100)).padStart(3, '0')}` as SupplyId;
+    if (method === 'balls') {
+      if (this.shop.supplies[ballId] < n) return { ok: false, text: `You need ${n} solder balls of ${need.ballMm.toFixed(2)} mm (Supplies tab).` };
+      if (!this.fluxed.has(ref)) return { ok: false, text: 'Lay flux on the chip first (Flux button).' };
+    } else if (this.shop.supplies['solder-paste'] < 0.5) return { ok: false, text: 'You need solder paste (Supplies tab).' };
+    const stencil = { id: need.stencil, warped: need.warped };
+    const text = reballChip(this.board, ref, { stencil, method, ballMm: need.ballMm as never, flux: this.fluxed.has(ref), heat });
+    if (stencil.warped && !need.warped) warpStencil(this.shop, need.stencil);
+    const formed = (stencil.warped && !need.warped) || /Reballed|bumps formed/.test(text);
+    if (formed) {
+      if (method === 'balls') useSupply(this.shop, ballId, n);
+      else useSupply(this.shop, 'solder-paste', 0.5);
+      if (this.job.cert) this.job.cert.violations.push('uncertified solder');
+    }
+    return this.bgaDone(text, formed);
+  }
+
+  /** Fit the chip from the vise onto the pads. */
+  bgaFit(ref: string, heat: Heat, aligned: boolean): { ok: boolean; text: string } {
+    const why = this.bgaBlock(ref);
+    if (why) return { ok: false, text: why };
+    const c = this.board.comps[ref];
+    const off = c.bga?.off;
+    if (c.part || !off?.partNo) return { ok: false, text: 'There is no chip in the vise to fit.' };
+    const text = fitBga(this.board, ref, { partNo: off.partNo, fromStock: false, flux: this.fluxed.has(ref), heat, aligned });
+    return this.bgaDone(text, !!c.part);
   }
 
   /** Instruments bought in the office. */

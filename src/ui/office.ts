@@ -322,14 +322,16 @@ function stock(s: Session, cart: Cart, speed: DeliveryId): string {
 function tools(s: Session): string {
   const st = s.shop;
   const card = (t: (typeof TOOLS)[number]) => {
-    const owned = st.tools.includes(t.id);
+    const warped = (st.warped ?? []).includes(t.id);
+    const owned = st.tools.includes(t.id) && !warped;
     return `<div class="of-card ${owned ? 'hl' : ''}"><h3>${esc(t.name)}</h3><div class="price">${t.cost ? money(t.cost) : 'Stock'}</div>
-      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' || t.kind === 'microscope' || t.kind === 'testconsole' || t.kind === 'cleaning' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
-      ${owned ? '<span class="pill">owned</span>' : `<button class="primary" data-act="buy-tool" data-id="${t.id}" ${st.cash < t.cost ? 'disabled title="Not enough cash"' : ''}>Buy ${money(t.cost)}</button>`}</div>`;
+      <p>${esc(t.blurb)}</p>${t.kind === 'instrument' || t.kind === 'microscope' || t.kind === 'testconsole' || t.kind === 'cleaning' || t.kind === 'stencil' ? '' : `<p class="muted small">Heat transfer ×${t.heat.toFixed(2)} · ${t.kind === 'tip' ? 'contact' : 'airflow'} ${t.radius} mm</p>`}
+      ${warped ? '<p class="note small">Warped by too much heat: replace it.</p>' : ''}${owned ? '<span class="pill">owned</span>' : `<button class="primary" data-act="buy-tool" data-id="${t.id}" ${st.cash < t.cost ? 'disabled title="Not enough cash"' : ''}>${warped ? 'Replace' : 'Buy'} ${money(t.cost)}</button>`}</div>`;
   };
   return `<p>Better tools give you capabilities, not stat boosts: a bigger tip melts ground pads quickly, a focused nozzle spares the neighbours. Pick what to use in the microscope's kit selectors.</p>
     <h3>Cleaning tools</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'cleaning').map(card).join('')}</div>
     <h3>Diagnostic instruments</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'instrument').map(card).join('')}</div>
+    <h3>Reballing stencils (BGA)</h3><p class="muted small">One stencil per chip type, three ball sizes. The chip codes and the ball size are etched on each. You also need the reballing vise (above), balls or solder paste (Supplies tab) and a hot-air station.</p><div class="of-grid">${TOOLS.filter((t) => t.kind === 'stencil').map(card).join('')}</div>
     <h3>Test consoles (for the 📺 Test Station)</h3><p class="muted small">Without one, cartridges go home untested: the customer pays, and if it does not boot they come back for 10% and a re-fix.</p><div class="of-grid">${TOOLS.filter((t) => t.kind === 'testconsole').map(card).join('')}</div>
     <h3>Microscope upgrades</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'microscope').map(card).join('')}</div>
     <h3>Soldering iron tips</h3><div class="of-grid">${TOOLS.filter((t) => t.kind === 'tip').map(card).join('')}</div>

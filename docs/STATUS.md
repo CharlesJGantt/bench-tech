@@ -208,7 +208,7 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Test lab boot sequence for every console and handheld (status light, boot screens, OS load, game loading screen) | TODO |
 | Approval of every repairable (incl. case fitment, alignment, hole placement), cartridge, disc, tool model, office menu | TODO (you test) |
 | Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
-| Reballing / BGA: **being built** (decisions in `REBALLING_DESIGN.md`: stencils, vise, balls or paste, heat bar, reflow in place under 50 %) | IN PROGRESS |
+| Reballing / BGA: **first version built** (12 stencils, 3 ball sizes, 24 chips; vise, balls or paste, heat bar, reflow in place under 50 %; station, faults, tools; Rogue Pal APU is the first BGA). Needs playtest; more BGA devices will come with the new consoles / phones | BUILT, NEEDS TEST |
 | Test lab: immersive boot sequence plus WiFi and Bluetooth testing on the test screen | TODO |
 | Call flow: the customer refuses a pricey part and stops the repair; you buy it for spares or return it | TODO |
 

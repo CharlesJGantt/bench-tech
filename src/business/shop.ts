@@ -206,6 +206,8 @@ export interface ShopState {
   supplies: Record<SupplyId, number>;
   /** Tools owned (iron tips, hot-air nozzles). */
   tools: string[];
+  /** Tool ids (stencils) that warped from too much heat and need replacing. */
+  warped?: string[];
   /** Wear on the brush currently in use (0..1). */
   brushWear: number;
   /** Saturation of the end of each wick roll (by supply id). */
@@ -457,6 +459,15 @@ export function useSupply(st: ShopState, id: SupplyId, amount: number): void {
   st.supplies[id] = Math.max(0, round2(st.supplies[id] - amount));
 }
 
+/** A stencil that overheated: it stays on the shelf but is warped until a new one is bought. */
+export function warpStencil(st: ShopState, stencilId: string): void {
+  const id = `stencil-${stencilId}`;
+  st.warped ??= [];
+  if (!st.warped.includes(id)) st.warped.push(id);
+}
+
+export const stencilWarped = (st: ShopState, stencilId: string): boolean => (st.warped ?? []).includes(`stencil-${stencilId}`);
+
 export function lowSupplies(st: ShopState): SupplyId[] {
   return (Object.keys(SUPPLIES) as SupplyId[]).filter((id) => SUPPLIES[id].low > 0 && st.supplies[id] <= SUPPLIES[id].low);
 }
@@ -464,8 +475,10 @@ export function lowSupplies(st: ShopState): SupplyId[] {
 /** Buy a tool (iron tip, nozzle) outright. */
 export function buyTool(st: ShopState, id: string): boolean {
   const t = tool(id);
-  if (st.tools.includes(id) || st.cash < t.cost) return false;
-  st.tools.push(id);
+  const warped = (st.warped ?? []).includes(id);
+  if ((st.tools.includes(id) && !warped) || st.cash < t.cost) return false;
+  if (warped) st.warped = st.warped!.filter((x) => x !== id);
+  else st.tools.push(id);
   book(st, 'supplies', -t.cost, `Bought ${t.name}`);
   return true;
 }
@@ -1090,6 +1103,8 @@ export function createReviewShop(seed = 777): ShopState {
   st.cash = 10000;
   st.reputation = 100;
   st.tools = TOOLS.map((t) => t.id);
+  for (const id of ['bga-balls-030', 'bga-balls-045', 'bga-balls-060'] as SupplyId[]) st.supplies[id] = 2000;
+  st.supplies['solder-paste'] = 25;
   st.queue = []; // the usual starter customers make way for the review jobs
   DEVICE_LIST.forEach((dev, i) => {
     const job = generateJob(dev, seed * 1000 + i, { maxTier: 3 });

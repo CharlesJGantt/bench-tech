@@ -1,4 +1,5 @@
 /** Prices and rates for the shop economy. All brand names are fictional. */
+import { BGA_TYPES, stencilLabel } from '../sim/bgatypes';
 
 export type SupplyId =
   | 'solder'
@@ -34,7 +35,11 @@ export type SupplyId =
   | 'solder-cert'
   | 'flux-cert'
   | 'coating-remover'
-  | 'conformal-coat';
+  | 'conformal-coat'
+  | 'bga-balls-030'
+  | 'bga-balls-045'
+  | 'bga-balls-060'
+  | 'solder-paste';
 
 export interface SupplyDef {
   id: SupplyId;
@@ -166,6 +171,10 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
   'mask-blue': { id: 'mask-blue', name: 'UV solder mask, blue', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a blue solder mask.' },
   'mask-black': { id: 'mask-black', name: 'UV solder mask, black', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a black solder mask.' },
   kapton: { id: 'kapton', name: 'Kapton heat tape', unit: 'cm', pack: { qty: 1000, cost: 5, label: '10 m roll' }, start: 0, low: 0, blurb: 'Heat-proof tape: cover plastic connectors and parts that melt next to your hot air, then peel it off.' },
+  'bga-balls-030': { id: 'bga-balls-030', name: 'Solder balls 0.30 mm', unit: 'pcs', pack: { qty: 2000, cost: 9, label: 'bottle of 2000' }, start: 0, low: 0, blurb: 'The smallest BGA balls: they fit the 0.30 mm stencils (ST-01 to ST-04). One ball goes in every hole of the stencil.' },
+  'bga-balls-045': { id: 'bga-balls-045', name: 'Solder balls 0.45 mm', unit: 'pcs', pack: { qty: 2000, cost: 9, label: 'bottle of 2000' }, start: 0, low: 0, blurb: 'Medium BGA balls: they fit the 0.45 mm stencils (ST-05 to ST-08).' },
+  'bga-balls-060': { id: 'bga-balls-060', name: 'Solder balls 0.60 mm', unit: 'pcs', pack: { qty: 2000, cost: 10, label: 'bottle of 2000' }, start: 0, low: 0, blurb: 'The biggest BGA balls: they fit the 0.60 mm stencils (ST-09 to ST-12).' },
+  'solder-paste': { id: 'solder-paste', name: 'Solder paste', unit: 'g', pack: { qty: 25, cost: 16, label: '25 g syringe' }, start: 0, low: 0, blurb: 'Smear it over a stencil and scrape the excess off: quick reballing, no extra flux. About one time in five it leaves some pads with too little or too much.' },
   'solder-cert': { id: 'solder-cert', name: 'Certified solder (traceable lot)', unit: 'g', pack: { qty: 25, cost: 120, label: '25 g certified spool' }, start: 0, low: 0, blurb: 'Lot-traceable, certified alloy. Required for aviation, orbital and military boards. Far dearer than ordinary solder.' },
   'flux-cert': { id: 'flux-cert', name: 'Certified no-residue flux', unit: 'ml', pack: { qty: 10, cost: 95, label: '10 ml certified syringe' }, start: 0, low: 0, blurb: 'Certified flux that cleans off completely. Required for certified boards, where flux must never be left behind.' },
   'coating-remover': { id: 'coating-remover', name: 'Conformal coating remover', unit: 'ml', pack: { qty: 60, cost: 55, label: '60 ml bottle' }, start: 0, low: 0, blurb: 'Softens conformal coating around a repair area, used with the pen grinder. Needed before reworking a coated board.' },
@@ -245,7 +254,7 @@ export const WICKS: Record<WickDef['supply'], WickDef> = {
 
 export interface ToolDef {
   id: string;
-  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope' | 'testconsole' | 'cleaning';
+  kind: 'tip' | 'nozzle' | 'instrument' | 'microscope' | 'testconsole' | 'cleaning' | 'stencil';
   name: string;
   cost: number;
   blurb: string;
@@ -289,6 +298,9 @@ export const TOOLS: ToolDef[] = [
   { id: 'disc-buffer', kind: 'instrument', name: 'Disc buffing machine', cost: 85, heat: 0, radius: 0, blurb: 'Spins a game disc against a polishing pad to remove scratches. The core of a disc-resurfacing service.' },
   { id: 'micro-drill', kind: 'instrument', name: 'Micro drill & carbide bits', cost: 25, heat: 0, radius: 0, blurb: 'For boards a long screw has bitten into: drill the damaged via out under the microscope to separate the shorted inner layers again.' },
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
+  { id: 'bga-vise', kind: 'instrument', name: 'Reballing vise', cost: 150, heat: 0, radius: 0, blurb: 'Holds a BGA chip steady under its stencil so the balls land on the pads. Needed for every reball.' },
+  { id: 'paste-scraper', kind: 'instrument', name: 'Paste scraper', cost: 8, heat: 0, radius: 0, blurb: 'Wipes excess solder paste off a stencil. Only needed for the paste method of reballing.' },
+  ...BGA_TYPES.map((t): ToolDef => ({ id: `stencil-${t.stencil}`, kind: 'stencil', name: `Stencil ${t.stencil} (${t.ballMm.toFixed(2)} mm)`, cost: 40, heat: 0, radius: 0, blurb: `Laser-cut stainless stencil. Etched: ${stencilLabel(t)}. It warps if the hot air is too hot, and then it has to be replaced.` })),
 ];
 
 export const STARTING_TOOLS = ['tip-conical', 'nozzle-5', 'tweezers', 'pick-tool'];

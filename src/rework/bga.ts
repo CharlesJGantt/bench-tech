@@ -6,7 +6,7 @@
  * Process: inspect -> (reflow in place, < 50 % to fix) or remove -> clean pads -> clean chip -> reball (stencil + balls or paste)
  * -> fit -> test.
  */
-import type { BoardState, CompState } from '../sim/circuit';
+import type { BoardState, CompFault, CompState } from '../sim/circuit';
 import { bgaType, onRing, stencilForChip, type BallSize, type BgaType } from '../sim/bgatypes';
 import { part, pinsOf } from '../sim/parts';
 
@@ -25,6 +25,8 @@ export interface OffChip {
   /** Flux left on the chip / board pads (reballing needs it; paste has its own). */
   cleanedChip: boolean;
   burnt: boolean;
+  /** The chip's own fault (a dead chip stays dead when it is refitted). */
+  fault?: CompFault | null;
 }
 
 export interface BgaState {
@@ -170,7 +172,7 @@ export function removeBga(b: BoardState, ref: string, o: { flux: boolean; heat: 
     if (rng() < 0.5) burnt = true;
     note = burnt ? ' It was cooked by the heat.' : ' Some pads came up with it.';
   }
-  c.bga = { balls: {}, off: { partNo, chip, pads, cleanedChip: false, burnt }, ...(st.reflowed ? { reflowed: true } : {}) };
+  c.bga = { balls: {}, off: { partNo, chip, pads, cleanedChip: false, burnt, fault: c.fault }, ...(st.reflowed ? { reflowed: true } : {}) };
   for (const [p, s] of Object.entries(pads)) if (s === 'lifted') liftKey(b, ref, p);
   c.part = null;
   c.fault = null;
@@ -328,7 +330,7 @@ export function fitBga(b: BoardState, ref: string, o: FitOpts, rng: Rng = Math.r
   const reballed = !o.fromStock && off?.partNo === o.partNo;
   c.bga = { balls, ...(reballed ? { reballed: true } : {}), ...(c.bga?.reflowed ? { reflowed: true } : {}) };
   c.part = p;
-  c.fault = null;
+  c.fault = !o.fromStock && off?.partNo === o.partNo ? (off.fault ?? null) : null;
   c.burnt = burnt;
   c.replaced = true;
   if (!c.marks.includes('rework-residue')) c.marks.push('rework-residue');

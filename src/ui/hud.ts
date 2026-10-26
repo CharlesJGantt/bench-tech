@@ -8,6 +8,8 @@ import { schematicHtml } from './schematic';
 import { ReworkStation } from './rework';
 import { TeardownStation } from './teardown';
 import { ContactStation } from './contacts';
+import { BgaStation } from './bga';
+import { isBgaDef } from '../rework/bga';
 import { TestStation } from './teststation';
 import { jobName } from '../sim/faults';
 import { scrubbable } from '../sim/contacts';
@@ -407,6 +409,9 @@ export class Hud {
       case 'contacts':
         if (ref) this.openContacts(ref);
         break;
+      case 'bga':
+        if (ref) this.openBga(ref);
+        break;
       case 'attach':
         s.toggleAttach(d.id!);
         break;
@@ -759,6 +764,10 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
 
   private openRework(ref: string): void {
     const s = this.s;
+    if (isBgaDef(s.board.comps[ref])) {
+      this.openBga(ref);
+      return;
+    }
     if (!s.reachable) {
       this.toast('Open the case first (🔧 Case on the ticket) — you cannot get a microscope on a board inside its case.');
       return;
@@ -819,6 +828,38 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       $('#modal-body').innerHTML = '';
       s.emit();
     }).open();
+  }
+
+  // ------------------------------------------------------------------ BGA
+
+  private openBga(ref: string): void {
+    const s = this.s;
+    if (!s.reachable) {
+      this.toast('Open the case first (🔧 Case on the ticket).');
+      return;
+    }
+    if (s.powerMode !== 'off') s.setPowerMode('off');
+    const m = $('#modal');
+    m.className = 'show rework';
+    this.soldering = true;
+    new BgaStation(
+      s,
+      $('#modal-body'),
+      ref,
+      async (title, r) => {
+        // the heat bar replaces the modal for a moment; the station redraws itself afterwards
+        const q = await this.solder(title, r);
+        m.className = 'show rework';
+        this.soldering = true;
+        return q === null ? null : q === 'overheated' ? 'over' : q;
+      },
+      () => {
+        this.soldering = false;
+        m.className = '';
+        $('#modal-body').innerHTML = '';
+        s.emit();
+      },
+    ).open();
   }
 
   // ------------------------------------------------------------------ teardown
@@ -1544,6 +1585,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
+        ${isBgaDef(c) ? '<button data-act="bga" title="The balls are hidden under the chip: reflow, lift, reball, fit">🔲 BGA work (reflow / reball)</button>' : ''}
         ${c.coat === 'on' ? `<button data-act="coat-remove" data-ref="${ref}" title="Grinding pen and coating remover: the coating comes off around this part">🧴 Remove the conformal coating (3 ml)</button>` : ''}${c.coat === 'removed' ? `<button data-act="coat-reapply" data-ref="${ref}" title="Re-seal the repair area (UV cure)">🛡 Put the coating back (2 ml)</button>` : ''}
         ${c.marks.includes('pptc-high') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Heat it with the hot air, nothing masked">🔥 Heat it with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then heat (${KAPTON_PER_RESET} cm)</button>` : ''}
         ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port through the microscope">🔦 Look into the port (microscope)</button>` : ''}

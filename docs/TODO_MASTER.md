@@ -157,7 +157,7 @@ Each task has where it came from in brackets.
 86. [ ] **Inspect every visible 3D tool** and **every office menu**; fix what you reject.
 87. [ ] **Test every buy and sell action**, **every repair process**, **the store-room and donor board process** (really desolder parts from a donor,
     remove cases, replace broken parts), the **customer call scenarios**, the **locations, bench upgrades, storefronts and employees**.
-88. [~] **Reballing / BGA work: BEING BUILT** (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
+88. [x] **Reballing / BGA work: first version built, needs your playtest** (follow-ups: BGA lifted-pad repair, X-ray inspection, certified balls / paste, more BGA devices) (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
     (reflow in place, remove, clean pads, stencil and balls, fit, test; BGA parts, tools and consumables; new faults). Needs your answers to its 5 questions.
 89. [ ] **Customer says no to a pricey part (replaces "Stop repair / Finish repair")**: when you call and quote a part ("this chip will cost $48", more depending on
     chip, shipping method, markup, rarity and certification), the customer may say **"that's too much, the repair is not worth it"** and **stop the

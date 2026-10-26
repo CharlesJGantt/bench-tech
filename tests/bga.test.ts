@@ -117,3 +117,30 @@ describe('BGA faults', () => {
       expect(functionalTest(cloneBoard(job.board)).passed).toBe(false);
     });
 });
+
+describe('BGA through the session', () => {
+  it('reball flow uses supplies, stencils and the vise', async () => {
+    const store: Record<string, string> = {};
+    (globalThis as any).window = { addEventListener() {} };
+    (globalThis as any).localStorage = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => void (store[k] = v), removeItem: (k: string) => void delete store[k] };
+    (globalThis as any).location = { search: '' };
+    const { Session } = await import('../src/game/session');
+    const s: any = new Session();
+    const job = generateJob(DEVICES['rogue-pal'], 7, { variant: 'bga-cracked' });
+    s.job = job;
+    Object.defineProperty(s, 'reachable', { get: () => true });
+    s.shop.cash = 5000;
+    expect(s.bgaRemove('U3', 'good').ok).toBe(true);
+    expect(s.bgaReball('U3', 'balls', 'good').text).toContain('vise');
+    for (const t of ['bga-vise', 'stencil-ST-05']) s.shop.tools.push(t);
+    s.shop.supplies['bga-balls-045'] = 100;
+    expect(s.bgaClean('U3', 'pads').ok).toBe(true);
+    expect(s.bgaClean('U3', 'chip').ok).toBe(true);
+    expect(s.bgaReball('U3', 'balls', 'good').text).toContain('flux');
+    expect(s.bgaFluxUp('U3').ok).toBe(true);
+    const r = s.bgaReball('U3', 'balls', 'over');
+    expect(r.text).toContain('warped');
+    expect(s.shop.warped).toContain('stencil-ST-05');
+    expect(s.shop.supplies['bga-balls-045']).toBe(64);
+  });
+});
