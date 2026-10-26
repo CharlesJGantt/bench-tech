@@ -145,7 +145,8 @@ export function usbMeterReading(volts: number, amps: number): UsbMeterReading {
   const a = Math.max(0, amps);
   const base = { volts: v, amps: a, watts: v * a };
   if (v < 3.5 && a > 0.05) return { ...base, ok: false, verdict: 'The voltage collapses as soon as it is plugged in: something is shorted, and the charger is limiting its current. Look for a hot part or a failed capacitor.' };
+  if (v >= 3.5 && v < 4.4 && a > 0.1) return { ...base, ok: false, verdict: 'The voltage sags below the 4.4 V a healthy USB port gives under load: a worn cable, a weak charger or a high-resistance joint in the way in.' };
   if (a < 0.005) return { ...base, ok: false, verdict: 'Nothing is drawn at all. The power is not getting in: check the port, the input fuse and the charger chip, or the device may simply be full.' };
-  if (a < 0.1) return { ...base, ok: false, verdict: 'Only a trickle. Charging is stuck at a low current: a deeply discharged or worn battery, a weak charger chip, or a poor contact in the path.' };
+  if (a < 0.1) return { ...base, ok: false, verdict: 'Only a trickle. Charging is stuck at a low current: a deeply discharged or worn battery, a weak charger chip, or a poor contact in the path. A steady low number that does not change is a fingerprint: note it and compare it with the next device that behaves the same way.' };
   return { ...base, ok: true, verdict: 'Charging normally: a healthy current at about 5 V.' };
 }
