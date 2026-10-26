@@ -1,7 +1,8 @@
 /**
  * USB power blocks: the charging port, and a single-cell Li-ion charger with its battery.
  */
-import { addMark } from '../faults';
+import { addMark, type Rng } from '../faults';
+import type { BoardState } from '../circuit';
 import type { BlockDef, BlockPart, BlockVariant } from './core';
 
 // ---------------------------------------------------------------------------
@@ -84,6 +85,26 @@ export function usbInput(o: UsbInputOpts): BlockDef {
           };
         },
       },
+      ...(o.tvs
+        ? [
+            {
+              id: 'usb-tvs-short',
+              family: 'Shorted protection diode',
+              tier: 2,
+              weight: 0.7,
+              apply(b: BoardState, rng: Rng, ref: (k: string) => string) {
+                const r = ref('tvs');
+                b.comps[r].fault = { type: 'short', r: rng.range(0.2, 1.2) };
+                return {
+                  summary: `The surge clamp ${r} on the USB input failed shorted. It drags the 5 V line to ground, so nothing can charge and the charger cuts out.`,
+                  refs: [r],
+                  hint: 'A USB meter shows the voltage collapsing the moment you plug in (or the meter will not even light). Measure resistance from VBUS to ground, then look for the part that gets warm.',
+                  flavor: 'Nothing at all when I plug it in. The charger light blinks off straight away.',
+                };
+              },
+            } as BlockVariant,
+          ]
+        : []),
       {
         id: 'usb-port-joint',
         family: 'Cracked solder joint',
@@ -202,6 +223,22 @@ export function liIonCharger(o: ChargerOpts): BlockDef {
             refs: [r],
             hint: `With the charger plugged in: is there 5 V on ${r}'s input, and does the battery voltage rise? If 5 V arrives but nothing comes out, it is the chip.`,
             flavor: 'It will not charge any more. The light does not come on.',
+          };
+        },
+      },
+      {
+        id: 'charger-vbus-short',
+        family: 'Shorted charger IC',
+        tier: 2,
+        weight: 0.7,
+        apply(b, rng, ref) {
+          const r = ref('chg');
+          b.comps[r].fault = { type: 'short', r: rng.range(0.6, 2.5) };
+          return {
+            summary: `Charger ${r} failed with its input shorted to ground. It pulls the whole 5 V input down and runs hot.`,
+            refs: [r],
+            hint: `5 V collapses as soon as power is applied, and one chip heats up (a thermal camera or a fingertip finds it). It is ${r}, the charger chip.`,
+            flavor: 'It does not charge, and the cable gets warm when I plug it in.',
           };
         },
       },
