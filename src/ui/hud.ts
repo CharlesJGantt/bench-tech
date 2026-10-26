@@ -967,7 +967,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       <h3>What was actually wrong</h3>${truth}
       ${job.history.length ? `<p class="muted">Damage while the customer kept using it: ${job.history.map((e) => esc(e.message)).join(', ')}.</p>` : ''}${hint}
       <h3>Money</h3>
-      <table class="bom"><tr><td>${warranty ? 'Warranty repair (no charge)' : 'Payment'}</td><td>$${ev.payout.toFixed(2)}</td></tr><tr><td>Reputation</td><td>${ev.reputation >= 0 ? '+' : ''}${ev.reputation}</td></tr></table>
+      <table class="bom">${warranty || ev.outcome === 'not-fixed' || !ev.partsBilled ? '' : `<tr><td>Labour (the quote)</td><td>$${job.quote.toFixed(2)}</td></tr><tr><td>Parts fitted (cost + 50%)</td><td>$${ev.partsBilled.toFixed(2)}</td></tr>`}<tr><td>${warranty ? 'Warranty repair (no charge)' : 'Payment'}</td><td>$${ev.payout.toFixed(2)}</td></tr><tr><td>Reputation</td><td>${ev.reputation >= 0 ? '+' : ''}${ev.reputation}</td></tr></table>
       <p class="muted small">Parts and supplies came out of your stock; reorder them from the office.</p>${back}`,
       'wide',
     );
@@ -1217,7 +1217,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     return `<div class="tag">${job.kind === 'warranty' ? 'WARRANTY RETURN' : 'REPAIR TICKET'} · #${job.seed}</div>
       <h2>${esc(jobName(job))}</h2>
       <div class="kv"><span>Customer</span><b>${esc(job.customer)}</b></div>
-      <div class="kv"><span>Quote</span><b>${job.kind === 'warranty' ? 'free (your warranty)' : '$' + job.quote}</b></div>
+      <div class="kv"><span title="Labour. Parts you fit are billed on top, at cost plus 50 %">Quote (labour)</span><b>${job.kind === 'warranty' ? 'free (your warranty)' : '$' + job.quote}</b></div>
       <div class="kv"><span>Previous repair</span><b>${job.previousRepair}</b></div>
       ${job.previousRepairNote ? `<p class="quote">“${esc(job.previousRepairNote)}”</p>` : ''}
       <p class="complaint">“${esc(job.complaint)}”</p>

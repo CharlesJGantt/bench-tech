@@ -235,7 +235,10 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   if (fault.previousRepair) previousRepairNote = rng.pick(['My cousin tried fixing it.', 'Another shop had it for a week and gave up.', 'I watched a video and replaced a part myself.']);
   else if (previousRepair === 'Unknown') previousRepairNote = 'Bought it second-hand.';
 
-  const quote = device.quoteBase + 10 * fault.tier + 5 * rng.int(0, 3) + (history.length ? 10 : 0);
+  // Labour: the device's base rate plus the difficulty of the fault; a valuable device is never quoted
+  // below a share of its worth (a significant repair on a $1000 console is $200-300).
+  const labour = device.quoteBase + 10 * fault.tier + 5 * rng.int(0, 3) + (history.length ? 10 : 0);
+  const quote = Math.max(labour, Math.round((device.marketValue * (0.08 + 0.06 * fault.tier)) / 5) * 5);
   const customer = rng.pick(CUSTOMERS);
   return {
     seed,

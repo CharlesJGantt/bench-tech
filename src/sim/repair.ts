@@ -108,6 +108,8 @@ export interface Evaluation {
   /** Cosmetic / review issues. */
   notes: string[];
   payout: number;
+  /** Parts fitted during the repair, billed to the customer on top of the labour quote. */
+  partsBilled: number;
   partsCost: number;
   reputation: number;
 }
@@ -150,7 +152,9 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   else outcome = 'fixed';
 
   const residuePenalty = uniqueNotes.some((n) => n.startsWith('Sticky flux')) ? 1 : 0;
-  const payout = outcome === 'not-fixed' ? 0 : job.quote;
+  // Parts you fitted are charged at cost plus 50 %, on top of the quote (the labour)
+  const partsBilled = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
+  const payout = outcome === 'not-fixed' ? 0 : job.quote + partsBilled;
   const reputation = outcome === 'fixed' ? 5 - residuePenalty : outcome === 'comeback' ? -4 : -3;
-  return { outcome, report, hidden, notes: uniqueNotes, payout, partsCost, reputation };
+  return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation };
 }
