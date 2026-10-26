@@ -263,6 +263,33 @@ export function tool(id: string): ToolDef {
 }
 
 export const RENT = { amount: 140, everyDays: 7 };
+
+export type LocationId = 'garage' | 'storefront' | 'mall';
+export interface LocationDef {
+  id: LocationId;
+  name: string;
+  /** Weekly rent (the garage is the base RENT). */
+  rent: number;
+  /** One-off fit-out cost to move in. */
+  fitOut: number;
+  /** Reputation needed before a landlord will rent to you. */
+  reputation: number;
+  /** Walk-in traffic for storefront sales (0 = no shop window at all). */
+  traffic: number;
+  /** Extra new customers a day on top of advertising. */
+  extraCustomers: number;
+  blurb: string;
+}
+
+export const LOCATIONS: LocationDef[] = [
+  { id: 'garage', name: 'Home garage lab', rent: RENT.amount, fitOut: 0, reputation: 0, traffic: 0, extraCustomers: 0, blurb: 'Where everyone starts. Repairs and online sales only: nobody can walk in off the street.' },
+  { id: 'storefront', name: 'Small storefront', rent: 320, fitOut: 600, reputation: 15, traffic: 1, extraCustomers: 1, blurb: 'Low rent on a quiet street. A shelf for walk-in customers and a trickle of passing trade.' },
+  { id: 'mall', name: 'Mall shop', rent: 800, fitOut: 2500, reputation: 45, traffic: 2.4, extraCustomers: 2, blurb: 'High rent, high footfall. Walk-ins buy a lot more, and more people bring repairs.' },
+];
+
+export function locationDef(id: LocationId | undefined): LocationDef {
+  return LOCATIONS.find((l) => l.id === id) ?? LOCATIONS[0];
+}
 export const ELECTRICITY = { basePerDay: 2.5, perHeatMinute: 0.12, perPowerMinute: 0.03 };
 
 export interface AdTier {

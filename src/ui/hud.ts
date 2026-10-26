@@ -14,9 +14,9 @@ import { scrubbable } from '../sim/contacts';
 import { assembled } from '../sim/enclosure';
 import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
-import { CHANNELS, forecastListing, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
+import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
-import { ADS, NOT_SOLD, type DeliveryId } from '../business/economy';
+import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId } from '../business/economy';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -547,6 +547,13 @@ export class Hud {
         }
         this.renderOffice();
         break;
+      case 'move-shop': {
+        const res = moveShop(s.shop, d.id as LocationId);
+        if (!res.ok) this.toast(res.reason ?? 'Cannot move.', 'bad');
+        else s.save();
+        this.renderOffice();
+        break;
+      }
       case 'set-ads':
         s.shop.ads = d.id as (typeof ADS)[number]['id'];
         s.save();
@@ -815,7 +822,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     this.modal(`<h2>🏷 List it for sale</h2>
       <p class="muted">A working one is worth about <b>$${value}</b> today. Pick where to sell it.</p>
       <div class="listing">
-        ${(Object.keys(CHANNELS) as SaleChannel[]).map((c, i) => `<label class="chan"><input type="radio" name="chan" value="${c}" ${i === 1 ? 'checked' : ''}> <b>${CHANNELS[c].name}</b><span class="small muted">${CHANNELS[c].blurb}</span></label>`).join('')}
+        ${(Object.keys(CHANNELS) as SaleChannel[]).filter((c) => c !== 'storefront' || locationDef(s.shop.location).traffic).map((c, i) => `<label class="chan"><input type="radio" name="chan" value="${c}" ${i === 1 ? 'checked' : ''}> <b>${CHANNELS[c].name}</b><span class="small muted">${CHANNELS[c].blurb}</span></label>`).join('')}
         <div class="fields">
           <label data-f="price">Asking price $ <input type="number" id="lf-price" min="1" step="1" value="${value}"></label>
           <label data-f="reserve">Reserve (lowest you accept) $ <input type="number" id="lf-reserve" min="1" step="1" value="${Math.round(value * 0.75)}"></label>

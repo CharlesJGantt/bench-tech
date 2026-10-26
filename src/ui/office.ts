@@ -1,4 +1,4 @@
-import { ADS, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
+import { ADS, LOCATIONS, locationDef, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
 import {
   adTier,
   availableDevices,
@@ -65,7 +65,7 @@ export function officeHtml(s: Session, tab: OfficeTab, cart: Cart, speed: Delive
     ['tools', '🛠 Equipment'],
     ['market', `🛒 Marketplace${Object.keys(st.trend).length ? ' 🔥' : ''}`],
     ['sales', `💲 Sales (${(st.sales ?? []).length})`],
-    ['ads', '📣 Advertising'],
+    ['ads', '📣 Advertising & location'],
   ];
   const head = `<div class="of-head">
       <h2>🏪 Shop office <span class="muted">· Day ${st.day}</span></h2>
@@ -329,7 +329,15 @@ function market(s: Session): string {
 
 function ads(s: Session): string {
   const st = s.shop;
-  return `<p>Advertising brings more customers each day, and people who find you through ads accept slightly higher quotes. It is billed every night.</p>
+  const here = locationDef(st.location);
+  const places = `<h3>Where the shop is</h3><div class="of-grid">${LOCATIONS.map((l) => {
+    const cur = l.id === here.id;
+    const idx = LOCATIONS.indexOf(l) - LOCATIONS.indexOf(here);
+    return `<div class="of-card ad ${cur ? 'hl' : ''}"><h3>${esc(l.name)}</h3><div class="price">${money(l.rent)}/week</div><p>${esc(l.blurb)}</p>
+      <p class="muted small">${l.traffic ? `Walk-in traffic ×${l.traffic}` : 'No walk-ins'} · +${l.extraCustomers} customers a day${idx > 0 ? ` · fit-out ${money(l.fitOut)}, reputation ${l.reputation}` : ''}</p>
+      ${cur ? '<span class="pill">current</span>' : `<button data-act="move-shop" data-id="${l.id}">${idx > 0 ? 'Move in' : 'Move back'}</button>`}</div>`;
+  }).join('')}</div><h3>Advertising</h3>`;
+  return `${places}<p>Advertising brings more customers each day, and people who find you through ads accept slightly higher quotes. It is billed every night.</p>
     <div class="of-grid">${ADS.map(
       (a) => `<div class="of-card ad ${st.ads === a.id ? 'hl' : ''}"><h3>${esc(a.name)}</h3><div class="price">${a.perDay ? `${money(a.perDay)}/day` : 'Free'}</div>
       <p>${esc(a.blurb)}</p><p class="muted small">${a.customers[0]}–${a.customers[1]} new customers a day · quotes ×${a.quoteMult.toFixed(2)}</p>

@@ -13,6 +13,7 @@ import {
   dailySaleChance,
   endDay,
   listProject,
+  moveShop,
   placeOrder,
   profitAndLoss,
   rushBuy,
@@ -269,5 +270,31 @@ describe('review save', () => {
     // pricing: a cheap storefront item moves faster than an overpriced one
     expect(dailySaleChance('storefront', 0.8)).toBeGreaterThan(dailySaleChance('storefront', 1.4));
     expect(dailySaleChance('buy-now', 1)).toBeGreaterThan(dailySaleChance('storefront', 1));
+  });
+
+  it('shop locations: garage has no storefront, upgrades cost fit-out and raise rent', () => {
+    const st = createShop(31);
+    expect(st.location).toBe('garage');
+    const l = st.market.find((x) => !x.unrepairable)!;
+    const p = buyListing(st, l.id)!;
+    const job = loadJob(p.job);
+    const fresh = generateJob(DL12, 1, { variant: 'fuse-blown' });
+    fresh.board.comps.F1.fault = null;
+    job.board = fresh.board;
+    for (const c of Object.values(job.board.comps)) c.marks = [];
+    expect(listProject(st, p.id, job, 0, { channel: 'storefront', price: 50 }).ok).toBe(false);
+    st.reputation = 5;
+    st.cash = 5000;
+    expect(moveShop(st, 'storefront').ok).toBe(false);
+    st.reputation = 20;
+    const cash = st.cash;
+    expect(moveShop(st, 'storefront').ok).toBe(true);
+    expect(st.cash).toBe(cash - 600);
+    expect(listProject(st, p.id, job, 0, { channel: 'storefront', price: 50 }).ok).toBe(true);
+    while (st.day % RENT.everyDays !== 0) endDay(st);
+    const before = st.cash;
+    endDay(st);
+    expect(profitAndLoss(st, st.day - 1, st.day - 1).byCat.rent).toBeLessThanOrEqual(-320);
+    expect(before).toBeGreaterThan(st.cash - 1000);
   });
 });

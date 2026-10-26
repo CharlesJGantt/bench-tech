@@ -17,6 +17,9 @@ import {
   ELECTRICITY,
   NOT_SOLD,
   RENT,
+  LOCATIONS,
+  locationDef,
+  type LocationId,
   RUSH_MARKUP,
   RUSH_MIN,
   SPECIAL_ORDER_COST,
@@ -206,6 +209,8 @@ export interface ShopState {
   returned?: ReturnedJob[];
   /** Everything sold so far (the sales tracker). */
   sales?: SaleRecord[];
+  /** Where the shop is (default: the garage). */
+  location?: LocationId;
   /** Comebacks that will walk back in on a later day. */
   warrantyPending: { day: number; job: SavedJob; customer: string; homeTest?: { refund: number } }[];
   /** Unhappy flip buyers. */
@@ -227,6 +232,21 @@ function rng(st: ShopState): Rng {
 
 export function maxTier(reputation: number): Tier {
   return reputation >= 60 ? 3 : reputation >= 15 ? 2 : 1;
+}
+
+/** Move into a bigger place: pays the fit-out and changes the weekly rent. */
+export function moveShop(st: ShopState, id: LocationId): { ok: boolean; reason?: string } {
+  const to = LOCATIONS.find((l) => l.id === id);
+  const cur = locationDef(st.location);
+  if (!to || to.id === cur.id) return { ok: false, reason: 'You are already there.' };
+  const upgrade = LOCATIONS.indexOf(to) > LOCATIONS.indexOf(cur);
+  if (upgrade) {
+    if (st.reputation < to.reputation) return { ok: false, reason: `The landlord wants a reputation of ${to.reputation} first.` };
+    if (st.cash < to.fitOut) return { ok: false, reason: `The fit-out costs $${to.fitOut}.` };
+    book(st, 'rent', -to.fitOut, `Fit-out: ${to.name}`);
+  }
+  st.location = to.id;
+  return { ok: true };
 }
 
 export function adTier(st: ShopState): AdTier {
@@ -335,6 +355,7 @@ export function migrateShop(st: ShopState): ShopState {
   for (const id of Object.keys(SUPPLIES) as SupplyId[]) if (typeof st.supplies[id] !== 'number') st.supplies[id] = SUPPLIES[id].start;
   st.tools ??= [...STARTING_TOOLS];
   st.sales ??= [];
+  st.location ??= 'garage';
   st.brushWear ??= 0;
   if (!st.wickLoad) {
     // Saves from before per-joint wick use lost their roll to a per-second drain: refill it once.
@@ -678,6 +699,7 @@ export function listProject(st: ShopState, projectId: number, job: Job, hiddenIs
   const p = st.projects.find((x) => x.id === projectId);
   if (!p) return { ok: false, reason: 'No such project.' };
   if (!functionalTest(cloneBoard(job.board)).passed) return { ok: false, reason: 'It does not pass a functional test yet — nobody will buy it.' };
+  if (opts.channel === 'storefront' && !locationDef(st.location).traffic) return { ok: false, reason: 'You have no shop window in the garage. Rent a storefront first (Advertising & location tab).' };
   const value = resaleValue(job.board, st);
   const price = opts.channel === 'auction' ? (opts.reserve ?? Math.round(value * 0.7)) : (opts.price ?? value);
   if (!(price > 0)) return { ok: false, reason: 'Set a price first.' };
@@ -757,7 +779,8 @@ function tradeListing(st: ShopState, p: Project, report: DayReport, r: Rng): voi
     }
     return;
   }
-  if (r.next() < dailySaleChance(channel, (p.salePrice ?? value) / Math.max(1, value))) return completeSale(st, p, p.salePrice ?? 0, report, r);
+  const traffic = channel === 'storefront' ? Math.max(0.01, locationDef(st.location).traffic) : 1;
+  if (r.next() < dailySaleChance(channel, (p.salePrice ?? value) / Math.max(1, value), traffic)) return completeSale(st, p, p.salePrice ?? 0, report, r);
   if (age >= 21) {
     p.status = 'owned';
     report.sales.push(`${p.title} sat unsold for three weeks and was taken off the ${CHANNELS[channel].name.toLowerCase()} listing. Try a lower price.`);
@@ -809,7 +832,8 @@ export function endDay(st: ShopState): DayReport {
   book(st, 'electricity', -elec, `Electricity, day ${st.day}`);
   const ad = adTier(st);
   if (ad.perDay) book(st, 'advertising', -ad.perDay, `${ad.name}, day ${st.day}`);
-  if (st.day % RENT.everyDays === 0) book(st, 'rent', -RENT.amount, `Shop rent (week ${st.day / RENT.everyDays})`);
+  const loc = locationDef(st.location);
+  if (st.day % RENT.everyDays === 0) book(st, 'rent', -loc.rent, `${loc.name} rent (week ${st.day / RENT.everyDays})`);
   report.bills = st.ledger.slice(before);
 
   // Next morning
@@ -888,7 +912,7 @@ export function endDay(st: ShopState): DayReport {
   st.warrantyPending = st.warrantyPending.filter((x) => x.day > st.day);
 
   const [lo, hi] = ad.customers;
-  const n = Math.min(6 - st.queue.length, r.int(lo, hi) + (st.reputation >= 30 ? 1 : 0));
+  const n = Math.min(6 - st.queue.length, r.int(lo, hi) + (st.reputation >= 30 ? 1 : 0) + loc.extraCustomers);
   for (let i = 0; i < n; i++) st.queue.push(newCustomer(st));
   report.newCustomers = Math.max(0, n);
 
@@ -943,6 +967,7 @@ export function createShop(seed = 12345): ShopState {
     warrantyPending: [],
     refundsPending: [],
     sales: [],
+    location: 'garage',
     active: null,
     usage: { heatSeconds: 0, powerSeconds: 0 },
     nextId: 1,
