@@ -196,6 +196,8 @@ export interface DeviceDef {
   /** Cartridge boards: the console they plug into (device id) and the games sold on this board. */
   cartFor?: string;
   titles?: { name: string; value: number }[];
+  /** Games on disc for a disc console (scratched-disc jobs pick one). */
+  discTitles?: { name: string; value: number }[];
 
   /** Use the device like its owner would. */
   functional(b: BoardState): FunctionalReport;

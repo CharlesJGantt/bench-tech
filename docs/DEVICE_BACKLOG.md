@@ -17,6 +17,9 @@ Lamp, Bluetooth speaker (BoomPuck), TV backlight board, Sbox One X power board, 
 Funstation 5 HDMI section, DualPulse, Sbox pad, Retrobit RB35, Rogue Pal, Duo handhelds (3), Game & Clock, Critter
 mini, Galaxy Raid arcade, Dream Boy family (6) + carts, BES / B64 / Vega / Paltari + carts.
 
+### Disc consoles (built boards, no drive hardware yet)
+Funstation 5 and Sbox One X take game discs. Disc games now exist for the scratched-disc job: Funstation 5 (Crown of Embers, Nightfall Ranger, Pitch Perfect Soccer 25, Tidal Rally 5, Hunters of the Hollow Moon) and Sbox One X (Ironclad Frontier, Apex Drift X, Zombie Harvest 3, Starfarer Legacy, Blitz Arena 2026). Still to build: a disc drive card for each (dirty lens, tray and spindle faults, like the Game Orb drive).
+
 ## 2. Already planned earlier (from your first lists)
 - Funstation 5 power / standby section; Funstation 5 Pro; Sbox One X main board; Button main board
 - Grapple Laptop, Venovo Laptop (with Wi-Fi chip swaps and reflow)

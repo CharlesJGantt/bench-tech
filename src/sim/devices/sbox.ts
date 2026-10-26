@@ -327,6 +327,13 @@ export const SBOX = device({
     ['12V', 'GND', 'C1'],
     ['12V_MAIN', 'GND', 'C2'],
   ],
+  discTitles: [
+    { name: 'Ironclad Frontier', value: 38 },
+    { name: 'Apex Drift X', value: 30 },
+    { name: 'Zombie Harvest 3', value: 25 },
+    { name: 'Starfarer Legacy', value: 42 },
+    { name: 'Blitz Arena 2026', value: 28 },
+  ],
   marketValue: 260,
   quoteBase: 50,
   minReputation: 10,

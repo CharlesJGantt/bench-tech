@@ -71,3 +71,14 @@ describe('disc buffing', () => {
     expect(unsaveable).toBe(true);
   });
 });
+
+describe('disc games', () => {
+  it('a scratched-disc job names a game from the console\'s disc list', () => {
+    const withDiscs = DEVICE_LIST.filter((d) => d.discTitles?.length);
+    expect(withDiscs.map((d) => d.id)).toEqual(expect.arrayContaining(['fs5', 'sbox']));
+    for (const d of withDiscs) {
+      const job = generateJob(d, 4, { service: 'disc' });
+      expect(d.discTitles!.map((t) => t.name)).toContain(job.title);
+    }
+  });
+});

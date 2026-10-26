@@ -313,6 +313,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   let hung: boolean | undefined;
   let drive: Job['drive'];
   let disc: Job['disc'];
+  let discTitle: string | undefined;
   let accessory: Job['accessory'];
   let fault: AppliedFault;
   if (accessoryJob) {
@@ -352,6 +353,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     };
   } else if (discJob) {
     disc = scratchedDisc(rng);
+    discTitle = device.discTitles?.length ? rng.pick(device.discTitles).name : undefined;
     fault = {
       variant: 'service-disc',
       family: 'Scratched disc',
@@ -433,6 +435,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     ...(hung ? { hung } : {}),
     ...(drive ? { drive } : {}),
     ...(disc ? { disc } : {}),
+    ...(discTitle ? { title: discTitle } : {}),
     ...(device.enclosure ? { enclosure: fault.torn ? tornEnclosure(device.enclosure, fault.torn) : caseJob ? crackedEnclosure(device.enclosure, rng) : fault.variant === 'screen-cracked' && rng.next() < 0.45 ? crackedEnclosure(device.enclosure, rng) : overheatJob ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
     ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };

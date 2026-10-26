@@ -118,6 +118,13 @@ export const FS5 = device({
     ];
   },
   missable: ['D1', 'C6', 'SW1'],
+  discTitles: [
+    { name: 'Crown of Embers', value: 40 },
+    { name: 'Nightfall Ranger', value: 35 },
+    { name: 'Pitch Perfect Soccer 25', value: 30 },
+    { name: 'Tidal Rally 5', value: 28 },
+    { name: 'Hunters of the Hollow Moon', value: 45 },
+  ],
   marketValue: 320,
   quoteBase: 60,
   minReputation: 15,
