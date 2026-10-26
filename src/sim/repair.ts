@@ -44,6 +44,7 @@ export function removePart(b: BoardState, ref: string, q: SolderQuality, rng: ()
   c.fault = null;
   c.reversed = false;
   c.burnt = false;
+  delete c.bga; // (BGA chips are lifted at the BGA station; this is the plain path)
   // Lifting the part and cleaning its pads also clears solder bridges across its pins.
   b.jumpers = b.jumpers.filter((j) => !(j.bridge && j.a.ref === ref && j.b.ref === ref));
   c.marks = c.marks.filter((m) => !PART_MARKS.includes(m));
@@ -66,6 +67,7 @@ export function installPart(b: BoardState, ref: string, partNo: string, reversed
   const fp = part(c.def.partNo);
   if (p.pkg !== fp.pkg) throw new Error(`${p.partNo} (${p.pkg}) does not fit ${ref} (${fp.pkg})`);
   c.part = p;
+  delete c.bga;
   c.reversed = reversed && PIN_NAMES[p.kind].length === 2;
   c.fault = null;
   c.burnt = false;

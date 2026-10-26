@@ -6,6 +6,7 @@
 import { createBoard, type BoardState, type CompFault, type Jumper, type Mark } from './circuit';
 import { generateJob, type AppliedFault, type Job } from './faults';
 import { part } from './parts';
+import type { BgaState } from '../rework/bga';
 import { migrateCorrosion, type Corrosion } from './corrosion';
 import { DEVICES } from './devices';
 
@@ -31,6 +32,7 @@ export interface SavedBoard {
       bent?: string[];
       certified?: boolean;
       coat?: 'on' | 'removed' | 'reapplied';
+      bga?: BgaState;
     }
   >;
   traces: Record<string, { broken: boolean }>;
@@ -55,7 +57,7 @@ export function saveBoard(b: BoardState): SavedBoard {
     const joints: SavedBoard['comps'][string]['joints'] = {};
     for (const [pin, j] of Object.entries(c.joints)) joints[pin] = { ...j, r: encR(j.r) };
     const fault = c.fault?.type === 'short' ? { ...c.fault } : c.fault;
-    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}), ...(c.oxide ? { oxide: { ...c.oxide }, brightened: [...(c.brightened ?? [])] } : {}), ...(c.debris ? { debris: { ...c.debris } } : {}), ...(c.bent ? { bent: [...c.bent] } : {}), ...(c.certified ? { certified: true } : {}), ...(c.coat ? { coat: c.coat } : {}) };
+    comps[c.ref] = { partNo: c.part?.partNo ?? null, reversed: c.reversed, fault, joints, burnt: c.burnt, marks: [...c.marks], replaced: c.replaced, unplugged: c.unplugged, ...(c.corr ? { corr: structuredClone(c.corr) } : {}), ...(c.oxide ? { oxide: { ...c.oxide }, brightened: [...(c.brightened ?? [])] } : {}), ...(c.debris ? { debris: { ...c.debris } } : {}), ...(c.bent ? { bent: [...c.bent] } : {}), ...(c.certified ? { certified: true } : {}), ...(c.coat ? { coat: c.coat } : {}), ...(c.bga ? { bga: structuredClone(c.bga) } : {}) };
   }
   return {
     deviceId: b.device.id,
@@ -94,6 +96,7 @@ export function loadBoard(s: SavedBoard): BoardState {
     if (c.bent) comp.bent = [...c.bent];
     if (c.certified) comp.certified = true;
     if (c.coat) comp.coat = c.coat;
+    if (c.bga) comp.bga = structuredClone(c.bga);
     migrateCorrosion(comp);
   }
   b.traces = structuredClone(s.traces);

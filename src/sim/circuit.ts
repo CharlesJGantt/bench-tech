@@ -59,6 +59,8 @@ export type Mark =
   | 'swollen'
   | 'tarnish';
 
+import type { BgaState } from '../rework/bga';
+
 export interface CompState {
   ref: string;
   def: ComponentDef;
@@ -88,6 +90,8 @@ export interface CompState {
   bent?: string[];
   /** Contacts finished with Pad-Bright (bright and protected). */
   brightened?: string[];
+  /** BGA chip: ball states under the chip, or the chip held off the board (see rework/bga.ts). */
+  bga?: BgaState;
 }
 
 export interface PointRef {
