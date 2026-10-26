@@ -27,6 +27,8 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, casePartPrice, cleanDust, fitNewCasePart, fitNewRibbon, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { polishDiscPass } from '../sim/faults';
+import { KAPTON_PER_RESET, resetThermalFuse } from '../sim/thermalfuse';
 import { cleanPort, isPort, type PortTool } from '../sim/portclean';
 import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd } from '../sim/accessories';
 import { bootCurve, BOOT_SECONDS, type BootKind, capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
@@ -529,6 +531,77 @@ export class Session {
     this.addLog('action', text);
     this.afterRepair(text);
     return { ok: true, text };
+  }
+
+  /** Hard reset a frozen device: everything unplugged, the power button held. */
+  hardReset(): { ok: boolean; text: string } {
+    if (!this.job.hung) return { ok: false, text: 'It is not frozen: a hard reset would change nothing.' };
+    if (this.powerMode !== 'off') return { ok: false, text: 'Unplug everything and switch the bench power off first.' };
+    this.job.hung = false;
+    this.board.mcu = { running: false, state: {}, prev: {}, outputs: {} };
+    this.shop.usage.powerSeconds += 15;
+    const text = 'You unplug everything and hold the power button for 15 seconds. The device lets go of whatever it was stuck on.';
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** Re-image the system drive (corrupt storage, or a new drive that has nothing on it). */
+  reimageDrive(): { ok: boolean; text: string } {
+    const dr = this.job.drive;
+    if (!dr) return { ok: false, text: 'This device has no drive service.' };
+    if (!this.owns('drive-imager')) return { ok: false, text: 'You need the drive imager (Equipment tab).' };
+    if (dr.state === 'dead' && !dr.replaced) return { ok: false, text: 'The drive is not detected at all: nothing to write an image to. Fit a new drive first.' };
+    if (dr.reimaged) return { ok: false, text: 'It already has a fresh image.' };
+    dr.reimaged = true;
+    const text = 'The imager writes a clean system image onto the drive and verifies it.';
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** Fit a new drive: bought at cost now, billed at 1.5 times on top of the quote. */
+  replaceDrive(): { ok: boolean; text: string } {
+    const dr = this.job.drive;
+    if (!dr) return { ok: false, text: 'This device has no drive service.' };
+    if (dr.replaced) return { ok: false, text: 'You already fitted a new drive.' };
+    const cost = Math.round(Math.max(25, this.job.device.marketValue * 0.12));
+    book(this.shop, 'parts', -cost, `Drive for ${this.job.customer}`);
+    dr.replaced = true;
+    dr.reimaged = false;
+    const text = `A new drive goes in ($${cost}). It is blank: it needs a system image.`;
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** One polishing pass on the disc buffer: takes a layer off everything; too many passes ruin the disc. */
+  polishDisc(): { ok: boolean; text: string } {
+    const d = this.job.disc;
+    if (!d) return { ok: false, text: 'There is no disc on the machine.' };
+    if (!this.owns('disc-buffer')) return { ok: false, text: 'You need the disc buffing machine (Equipment tab).' };
+    if (this.shop.supplies['disc-polish'] < 2) return { ok: false, text: 'Out of polishing compound (Supplies tab).' };
+    if (d.ruined) return { ok: false, text: 'It is already polished too thin.' };
+    useSupply(this.shop, 'disc-polish', 2);
+    this.shop.usage.powerSeconds += 20;
+    polishDiscPass(d);
+    const text = d.ruined ? 'You kept going: the disc has been polished too thin and has gone cloudy.' : 'The machine spins the disc against the pad and a film of compound clears.';
+    this.afterRepair(text);
+    return { ok: true, text };
+  }
+
+  /** Reset a tripped thermal fuse with hot air; Kapton tape (6 cm) protects the plastic parts beside it. */
+  resetFuse(ref: string, tape: boolean, heat: 'cold' | 'good' | 'overheated' = 'good'): { ok: boolean; text: string } {
+    if (this.powerMode !== 'off') return { ok: false, text: 'Switch the board off and unplug it first.' };
+    if (!this.reachable) return { ok: false, text: 'Take the board out of its case first (🔧 Case on the ticket).' };
+    if (tape && this.shop.supplies.kapton < KAPTON_PER_RESET) return { ok: false, text: 'Not enough Kapton tape (Supplies tab).' };
+    if (tape) useSupply(this.shop, 'kapton', KAPTON_PER_RESET);
+    this.shop.usage.heatSeconds += 4;
+    const r = resetThermalFuse(this.board, ref, tape, heat);
+    if (!r.ok) {
+      this.addLog('action', r.text);
+      this.emit();
+      return r;
+    }
+    this.afterRepair(r.text);
+    return r;
   }
 
   /** Use a cleaning tool inside a port (board off, taken out of its case). */

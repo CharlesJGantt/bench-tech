@@ -14,6 +14,7 @@ import { DB_CART, DBA_CART, DREAMBOY, DREAMBOY_ADVANCE, DREAMBOY_COLOR, DREAMBOY
 import { B64, B64_CART, PALTARI, PALTARI_CART, VEGA, VEGA_CART } from './consoles3';
 import { ENCLOSURES } from '../enclosures';
 import { PAD_VARIANTS } from '../padfaults';
+import { fuseRefs, THERMAL_FUSE } from '../thermalfuse';
 import { RIBBON_TORN, ribbonSlots } from '../ribbonfaults';
 import { SCREEN_CRACKED, screenRefs } from '../screenfaults';
 
@@ -61,6 +62,7 @@ export const DEVICE_LIST: DeviceDef[] = Object.values(DEVICES);
 for (const d of DEVICE_LIST) {
   d.enclosure ??= ENCLOSURES[d.id];
   if (!d.variants.some((v) => v.id === 'pad-lifted') && !d.id.endsWith('_cart')) d.variants.push(...PAD_VARIANTS);
+  if (!d.variants.some((v) => v.id === 'thermal-fuse-tripped') && fuseRefs(d).length) d.variants.push(THERMAL_FUSE);
   if (!d.variants.some((v) => v.id === 'ribbon-torn') && d.enclosure && ribbonSlots(d).length) d.variants.push(RIBBON_TORN);
   if (!d.variants.some((v) => v.id === 'screen-cracked') && screenRefs(d).length && !d.id.startsWith('db')) d.variants.push(SCREEN_CRACKED); // (the Dream Boy owner test never looks at the glass itself)
 }

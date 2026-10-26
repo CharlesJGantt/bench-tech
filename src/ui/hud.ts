@@ -16,6 +16,8 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, fireStaff, forecastListing, hireStaff, moveShop, raiseStaff, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
+import { discViewHtml } from './discview';
+import { KAPTON_PER_RESET } from '../sim/thermalfuse';
 import { portViewHtml } from './portview';
 import { isPort, type PortTool } from '../sim/portclean';
 import { portRef, portTest } from '../sim/porttest';
@@ -45,6 +47,7 @@ const MARK_TEXT: Record<string, string> = {
   scratch: 'Light scratches in the green solder mask nearby.',
   bulged: 'The top of the can is bulging.',
   loose: 'The connector wobbles when you push it.',
+  'thermal-trip': 'The thermal fuse has a faint heat stain and reads open: it tripped. Hot air resets it (mask the plastic around it with Kapton tape first).',
   'cracked-screen': 'The glass is cracked: a spider web of cracks spreads out from one corner.',
   'bent-pin': 'Looking into the socket, the centre pin looks bent and cracked.',
   tarnish: 'The contacts are dull, dark and blotchy — oxidised. Scrub them clean (eraser), then Pad-Bright.',
@@ -408,6 +411,51 @@ export class Hud {
       case 'boot-prompt': {
         const r = s.promptBoot();
         this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
+      case 'hard-reset':
+      case 'drive-image':
+      case 'drive-replace': {
+        const r = act === 'hard-reset' ? s.hardReset() : act === 'drive-image' ? s.reimageDrive() : s.replaceDrive();
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
+      case 'disc-view':
+        this.modal(discViewHtml(s), 'wide');
+        break;
+      case 'disc-polish': {
+        const r = s.polishDisc();
+        this.modal(discViewHtml(s, r.text), 'wide');
+        break;
+      }
+      case 'disc-giveup':
+        this.closeModal();
+        if (confirm("Tell the customer the disc cannot be saved? (They get it back unrepaired: −2 reputation, no payment.)")) {
+          s.giveUp();
+          this.showDebrief();
+        }
+        break;
+      case 'fuse-reset': {
+        const ref = d.ref!;
+        const tape = d.tape === '1';
+        if (s.powerMode !== 'off') {
+          this.toast('Switch the board off and unplug it first.', 'bad');
+          break;
+        }
+        if (!s.reachable) {
+          this.toast('Take the board out of its case first (🔧 Case on the ticket).', 'bad');
+          break;
+        }
+        if (tape && s.shop.supplies.kapton < KAPTON_PER_RESET) {
+          this.toast('Not enough Kapton tape (Supplies tab).', 'bad');
+          break;
+        }
+        void this.solder(`Hot air on ${ref}: heat it until it resets`, null).then((q) => {
+          this.closeModal();
+          if (!q) return;
+          const r = s.resetFuse(ref, tape, q === 'cold' ? 'cold' : q === 'overheated' ? 'overheated' : 'good');
+          this.toast(r.text, r.ok && q !== 'overheated' ? undefined : 'bad');
+        });
         break;
       }
       case 'port-view': {
@@ -1330,6 +1378,18 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       <div class="row"><button data-act="port-flip" data-flipped="${flipped ? '0' : '1'}">↻ Flip the tester</button><button data-act="close">Done</button></div>`);
   }
 
+  /** Hard reset, drive and disc service jobs. */
+  private serviceRow(): string {
+    const job = this.s.job;
+    const out: string[] = [];
+    if (job.hung) out.push('<div class="row"><button data-act="hard-reset" title="Power off, unplug everything, hold the power button for 15 seconds">🔌 Hard reset (hold power 15 s)</button></div>');
+    const dr = job.drive;
+    if (dr)
+      out.push(`<p class="note small">Its system storage is ${dr.state === 'corrupt' ? 'corrupt' : 'not detected'}.</p><div class="row"><button data-act="drive-image" ${dr.reimaged ? 'disabled' : ''}>${dr.reimaged ? '✔ Image written' : '💾 Re-image the drive'}</button><button data-act="drive-replace" ${dr.replaced ? 'disabled' : ''}>${dr.replaced ? '✔ New drive fitted' : '🆕 Fit a new drive'}</button></div>`);
+    if (job.disc) out.push('<div class="row"><button data-act="disc-view">💿 Disc buffing station</button></div>');
+    return out.join('');
+  }
+
   /** Accessory-service jobs: sell the customer a new charger / cable once the meter shows theirs is worn out. */
   private accessoryRow(): string {
     const acc = this.s.job.accessory;
@@ -1377,7 +1437,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       ${job.previousRepairNote ? `<p class="quote">“${esc(job.previousRepairNote)}”</p>` : ''}
       <p class="complaint">“${esc(job.complaint)}”</p>
       ${s.hold ? `<p class="note small">⏳ ${esc(s.hold.note)} — they'll wait until day ${s.hold.until}.</p>` : ''}
-      ${debug}${nudge}${this.accessoryRow()}${this.portRow()}${this.caseRow()}
+      ${debug}${nudge}${this.accessoryRow()}${this.serviceRow()}${this.portRow()}${this.caseRow()}
       ${job.device.cartFor ? '<div class="row"><button data-act="station">📺 Test Station</button></div>' : ''}
       <div class="row"><button class="primary" data-act="return">Return to customer</button><button data-act="schematic">Service sheet</button></div>
       <div class="row"><button data-act="call" title="Next-day parts, waiting for a donor, or buying it for parts">📞 Call customer</button></div>
@@ -1456,6 +1516,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
+        ${c.marks.includes('thermal-trip') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Reset it with a short blast of hot air, nothing masked">🔥 Reset with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then reset (${KAPTON_PER_RESET} cm)</button>` : ''}
         ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port with a light">🔦 Look into the port</button>` : ''}
       </div>`
       }

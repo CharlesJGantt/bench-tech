@@ -71,6 +71,7 @@ export function installPart(b: BoardState, ref: string, partNo: string, reversed
   c.replaced = true;
   delete c.debris;
   delete c.bent;
+  c.marks = c.marks.filter((m) => m !== 'thermal-trip');
   addMark(c.marks, 'rework-residue');
   const pins = PIN_NAMES[p.kind];
   c.joints = {};
@@ -154,6 +155,25 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
     report.checks.push({ label: 'Runs cool after the service', ok: false });
     report.passed = false;
   }
+  // Service jobs on a healthy device: hard reset, drive, disc
+  if (job.hung) {
+    report.checks.push({ label: 'It starts after a hard reset', ok: false });
+    report.passed = false;
+  }
+  const dr = job.drive;
+  if (dr && !(dr.replaced || (dr.state === 'corrupt' && dr.reimaged))) {
+    report.checks.push({ label: 'The system drive works', ok: false });
+    report.passed = false;
+  }
+  if (dr && dr.replaced && !dr.reimaged) {
+    report.checks.push({ label: 'The new drive has the system installed', ok: false });
+    report.passed = false;
+  }
+  const dc = job.disc;
+  if (dc && (dc.ruined || dc.scratches.some((x) => x.depth > 0.12))) {
+    report.checks.push({ label: dc.ruined ? 'The disc reads (it was polished too thin)' : 'The disc reads without errors', ok: false });
+    report.passed = false;
+  }
   // A case-repair job is only done when every cracked part has been replaced
   const encSt = job.enclosure;
   if (job.faults.some((f) => f.variant === 'service-case') && encSt?.cracked?.some((id) => !encSt.fitted?.includes(id))) {
@@ -215,7 +235,8 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   // Parts you fitted are charged at cost plus 50 %, on top of the quote (the labour)
   const partsBilledParts = Math.round(Object.values(b.comps).reduce((t, c) => t + (c.replaced && c.part && c.part.kind !== 'testpoint' ? c.part.cost * 1.5 : 0), 0));
   const caseBilled = Math.round((encSt?.fitted ?? []).reduce((t, id) => t + (job.device.enclosure?.items.find((i) => i.id === id) ? casePartPrice(job.device.enclosure.items.find((i) => i.id === id)!, job.device.marketValue) * 1.5 : 0), 0));
-  const partsBilled = partsBilledParts + caseBilled + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
+  const driveBilled = dr?.replaced ? Math.round(Math.max(25, job.device.marketValue * 0.12) * 1.5) : 0;
+  const partsBilled = partsBilledParts + caseBilled + driveBilled + (acc?.chargerSold ? ACCESSORY_PRICE.charger : 0) + (acc?.cableSold ? ACCESSORY_PRICE.cable : 0);
   const payout = outcome === 'not-fixed' ? 0 : job.quote + partsBilled;
   const reputation = outcome === 'fixed' ? 5 - residuePenalty : outcome === 'comeback' ? -4 : -3;
   return { outcome, report, hidden, notes: uniqueNotes, payout, partsBilled, partsCost, reputation };

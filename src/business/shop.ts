@@ -534,7 +534,18 @@ function newCustomer(st: ShopState): QueuedJob {
   const dev = pickDevice(st, r);
   // Now and then the complaint is just "it gets too hot": a cleaning service, not a fault
   const roll = r.next();
-  const service = canServiceCooling(dev) && roll < 0.2 ? ('overheat' as const) : usesUsbCharger(dev) && roll > 0.88 ? ('accessory' as const) : roll > 0.8 && roll <= 0.88 && dev.enclosure ? ('case' as const) : undefined;
+  const service =
+    canServiceCooling(dev) && roll < 0.2
+      ? ('overheat' as const)
+      : usesUsbCharger(dev) && roll > 0.88
+        ? ('accessory' as const)
+        : roll > 0.8 && roll <= 0.88 && dev.enclosure
+          ? ('case' as const)
+          : roll >= 0.2 && roll < 0.26 && dev.firmware
+            ? ('reset' as const)
+            : roll >= 0.26 && roll < 0.33 && dev.category === 'Consoles'
+              ? (r.next() < 0.5 ? ('drive' as const) : ('disc' as const))
+              : undefined;
   const job = generateJob(dev, Math.floor(r.next() * 1e9), { maxTier: maxTier(st.reputation), service });
   job.quote = Math.round(job.quote * adTier(st).quoteMult);
   return { id: st.nextId++, kind: 'customer', customer: job.customer, complaint: job.complaint, quote: job.quote, arrived: st.day, job: saveJob(job) };

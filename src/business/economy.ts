@@ -162,7 +162,7 @@ export const SUPPLIES: Record<SupplyId, SupplyDef> = {
   'mask-blue': { id: 'mask-blue', name: 'UV solder mask, blue', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a blue solder mask.' },
   'mask-black': { id: 'mask-black', name: 'UV solder mask, black', unit: 'ml', pack: { qty: 10, cost: 8, label: '10 ml syringe' }, start: 0, low: 0, blurb: 'For boards with a black solder mask.' },
   kapton: { id: 'kapton', name: 'Kapton heat tape', unit: 'cm', pack: { qty: 1000, cost: 5, label: '10 m roll' }, start: 0, low: 0, blurb: 'Heat-proof tape: cover plastic connectors and parts that melt next to your hot air, then peel it off.' },
-  'disc-polish': { id: 'disc-polish', name: 'Disc polishing compound', unit: 'ml', pack: { qty: 100, cost: 7, label: '100 ml bottle' }, start: 0, low: 0, blurb: 'Used with the disc buffer to polish scratches out of game discs.' },
+  'disc-polish': { id: 'disc-polish', name: 'Disc polishing compound', unit: 'ml', pack: { qty: 100, cost: 7, label: '100 ml bottle' }, start: 10, low: 0, blurb: 'Used with the disc buffer to polish scratches out of game discs.' },
 };
 
 /** How much of each supply the rework tools use. */
@@ -272,6 +272,7 @@ export const TOOLS: ToolDef[] = [
   { id: 'screw-mat', kind: 'instrument', name: 'Magnetic screw mat', cost: 12, heat: 0, radius: 0, blurb: 'A whiteboard mat with magnets: every screw stays where it came out, so each one goes back in its own hole — no more long screws in short holes.' },
   { id: 'tweezers', kind: 'instrument', name: 'Fine tweezers', cost: 6, heat: 0, radius: 0, blurb: 'Pulls lint and fluff out of USB and HDMI ports. Every bench has a pair.' },
   { id: 'pick-tool', kind: 'instrument', name: 'Plastic pick tool', cost: 7, heat: 0, radius: 0, blurb: 'Scrapes packed grime off the contacts inside a port without scratching them. Look into the port first (tip the board up).' },
+  { id: 'drive-imager', kind: 'instrument', name: 'Drive imager / programmer', cost: 45, heat: 0, radius: 0, blurb: 'Writes a clean system image onto a console or handheld storage drive. Fixes corrupt storage without a new drive, and sets up a replacement.' },
   { id: 'port-tester', kind: 'instrument', name: 'USB port diode tester', cost: 38, heat: 0, radius: 0, blurb: 'Clips onto a charging port and checks every pin in diode mode against a healthy board: red dots mark pins that read wrong (a short or an open). Finds a bad port, filter or protection part without probing each one.' },
   { id: 'pen-grinder', kind: 'instrument', name: 'Pen grinder (fibreglass pen)', cost: 18, heat: 0, radius: 0, blurb: 'Scrapes the solder mask off a trace or lifted pad so you can solder repair wire straight to clean copper.' },
   { id: 'uv-lamp', kind: 'instrument', name: 'UV curing lamp', cost: 22, heat: 0, radius: 0, blurb: 'Sets UV solder mask in seconds. Needed for sealing trace repairs.' },

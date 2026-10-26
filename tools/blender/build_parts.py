@@ -1067,6 +1067,45 @@ pen_grinder()
 uv_lamp()
 port_tester()
 
+M["kapton"] = mat("kapton_amber", srgb("d8932a"), 0.0, 0.35)
+M["discplatter"] = mat("disc_platter", srgb("b9bfca"), 0.6, 0.3)
+
+
+def kapton_roll():
+    n = "tool_kapton"
+    e = item(n)
+    cyl(f"{n}_roll", e, M["kapton"], 0, 0, 0, 16, 12, n=48)
+    cyl(f"{n}_core", e, M["nylon"], 0, 0, -0.01, 6.5, 12.02, n=32)
+    box(f"{n}_tail", e, M["kapton"], 22, 0, 0, 14, 11, 0.1)
+
+
+def disc_buffer():
+    n = "tool_discbuffer"
+    e = item(n)
+    box(f"{n}_base", e, M["greybody"], 0, 0, 0, 120, 120, 28, bevel=3, segments=3)
+    cyl(f"{n}_platter", e, M["discplatter"], 0, 0, 28, 50, 3, n=64)
+    cyl(f"{n}_hub", e, M["blackplastic"], 0, 0, 31, 8, 4, n=24)
+    box(f"{n}_lid", e, M["plastic_dark"], 0, -40, 28, 112, 36, 18, bevel=2)
+    box(f"{n}_panel", e, M["face"], 0, 52, 8, 60, 4, 12)
+    cyl(f"{n}_knob", e, M["redbright"], -16, 56, 14, 4, 5, n=24, axis="y")
+    cyl(f"{n}_knob2", e, M["blackplastic"], 16, 56, 14, 4, 5, n=24, axis="y")
+
+
+def drive_imager():
+    n = "tool_driveimager"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 90, 56, 16, bevel=2, segments=3)
+    box(f"{n}_screen", e, M["lcd"], -8, 0, 16, 48, 28, 0.4)
+    box(f"{n}_slot", e, M["alu_dark"], 38, 0, 6, 8, 36, 6)
+    for i in range(3):
+        box(f"{n}_led{i}", e, M["lens_green"], 28, -18 + i * 6, 16, 3, 3, 1)
+
+
+kapton_roll()
+disc_buffer()
+drive_imager()
+
+
 # ---------------------------------------------------------------------------
 # Damage decals (placed over parts at runtime; nominal 10 x 10 mm, scaled to the part)
 # ---------------------------------------------------------------------------

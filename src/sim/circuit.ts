@@ -53,6 +53,7 @@ export type Mark =
   | 'bent-pin'
   | 'corrosion'
   | 'cracked-screen'
+  | 'thermal-trip'
   | 'swollen'
   | 'tarnish';
 

@@ -211,6 +211,12 @@ export interface Job {
   paid?: number;
   /** An accessory-service job: the device is fine, the customer's charger and/or cable is not. */
   accessory?: { charger: string; cable: string; chargerSold?: boolean; cableSold?: boolean };
+  /** A frozen device that just needs a hard reset (hold the power button, or pull the battery). */
+  hung?: boolean;
+  /** A drive service: its storage is corrupt (re-image it) or dead (fit a new one). */
+  drive?: { state: 'corrupt' | 'dead'; reimaged?: boolean; replaced?: boolean };
+  /** A scratched game disc to resurface on the buffing machine. */
+  disc?: DiscState;
   /** Last Test Station run on this job: day and whether the title screen came up. */
   stationTest?: { day: number; passed: boolean };
 }
@@ -218,6 +224,38 @@ export interface Job {
 /** What to call the job's item: "Pipe Brothers (BES Game Pak)" or the device name. */
 export function jobName(j: Pick<Job, 'title' | 'device'>): string {
   return j.title ? `${j.title} (${j.device.name})` : j.device.name;
+}
+
+/** A scratched disc: arcs of damage, each with a depth (0 = polished out, 1 = through the data layer). */
+export interface DiscState {
+  scratches: { a0: number; sweep: number; r: number; depth: number }[];
+  /** Polishing passes so far, and whether it was polished too thin (cloudy, unreadable). */
+  passes: number;
+  ruined?: boolean;
+  /** Told the customer it cannot be saved. */
+  givenUp?: boolean;
+}
+
+export const DISC_SAFE_PASSES = 6;
+/** Depth at or above which a scratch reaches the data layer and cannot be polished out. */
+export const DISC_UNSAVEABLE = 0.85;
+
+/** One polishing pass: takes a layer off every scratch that is not too deep, and thins the disc. */
+export function polishDiscPass(d: DiscState): void {
+  d.passes++;
+  for (const x of d.scratches) if (x.depth < DISC_UNSAVEABLE) x.depth = Math.max(0, Math.round((x.depth - 0.2) * 100) / 100);
+  if (d.passes > DISC_SAFE_PASSES) d.ruined = true;
+}
+
+function scratchedDisc(rng: Rng): DiscState {
+  const n = rng.int(3, 6);
+  const scratches = Array.from({ length: n }, () => ({
+    a0: rng.range(0, 6.28),
+    sweep: rng.range(0.5, 2.6),
+    r: rng.range(0.35, 0.95),
+    depth: Math.round(rng.range(0.2, 0.9) * 100) / 100,
+  }));
+  return { scratches, passes: 0 };
 }
 
 const CUSTOMERS = ['Dana P.', 'Marcus L.', 'Priya S.', 'Tom W.', 'Ines R.', 'Kofi A.', 'Jun H.', 'Sam B.', 'Alex M.', 'Rosa G.', 'Leah K.', 'Omar F.', 'Wren T.', 'Yuki N.'];
@@ -234,7 +272,7 @@ export interface JobOptions {
   unrepairable?: boolean;
   kind?: Job['kind'];
   /** A cleaning service rather than a fault: an overheating device that needs its dust cleared and fresh paste. */
-  service?: 'overheat' | 'accessory' | 'case';
+  service?: 'overheat' | 'accessory' | 'case' | 'reset' | 'drive' | 'disc';
 }
 
 /** Can this device have its cooling serviced (does it have a heatsink)? */
@@ -248,7 +286,14 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
   const maxTier = opts.maxTier ?? 2;
   const accessoryJob = opts.service === 'accessory' && usesUsbCharger(device);
   const caseJob = opts.service === 'case' && !!device.enclosure && breakable(device.enclosure).length > 0;
-  const service = (opts.service === 'overheat' && canServiceCooling(device)) || accessoryJob || caseJob;
+  const overheatJob = opts.service === 'overheat' && canServiceCooling(device);
+  const resetJob = opts.service === 'reset' && !!device.firmware;
+  const driveJob = opts.service === 'drive' && device.category === 'Consoles';
+  const discJob = opts.service === 'disc' && device.category === 'Consoles';
+  const service = overheatJob || accessoryJob || caseJob || resetJob || driveJob || discJob;
+  let hung: boolean | undefined;
+  let drive: Job['drive'];
+  let disc: Job['disc'];
   let accessory: Job['accessory'];
   let fault: AppliedFault;
   if (accessoryJob) {
@@ -262,6 +307,40 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
       refs: [],
       hint: "Plug the device in with your own charger and cable: if it charges normally, the customer's accessory is the problem. Swap them one at a time on the USB meter to find which is bad, then sell a replacement.",
       flavor: rng.pick(['It will not charge any more, or only if I hold the cable just right.', 'It takes forever to charge now, and sometimes does not charge at all.', 'My phone charger stopped working with this. Is it broken?']),
+    };
+  } else if (resetJob) {
+    hung = true;
+    fault = {
+      variant: 'service-reset',
+      family: 'Frozen: needs a hard reset',
+      tier: 1,
+      summary: 'Nothing is broken: the firmware locked up. Switch it off, unplug everything and hold the power button for 15 seconds (or disconnect the battery for a moment) to hard reset it.',
+      refs: [],
+      hint: 'Use "Hard reset" on the ticket: power off, unplug the charger, hold the power button 15 seconds. Then check that it starts.',
+      flavor: rng.pick(['It froze on the logo and now it will not respond to anything.', 'The screen went black in the middle of a game and the buttons do nothing.', 'It will not turn on and the charge light does nothing, but it was fine this morning.']),
+    };
+  } else if (driveJob) {
+    const state = rng.pick(['corrupt', 'corrupt', 'dead'] as const);
+    drive = { state };
+    fault = {
+      variant: 'service-drive',
+      family: state === 'corrupt' ? 'Corrupt storage' : 'Dead drive',
+      tier: 1,
+      summary: state === 'corrupt' ? 'The system storage is corrupt: it never finishes booting. Re-image the drive with the drive imager (or fit a new one).' : 'The drive has died: the console cannot even see it. Fit a new drive and re-image it.',
+      refs: [],
+      hint: state === 'corrupt' ? 'It starts and then hangs on a boot-error screen. Use "Re-image the drive" on the ticket.' : 'It never gets past the logo and the drive is not detected. A drive that is not detected is dead: replace it.',
+      flavor: rng.pick(['It shows an error about the system storage and will not start.', 'It hangs on the logo forever and then restarts.', 'It says it needs to repair the system and then fails every time.']),
+    };
+  } else if (discJob) {
+    disc = scratchedDisc(rng);
+    fault = {
+      variant: 'service-disc',
+      family: 'Scratched disc',
+      tier: 1,
+      summary: 'Nothing wrong with the console: the game disc is scratched and will not read. Resurface it on the disc buffing machine: a few passes with polishing compound. Too many passes and it is polished too thin; a scratch that goes through the data layer cannot be saved.',
+      refs: [],
+      hint: 'Use the disc buffing station on the ticket. Look at how deep each scratch is, then polish in short passes and check between them.',
+      flavor: rng.pick(['The game freezes at the same place every time, and there are scratches all over the disc.', 'My dog dragged the disc across the floor and now the console will not read it.', 'It says "unreadable disc" now.']),
     };
   } else if (caseJob) {
     fault = {
@@ -331,7 +410,10 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     customer,
     kind: opts.kind ?? 'customer',
     ...(accessory ? { accessory } : {}),
-    ...(device.enclosure ? { enclosure: fault.torn ? tornEnclosure(device.enclosure, fault.torn) : caseJob ? crackedEnclosure(device.enclosure, rng) : fault.variant === 'screen-cracked' && rng.next() < 0.45 ? crackedEnclosure(device.enclosure, rng) : service && !accessory ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
+    ...(hung ? { hung } : {}),
+    ...(drive ? { drive } : {}),
+    ...(disc ? { disc } : {}),
+    ...(device.enclosure ? { enclosure: fault.torn ? tornEnclosure(device.enclosure, fault.torn) : caseJob ? crackedEnclosure(device.enclosure, rng) : fault.variant === 'screen-cracked' && rng.next() < 0.45 ? crackedEnclosure(device.enclosure, rng) : overheatJob ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
     ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };
 }

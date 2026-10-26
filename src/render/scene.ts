@@ -1,3 +1,4 @@
+import type { SupplyId } from '../business/economy';
 import { lcdContrast } from '../sim/devices/lcdgames';
 import * as pc from 'playcanvas';
 import type { PointRef } from '../sim/circuit';
@@ -291,6 +292,9 @@ export class BenchScene {
       ['pen-grinder', 'tool_pengrinder', 125, 190, 8],
       ['uv-lamp', 'tool_uvlamp', 235, 180, -6],
       ['port-tester', 'tool_porttester', -270, 105, 20],
+      ['disc-buffer', 'tool_discbuffer', 300, 70, -25],
+      ['drive-imager', 'tool_driveimager', -300, 20, 12],
+      ['supply:kapton', 'tool_kapton', 150, 130, 0],
     ];
     for (const [id, model, x, z, yaw] of spots) {
       const p = this.clone(model);
@@ -1466,7 +1470,7 @@ export class BenchScene {
     this.drawDisplay(this.psuA, psuOn ? Math.max(0, op!.srcI).toFixed(3) : s.psu.ilim.toFixed(3), psuOn ? '#ff6a3d' : '#7a2c1c', '#120c0a', 'A');
 
     // Bench props follow what you own; the USB meter shows the charge current while it is in use
-    for (const [id, e] of this.props) e.enabled = s.owns(id);
+    for (const [id, e] of this.props) e.enabled = id.startsWith('supply:') ? (s.shop.supplies[id.slice(7) as SupplyId] ?? 0) > 0 : s.owns(id);
     if (s.owns('usb-meter')) {
       const live = op && (s.powerMode === 'adapter' || s.powerMode === 'psu-jack');
       this.drawDisplay(this.usbLcd, live ? s.chargeView(op!.srcI).path.amps.toFixed(3) : '0.000', '#1d2418', '#a9b897', 'A');
