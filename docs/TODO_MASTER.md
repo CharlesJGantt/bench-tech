@@ -157,12 +157,17 @@ Each task has where it came from in brackets.
 86. [ ] **Inspect every visible 3D tool** and **every office menu**; fix what you reject.
 87. [ ] **Test every buy and sell action**, **every repair process**, **the store-room and donor board process** (really desolder parts from a donor,
     remove cases, replace broken parts), the **customer call scenarios**, the **locations, bench upgrades, storefronts and employees**.
-88. [ ] **Reballing (BGA) does not exist**: define it with you and build it (remove chip, clean pads, stencil, balls, reflow, test), then test it.
-89. [ ] **Customer call scenarios "Stop repair" and "Finish repair"** (today the calls are: express delivery, standard delivery and wait, wait for a
-    donor, buy as spares at 10 / 15 / 25 %, expensive parts): decide whether to add them as call options.
+88. [ ] **Reballing / BGA work: NEXT feature to build** (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
+    (reflow in place, remove, clean pads, stencil and balls, fit, test; BGA parts, tools and consumables; new faults). Needs your answers to its 5 questions.
+89. [ ] **Customer says no to a pricey part (replaces "Stop repair / Finish repair")**: when you call and quote a part ("this chip will cost $48", more depending on
+    chip, shipping method, markup, rarity and certification), the customer may say **"that's too much, the repair is not worth it"** and **stop the
+    repair themselves**; then you can **offer to buy the item for spare parts**, or the customer **asks for it back**. (Today the calls are: express delivery,
+    standard delivery and wait, wait for a donor, buy as spares at 10 / 15 / 25 %, expensive parts.)
 90. [ ] Items you may have missed, now in the checklist: settings and pause menu, accessibility, browser and window-size checks, performance in long
     sessions, naming and licence checks (parody names only; music, voice and fonts), economy balance over 30 and 100 days, edge cases, crash recovery,
     gamepad / touch, Steam readiness (achievements, cloud saves, controller support), credits screen.
+106. [ ] **Test lab: WiFi and Bluetooth testing on the test-lab screen** (scan, pair, connect for consoles, handhelds and controllers that have them). Part of the
+    immersive test lab: the boot sequence (task 83) is an important part of the game and should be worked over thoroughly.
 91. [ ] Act on every FAIL and REWORK in `TEST_LOG.md` as you report it; keep the tracker CSV and the log in step.
 
 ## K. Documentation (new: see `DOCUMENTATION_PLAN.md`)

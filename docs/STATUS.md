@@ -208,7 +208,9 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Test lab boot sequence for every console and handheld (status light, boot screens, OS load, game loading screen) | TODO |
 | Approval of every repairable (incl. case fitment, alignment, hole placement), cartridge, disc, tool model, office menu | TODO (you test) |
 | Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
-| Reballing (BGA): define, build and test | TODO (not built) |
+| Reballing / BGA: **next to build** (design proposal in `REBALLING_DESIGN.md`, 5 questions for you) | NEXT |
+| Test lab: immersive boot sequence plus WiFi and Bluetooth testing on the test screen | TODO |
+| Call flow: the customer refuses a pricey part and stops the repair; you buy it for spares or return it | TODO |
 
 ## 19. Documentation (new, 2026-10-26; plan in `DOCUMENTATION_PLAN.md`)
 | Item | Status |
@@ -220,6 +222,7 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Generators for the reference lists | TODO |
 
 ## Suggested order (not decided: we are planning)
+0. **Reballing / BGA** (you said: next), then the test lab boot sequence with WiFi / Bluetooth testing
 1. Finish planning: the order of the console wave, the start menu and the shop scenes
 2. The new consoles with their disc drives, media and controllers (backlog section 2b), once the art is done enough to use
 3. MyPhone with a wireless-charging coil; laptops, Ding boards, SoundHalo supply, Funstation 5 power section

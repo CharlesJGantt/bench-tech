@@ -1,7 +1,7 @@
 # Bench Tech: test log (kept by Claude)
 
 Tell me an ID and what you found; I update this file and the tracker. Tags: NOT TESTED, PASS, FAIL, REWORK, BLOCKED, NOT BUILT, N/A.
-Counts (start): NOT TESTED: 231, NOT BUILT: 258
+Counts (start): NOT TESTED: 229, NOT BUILT: 266
 
 ## Issues found
 
@@ -496,7 +496,7 @@ Counts (start): NOT TESTED: 231, NOT BUILT: 258
 | DON-007 | Strip a whole board for parts / scrap | Built | NOT TESTED |  |
 | DON-008 | Failed rework leaves a board you can salvage from | Built | NOT TESTED |  |
 
-### Reballing (not built yet: define it together)
+### Reballing / BGA (NEXT to build: design in REBALLING_DESIGN.md)
 
 | ID | Item | Built? | Status | Notes |
 |---|---|---|---|---|
@@ -505,6 +505,10 @@ Counts (start): NOT TESTED: 231, NOT BUILT: 258
 | BGA-003 | Reballing: stencil and solder balls | Not built | NOT BUILT |  |
 | BGA-004 | Reballing: refit and reflow the chip | Not built | NOT BUILT |  |
 | BGA-005 | Reballing: test after | Not built | NOT BUILT |  |
+| BGA-006 | BGA: reflow a BGA chip in place (cheap fix) and what comes back later | Not built | NOT BUILT |  |
+| BGA-007 | BGA: replace a dead BGA chip (new, used, donor) | Not built | NOT BUILT |  |
+| BGA-008 | BGA: hot-air profile (preheat, soak, peak, cool) | Not built | NOT BUILT |  |
+| BGA-009 | BGA: Kapton masking next to a BGA | Not built | NOT BUILT |  |
 
 ### Locations, bench, storefront, employees
 
@@ -530,10 +534,11 @@ Counts (start): NOT TESTED: 231, NOT BUILT: 258
 | CAL-003 | Call: ask them to wait while you find a donor board | Built | NOT TESTED |  |
 | CAL-004 | Call: buy the unfixable item for donor parts (10 / 15 / 25 %) | Built | NOT TESTED |  |
 | CAL-005 | Call: Order expensive parts | Built | NOT TESTED |  |
-| CAL-006 | Call: Stop repair | Check: not a call option yet | NOT TESTED |  |
-| CAL-007 | Call: Finish repair | Check: not a call option yet | NOT TESTED |  |
-| CAL-008 | Customers who wait too long walk out | Built | NOT TESTED |  |
-| CAL-009 | Rush certified customers | Built | NOT TESTED |  |
+| CAL-006 | Call: quote a pricey part and the customer says "too much, not worth it" | Not built | NOT BUILT |  |
+| CAL-007 | Customer stops the repair themselves, then the player offers to buy it for spare parts | Not built | NOT BUILT |  |
+| CAL-008 | Customer stops the repair and asks for the item back | Not built | NOT BUILT |  |
+| CAL-009 | Customers who wait too long walk out | Built | NOT TESTED |  |
+| CAL-010 | Rush certified customers | Built | NOT TESTED |  |
 
 ### Things you may have missed
 
@@ -568,4 +573,5 @@ Counts (start): NOT TESTED: 231, NOT BUILT: 258
 | GEN-027 | Gamepad / touch support | Not built | NOT BUILT |  |
 | GEN-028 | Steam readiness: achievements, cloud saves, overlay, controller support, store page assets, build size | Not built | NOT BUILT |  |
 | GEN-029 | Credits and legal screen | Not built | NOT BUILT |  |
-| GEN-030 | Art: every game label / loading screen / console art against the manifest | Waiting on Codex | NOT TESTED |  |
+| GEN-030 | Test lab: WiFi and Bluetooth test on the test-lab screen | Not built | NOT BUILT |  |
+| GEN-031 | Art: every game label / loading screen / console art against the manifest | Waiting on Codex | NOT TESTED |  |

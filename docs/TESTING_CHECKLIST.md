@@ -4,7 +4,7 @@ You have never playtested a game this thoroughly, so this list is built to be co
 
 Three files work together:
 - **This file** explains what to test and the order.
-- **`Bench_Tech_Test_Tracker.csv`** is the spreadsheet (open in Excel / Google Sheets / Gridcraft): one row per thing to test, with a Status column and notes columns. 489 rows.
+- **`Bench_Tech_Test_Tracker.csv`** is the spreadsheet (open in Excel / Google Sheets / Gridcraft): one row per thing to test, with a Status column and notes columns. 495 rows.
 - **`Bench_Tech_Test_Games.csv`** is one row per game title (1,396) for label, loading-screen and media approval.
 - **`TEST_LOG.md`** is the running notes file **I update** with test results, issues and rework you report.
 
@@ -38,10 +38,10 @@ Three files work together:
 | Buying and selling: every type | 22 | Every way to buy and sell. |
 | Repair processes: every one | 35 | Every repair process in the game. |
 | Store-room and donor boards: actually use them | 8 | Use a donor board for real: desolder parts, remove cases, replace broken things. |
-| Reballing (not built yet: define it together) | 5 | Reballing does not exist yet (BGA work was listed as a later phase). These rows define what it must cover. |
+| Reballing / BGA (NEXT to build: design in REBALLING_DESIGN.md) | 9 | Reballing and BGA work do not exist yet; devices are about to include BGA chips, so it is the next feature to build. These rows define what it must cover. |
 | Locations, bench, storefront, employees | 10 | Locations and staff exist; bench upgrades, scenes and the storefront view do not. |
-| Calling the customer: every scenario | 9 | Every call option. Stop repair and Finish repair are not call options today. |
-| Things you may have missed | 30 | Start menu, saves, tutorials, sound, window sizes, browsers, performance, settings, accessibility, naming and licences, economy balance, error cases, Steam readiness. |
+| Calling the customer: every scenario | 10 | Every call option, including the planned one where the customer refuses a pricey part and stops the repair (buy it for spares, or return it). |
+| Things you may have missed | 31 | Start menu, saves, tutorials, sound, window sizes, browsers, performance, settings, accessibility, naming and licences, economy balance, error cases, Steam readiness. |
 
 Plus the per-game file: 1,396 rows (label art, loading screen, media look, disc centre hole, boot-to-game check).
 
