@@ -310,6 +310,26 @@ export const LOCATIONS: LocationDef[] = [
   { id: 'mall', name: 'Mall shop', rent: 800, fitOut: 2500, reputation: 45, traffic: 2.4, extraCustomers: 2, blurb: 'High rent, high footfall. Walk-ins buy a lot more, and more people bring repairs.' },
 ];
 
+/** What staff cost and do. Wages are paid every night; a raise moves someone up a level. */
+export interface StaffLevel {
+  level: 1 | 2 | 3;
+  title: string;
+  /** Repairs finished per day. */
+  repairs: number;
+  /** Daily wage ($). */
+  wage: number;
+  blurb: string;
+}
+
+export const STAFF_LEVELS: StaffLevel[] = [
+  { level: 1, title: 'Trainee', repairs: 1, wage: 55, blurb: 'Cheap and keen. Handles the easy jobs; harder ones often go wrong.' },
+  { level: 2, title: 'Technician', repairs: 2, wage: 90, blurb: 'Two repairs a day and steady on moderate faults.' },
+  { level: 3, title: 'Senior technician', repairs: 3, wage: 140, blurb: 'Three repairs a day, and can take on the hard ones.' },
+];
+
+/** How many people each place has room for. */
+export const STAFF_CAP: Record<LocationId, number> = { garage: 0, storefront: 1, mall: 2 };
+
 export function locationDef(id: LocationId | undefined): LocationDef {
   return LOCATIONS.find((l) => l.id === id) ?? LOCATIONS[0];
 }

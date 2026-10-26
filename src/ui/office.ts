@@ -1,4 +1,4 @@
-import { ADS, LOCATIONS, locationDef, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
+import { ADS, LOCATIONS, locationDef, STAFF_CAP, STAFF_LEVELS, delivery, DELIVERY, NOT_SOLD, RENT, SUPPLIES, TOOLS, type DeliveryId, type SupplyId } from '../business/economy';
 import {
   adTier,
   availableDevices,
@@ -14,6 +14,9 @@ import {
   stockOf,
   trendMult,
   CHANNELS,
+  applicants,
+  staffRoom,
+  wageOf,
   type LedgerCat,
   type Project,
   type SaleChannel,
@@ -28,7 +31,7 @@ import type { Session } from '../game/session';
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const money = (n: number) => `${n < 0 ? '−' : ''}$${Math.abs(n).toFixed(2)}`;
 
-export type OfficeTab = 'overview' | 'work' | 'stock' | 'storeroom' | 'tools' | 'market' | 'ads' | 'sales';
+export type OfficeTab = 'overview' | 'work' | 'stock' | 'storeroom' | 'tools' | 'market' | 'ads' | 'sales' | 'staff';
 
 const CAT_NAMES: Record<LedgerCat, string> = {
   repair: 'Repairs',
@@ -41,6 +44,7 @@ const CAT_NAMES: Record<LedgerCat, string> = {
   purchase: 'Devices bought',
   refund: 'Refunds',
   fees: 'Selling fees',
+  wages: 'Wages',
 };
 
 /** Order basket kept between renders of the office. */
@@ -65,6 +69,7 @@ export function officeHtml(s: Session, tab: OfficeTab, cart: Cart, speed: Delive
     ['tools', '🛠 Equipment'],
     ['market', `🛒 Marketplace${Object.keys(st.trend).length ? ' 🔥' : ''}`],
     ['sales', `💲 Sales (${(st.sales ?? []).length})`],
+    ['staff', `👥 Staff (${(st.staff ?? []).length})`],
     ['ads', '📣 Advertising & location'],
   ];
   const head = `<div class="of-head">
@@ -99,8 +104,38 @@ export function officeHtml(s: Session, tab: OfficeTab, cart: Cart, speed: Delive
     case 'sales':
       body = salesTab(s);
       break;
+    case 'staff':
+      body = staffTab(s);
+      break;
   }
   return `<div class="office">${head}<div class="of-body">${body}</div></div>`;
+}
+
+/** Hire, raise and let go of people who work through the waiting customers each day. */
+function staffTab(s: Session): string {
+  const st = s.shop;
+  const cap = STAFF_CAP[st.location ?? 'garage'];
+  const room = staffRoom(st);
+  const crew = (st.staff ?? [])
+    .map((e) => {
+      const lv = STAFF_LEVELS[e.level - 1];
+      const next = e.level < 3 ? (e.done >= 3 * e.level ? `<button data-act="raise-staff" data-id="${e.id}">Give a raise (→ ${STAFF_LEVELS[e.level].title}, ${money(Math.round(STAFF_LEVELS[e.level].wage * e.wageFactor))}/day)</button>` : `<span class="muted small">Raise after ${3 * e.level - e.done} more repairs</span>`) : '<span class="pill">top level</span>';
+      return `<div class="of-card"><h3>${esc(e.name)} · ${lv.title}</h3><div class="price">${money(wageOf(e))}/day</div>
+        <p class="muted small">${lv.repairs} repair${lv.repairs > 1 ? 's' : ''} a day · ${e.done} fixed, ${e.failed} failed since day ${e.hiredOn}</p>
+        <p>${next}</p><p><button data-act="fire-staff" data-id="${e.id}">Let go</button></p></div>`;
+    })
+    .join('');
+  const list = applicants(st)
+    .map((a) => {
+      const lv = STAFF_LEVELS[a.level - 1];
+      return `<div class="of-card"><h3>${esc(a.name)} · ${lv.title}</h3><div class="price">${money(Math.round(lv.wage * a.wageFactor))}/day</div>
+        <p>${esc(lv.blurb)}</p><p class="muted small">${lv.repairs} repair${lv.repairs > 1 ? 's' : ''} a day</p>
+        <button data-act="hire-staff" data-id="${a.id}" ${room > 0 ? '' : 'disabled'}>Hire</button></div>`;
+    })
+    .join('');
+  return `<p>Staff work through the waiting customers every evening, easiest jobs first, and you keep the repair fees (less 20 % for parts) after paying their wages. Hard faults can go wrong for a junior: the customer gets the device back unfixed and your reputation drops. ${cap ? `This shop has room for <b>${cap}</b> (${room} free).` : '<b>The garage has no room for anyone else.</b> Rent a storefront (Advertising & location tab) to hire help.'}</p>
+    ${crew ? `<h3>Your team</h3><div class="of-grid">${crew}</div>` : ''}
+    <h3>Looking for work this week</h3><div class="of-grid">${list || '<p class="muted">Nobody new is looking right now.</p>'}</div>`;
 }
 
 function listedStatus(p: Project): string {

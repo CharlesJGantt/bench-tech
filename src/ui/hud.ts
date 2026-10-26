@@ -14,7 +14,7 @@ import { scrubbable } from '../sim/contacts';
 import { assembled } from '../sim/enclosure';
 import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
-import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
+import { CHANNELS, fireStaff, forecastListing, hireStaff, moveShop, raiseStaff, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
 import { portRef, portTest } from '../sim/porttest';
 import { ACCESSORY_PRICE } from '../sim/accessories';
@@ -584,6 +584,15 @@ export class Hud {
         }
         this.renderOffice();
         break;
+      case 'hire-staff':
+      case 'raise-staff':
+      case 'fire-staff': {
+        const res = act === 'hire-staff' ? hireStaff(s.shop, d.id!) : act === 'raise-staff' ? raiseStaff(s.shop, d.id!) : (fireStaff(s.shop, d.id!), { ok: true });
+        if (!res.ok) this.toast(res.reason ?? 'Cannot do that.', 'bad');
+        else s.save();
+        this.renderOffice();
+        break;
+      }
       case 'move-shop': {
         const res = moveShop(s.shop, d.id as LocationId);
         if (!res.ok) this.toast(res.reason ?? 'Cannot move.', 'bad');
@@ -999,7 +1008,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
       `<h2>🌙 End of day ${r.day}</h2>
       <h3>Tonight's bills</h3><table class="bom">${bills || '<tr><td class="muted">None</td></tr>'}</table>
       <h3>Day ${s.shop.day} morning</h3><ul class="checks">
-        ${lines(r.trends)}${lines(r.deliveries)}${lines(r.sales.map((x) => '💰 ' + x))}${lines(r.refunds.map((x) => '↩ ' + x))}
+        ${lines(r.trends)}${lines(r.deliveries)}${lines((r.staffWork ?? []).map((x) => '👥 ' + x))}${lines(r.sales.map((x) => '💰 ' + x))}${lines(r.refunds.map((x) => '↩ ' + x))}
         ${r.walkouts ? `<li class="bad">${r.walkouts} customer${r.walkouts > 1 ? 's' : ''} got tired of waiting and left (−reputation).</li>` : ''}
         ${r.warranty ? `<li class="warn">${r.warranty} warranty return${r.warranty > 1 ? 's' : ''} came back in.</li>` : ''}
         <li>${r.newCustomers} new customer${r.newCustomers === 1 ? '' : 's'} came in.</li>

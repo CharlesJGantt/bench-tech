@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { BES_CART } from '../src/sim/devices';
 import { delivery, ELECTRICITY, RENT, SUPPLIES } from '../src/business/economy';
 import {
+  applicants,
   availableDevices,
+  fireStaff,
+  hireStaff,
+  raiseStaff,
+  staffSuccess,
   buyListing,
   completeCustomerJob,
   harvestPart,
@@ -296,5 +301,46 @@ describe('review save', () => {
     endDay(st);
     expect(profitAndLoss(st, st.day - 1, st.day - 1).byCat.rent).toBeLessThanOrEqual(-320);
     expect(before).toBeGreaterThan(st.cash - 1000);
+  });
+
+  it('staff: hiring needs room, wages are paid, they work the queue and can earn a raise', () => {
+    const st = createShop(41);
+    st.reputation = 40;
+    st.cash = 9000;
+    const a = applicants(st);
+    expect(a.length).toBeGreaterThan(0);
+    // the garage has no room
+    expect(hireStaff(st, a[0].id).ok).toBe(false);
+    expect(moveShop(st, 'storefront').ok).toBe(true);
+    expect(hireStaff(st, a[0].id).ok).toBe(true);
+    // one person fits in a storefront
+    expect(hireStaff(st, applicants(st)[0]?.id ?? 'x').ok).toBe(false);
+    // you cannot move to a place too small for the crew
+    expect(moveShop(st, 'garage').ok).toBe(false);
+    // the day's work: customers are served, wages are booked
+    const queued = st.queue.length;
+    const rep = st.reputation;
+    const report = endDay(st);
+    expect(report.staffWork.length).toBeGreaterThan(0);
+    expect(st.queue.length).toBeLessThan(queued + report.newCustomers);
+    expect(profitAndLoss(st, 1, st.day).byCat.wages).toBeLessThan(0);
+    expect(st.reputation).not.toBe(rep - 99);
+    // a raise has to be earned
+    const e = st.staff![0];
+    expect(raiseStaff(st, e.id).ok).toBe(e.done >= 3);
+    const lvl = e.level;
+    e.done = 3 * lvl;
+    if (lvl < 3) {
+      expect(raiseStaff(st, e.id).ok).toBe(true);
+      expect(e.level).toBe(lvl + 1);
+    }
+    fireStaff(st, e.id);
+    expect(st.staff).toHaveLength(0);
+  });
+
+  it('staff success depends on the job being within their level', () => {
+    expect(staffSuccess(1, 1)).toBeGreaterThan(staffSuccess(1, 3));
+    expect(staffSuccess(3, 3)).toBeGreaterThan(0.9);
+    expect(staffSuccess(1, 3)).toBeLessThan(0.3);
   });
 });

@@ -6,6 +6,7 @@
 import type { DeviceDef } from '../sim/board';
 import { DEVICE_LIST, DEVICES } from '../sim/devices';
 import { cloneBoard, functionalTest, type BoardState } from '../sim/circuit';
+import { STAFF_CAP, STAFF_LEVELS } from './economy';
 import { usesUsbCharger } from '../sim/accessories';
 import { canServiceCooling, generateJob, Rng, type Job, type Tier } from '../sim/faults';
 import { part, PARTS } from '../sim/parts';
@@ -36,7 +37,7 @@ import {
   type SupplyId,
 } from './economy';
 
-export type LedgerCat = 'repair' | 'sale' | 'fees' | 'parts' | 'supplies' | 'rent' | 'electricity' | 'advertising' | 'purchase' | 'refund';
+export type LedgerCat = 'repair' | 'sale' | 'fees' | 'wages' | 'parts' | 'supplies' | 'rent' | 'electricity' | 'advertising' | 'purchase' | 'refund';
 
 export interface LedgerEntry {
   day: number;
@@ -162,6 +163,19 @@ export interface QueuedJob {
 }
 
 /** A customer job already handed back: shown as a finished row, with no Start button. */
+/** Someone on the payroll: works through the waiting customers at the end of each day. */
+export interface Employee {
+  id: string;
+  name: string;
+  level: 1 | 2 | 3;
+  /** Pay relative to the standard wage for their level (some ask for more). */
+  wageFactor: number;
+  hiredOn: number;
+  /** Repairs finished and failed so far. */
+  done: number;
+  failed: number;
+}
+
 export interface ReturnedJob {
   id: number;
   kind: 'customer' | 'warranty';
@@ -212,6 +226,8 @@ export interface ShopState {
   sales?: SaleRecord[];
   /** Where the shop is (default: the garage). */
   location?: LocationId;
+  /** People who work for you (see hireStaff). */
+  staff?: Employee[];
   /** Comebacks that will walk back in on a later day. */
   warrantyPending: { day: number; job: SavedJob; customer: string; homeTest?: { refund: number } }[];
   /** Unhappy flip buyers. */
@@ -241,6 +257,7 @@ export function moveShop(st: ShopState, id: LocationId): { ok: boolean; reason?:
   const cur = locationDef(st.location);
   if (!to || to.id === cur.id) return { ok: false, reason: 'You are already there.' };
   const upgrade = LOCATIONS.indexOf(to) > LOCATIONS.indexOf(cur);
+  if ((st.staff ?? []).length > STAFF_CAP[to.id]) return { ok: false, reason: `${to.name} only has room for ${STAFF_CAP[to.id]}. Let some staff go first.` };
   if (upgrade) {
     if (st.reputation < to.reputation) return { ok: false, reason: `The landlord wants a reputation of ${to.reputation} first.` };
     if (st.cash < to.fitOut) return { ok: false, reason: `The fit-out costs $${to.fitOut}.` };
@@ -248,6 +265,103 @@ export function moveShop(st: ShopState, id: LocationId): { ok: boolean; reason?:
   }
   st.location = to.id;
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Staff
+// ---------------------------------------------------------------------------
+
+export const wageOf = (e: Employee): number => Math.round(STAFF_LEVELS[e.level - 1].wage * e.wageFactor);
+
+const FIRST_NAMES = ['Alex', 'Bryn', 'Cam', 'Dev', 'Eli', 'Fern', 'Gus', 'Hana', 'Ivo', 'Jo', 'Kit', 'Lena', 'Milo', 'Nia', 'Oz', 'Pia', 'Quin', 'Remy', 'Sol', 'Tess'];
+
+export interface Applicant {
+  id: string;
+  name: string;
+  level: 1 | 2 | 3;
+  wageFactor: number;
+}
+
+/** This week's people looking for work: the same for everyone who looks that week. Better people only apply to a shop with a name. */
+export function applicants(st: ShopState): Applicant[] {
+  const week = Math.floor((st.day - 1) / 7);
+  const r = new Rng(week * 977 + 13);
+  const out: Applicant[] = [];
+  for (let i = 0; i < 3; i++) {
+    const roll = r.next();
+    const level = (roll > 0.8 && st.reputation >= 60 ? 3 : roll > 0.45 && st.reputation >= 25 ? 2 : 1) as 1 | 2 | 3;
+    out.push({ id: `${week}-${i}`, name: `${r.pick(FIRST_NAMES)} ${String.fromCharCode(65 + r.int(0, 25))}.`, level, wageFactor: Math.round(r.range(0.9, 1.15) * 100) / 100 });
+  }
+  return out.filter((a) => !(st.staff ?? []).some((e) => e.id === a.id));
+}
+
+export function staffRoom(st: ShopState): number {
+  return STAFF_CAP[st.location ?? 'garage'] - (st.staff ?? []).length;
+}
+
+export function hireStaff(st: ShopState, applicantId: string): { ok: boolean; reason?: string } {
+  const a = applicants(st).find((x) => x.id === applicantId);
+  if (!a) return { ok: false, reason: 'They have taken another job.' };
+  if (staffRoom(st) <= 0) return { ok: false, reason: STAFF_CAP[st.location ?? 'garage'] ? 'No room for another person here. A bigger shop has more benches.' : 'There is no room for anyone else in the garage. Rent a storefront first.' };
+  (st.staff ??= []).push({ id: a.id, name: a.name, level: a.level, wageFactor: a.wageFactor, hiredOn: st.day, done: 0, failed: 0 });
+  return { ok: true };
+}
+
+export function raiseStaff(st: ShopState, id: string): { ok: boolean; reason?: string } {
+  const e = (st.staff ?? []).find((x) => x.id === id);
+  if (!e) return { ok: false, reason: 'No such employee.' };
+  if (e.level >= 3) return { ok: false, reason: `${e.name} is already a senior technician.` };
+  if (e.done < 3 * e.level) return { ok: false, reason: `${e.name} has not earned a raise yet: finish ${3 * e.level - e.done} more repairs.` };
+  e.level = (e.level + 1) as 1 | 2 | 3;
+  return { ok: true };
+}
+
+export function fireStaff(st: ShopState, id: string): void {
+  st.staff = (st.staff ?? []).filter((x) => x.id !== id);
+}
+
+/** Chance a person of this level fixes a fault of this tier. */
+export function staffSuccess(level: number, tier: number): number {
+  return tier <= level ? 0.92 : Math.max(0.12, 0.92 - 0.4 * (tier - level));
+}
+
+/** The staff work through the waiting customers: each takes as many jobs as their level allows, easiest first. */
+function staffWorkday(st: ShopState, report: DayReport, r: Rng): void {
+  for (const e of st.staff ?? []) {
+    let slots = STAFF_LEVELS[e.level - 1].repairs;
+    while (slots > 0) {
+      const open = st.queue.filter((q) => q.kind === 'customer' && !q.hold && !q.tutorial && !(st.active?.kind === 'customer' && st.active.id === q.id));
+      if (!open.length) break;
+      // Prefer jobs they are able to do, then the best-paying
+      const tierOf = (q: QueuedJob) => q.job.faults?.[0]?.tier ?? 1;
+      open.sort((a, b) => Math.abs(tierOf(a) - e.level) - Math.abs(tierOf(b) - e.level) || b.quote - a.quote);
+      const q = open[0];
+      slots--;
+      st.queue = st.queue.filter((x) => x !== q);
+      const name = DEVICES[q.job.deviceId]?.name ?? q.job.deviceId;
+      const tier = tierOf(q);
+      if (r.next() < staffSuccess(e.level, tier)) {
+        e.done++;
+        const parts = Math.round(q.quote * 0.2);
+        book(st, 'repair', q.quote, `Repair for ${q.customer} (by ${e.name})`);
+        if (parts) book(st, 'parts', -parts, `Parts used by ${e.name} on ${name}`);
+        st.jobsDone++;
+        st.reputation += 1;
+        const comeback = r.next() < 0.08;
+        if (comeback) {
+          st.comebacks++;
+          st.warrantyPending.push({ day: st.day + r.int(2, 4), job: q.job, customer: q.customer });
+        }
+        (st.returned ??= []).push({ id: q.id, kind: 'customer', customer: q.customer, device: name, quote: q.quote, outcome: comeback ? 'comeback' : 'fixed', paid: q.quote });
+        report.staffWork.push(`${e.name} repaired ${q.customer}'s ${name} (+$${q.quote})${comeback ? ' — it may come back' : ''}`);
+      } else {
+        e.failed++;
+        st.reputation = Math.max(0, st.reputation - 2);
+        (st.returned ??= []).push({ id: q.id, kind: 'customer', customer: q.customer, device: name, quote: q.quote, outcome: 'not-fixed', paid: 0 });
+        report.staffWork.push(`${e.name} could not fix ${q.customer}'s ${name}; it went back unrepaired (−2 reputation)`);
+      }
+    }
+  }
 }
 
 export function adTier(st: ShopState): AdTier {
@@ -357,6 +471,7 @@ export function migrateShop(st: ShopState): ShopState {
   st.tools ??= [...STARTING_TOOLS];
   st.sales ??= [];
   st.location ??= 'garage';
+  st.staff ??= [];
   st.brushWear ??= 0;
   if (!st.wickLoad) {
     // Saves from before per-joint wick use lost their roll to a per-second drain: refill it once.
@@ -818,6 +933,8 @@ export interface DayReport {
   sales: string[];
   refunds: string[];
   walkouts: number;
+  /** What the staff did today. */
+  staffWork: string[];
   newCustomers: number;
   warranty: number;
   /** Market news: crazes starting or fading. */
@@ -827,7 +944,7 @@ export interface DayReport {
 /** Close the shop for the night and open the next morning. */
 export function endDay(st: ShopState): DayReport {
   const before = st.ledger.length;
-  const report: DayReport = { day: st.day, bills: [], deliveries: [], sales: [], refunds: [], walkouts: 0, newCustomers: 0, warranty: 0, trends: [] };
+  const report: DayReport = { day: st.day, bills: [], deliveries: [], sales: [], refunds: [], walkouts: 0, staffWork: [], newCustomers: 0, warranty: 0, trends: [] };
 
   // Evening bills for today
   const elec = ELECTRICITY.basePerDay + (st.usage.heatSeconds / 60) * ELECTRICITY.perHeatMinute + (st.usage.powerSeconds / 60) * ELECTRICITY.perPowerMinute;
@@ -836,6 +953,7 @@ export function endDay(st: ShopState): DayReport {
   if (ad.perDay) book(st, 'advertising', -ad.perDay, `${ad.name}, day ${st.day}`);
   const loc = locationDef(st.location);
   if (st.day % RENT.everyDays === 0) book(st, 'rent', -loc.rent, `${loc.name} rent (week ${st.day / RENT.everyDays})`);
+  for (const e of st.staff ?? []) book(st, 'wages', -wageOf(e), `Wages: ${e.name} (${STAFF_LEVELS[e.level - 1].title})`);
   report.bills = st.ledger.slice(before);
 
   // Next morning
@@ -885,6 +1003,8 @@ export function endDay(st: ShopState): DayReport {
 
   // Yesterday's finished jobs drop off the list
   st.returned = [];
+
+  staffWorkday(st, report, r);
 
   // Customers who waited too long walk out
   const before2 = st.queue.length;
@@ -970,6 +1090,7 @@ export function createShop(seed = 12345): ShopState {
     refundsPending: [],
     sales: [],
     location: 'garage',
+    staff: [],
     active: null,
     usage: { heatSeconds: 0, powerSeconds: 0 },
     nextId: 1,
