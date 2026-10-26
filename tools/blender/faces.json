@@ -945,6 +945,44 @@
     10,
     10,
     10
+   ],
+   "labels": [
+    {
+     "text": "TMWB GAMER CLOCK",
+     "at": [
+      75,
+      13
+     ],
+     "size": 6.5,
+     "bold": true
+    },
+    {
+     "text": "A",
+     "at": [
+      138,
+      47.5
+     ],
+     "size": 4,
+     "bold": true
+    },
+    {
+     "text": "B",
+     "at": [
+      126,
+      74.5
+     ],
+     "size": 4,
+     "bold": true
+    },
+    {
+     "text": "POWER",
+     "at": [
+      75,
+      89
+     ],
+     "size": 2.8,
+     "bold": true
+    }
    ]
   }
  },
@@ -999,6 +1037,44 @@
     10,
     10,
     10
+   ],
+   "labels": [
+    {
+     "text": "CRITTER MINI",
+     "at": [
+      75,
+      13
+     ],
+     "size": 6.5,
+     "bold": true
+    },
+    {
+     "text": "A",
+     "at": [
+      138,
+      47.5
+     ],
+     "size": 4,
+     "bold": true
+    },
+    {
+     "text": "B",
+     "at": [
+      126,
+      74.5
+     ],
+     "size": 4,
+     "bold": true
+    },
+    {
+     "text": "POWER",
+     "at": [
+      75,
+      89
+     ],
+     "size": 2.8,
+     "bold": true
+    }
    ]
   }
  }

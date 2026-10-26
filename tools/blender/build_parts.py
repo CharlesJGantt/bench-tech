@@ -978,6 +978,96 @@ enc_pad()
 enc_sticker()
 
 # ---------------------------------------------------------------------------
+# Bench props: small tools that lie on the mat once you own them (shown by src/render/scene.ts).
+# Each is centred on the origin and rests on z = 0. Lengths run along x.
+# ---------------------------------------------------------------------------
+
+M["uv"] = mat("uv_purple", srgb("6a3fb5"), 0.0, 0.4, emissive=srgb("a070ff"))
+M["greybody"] = mat("tool_grey", srgb("8d939b"), 0.1, 0.5)
+M["bluegrip"] = mat("tool_blue", srgb("2a6fd1"), 0.0, 0.5)
+M["pcbgreen"] = mat("tester_pcb", srgb("1f6b3c"), 0.0, 0.5)
+M["fibre"] = mat("fibreglass", srgb("e8d9a8"), 0.0, 0.6)
+
+
+def tweezers():
+    n = "tool_tweezers"
+    e = item(n)
+    # two flat steel arms that taper towards the tips, joined at the back
+    for s in (-1, 1):
+        for i in range(8):
+            x = -60 + i * 15
+            gap = 0.6 + (i / 7) * 0.0 + (7 - i) * 0.9
+            box(f"{n}_arm{s}_{i}", e, M["steel"], x + 7.5, s * (gap / 2 + 0.5), 0, 15.5, 1.2, 1.6, bevel=0.1)
+    box(f"{n}_joint", e, M["steel"], -62, 0, 0, 6, 6, 1.6, bevel=0.3)
+
+
+def pick_tool():
+    n = "tool_pick"
+    e = item(n)
+    cyl(f"{n}_handle", e, M["bluegrip"], -55, 0, 5.5, 5.5, 85, n=24, axis="x")
+    cyl(f"{n}_ferrule", e, M["steel"], 30, 0, 5.5, 4, 12, n=24, axis="x")
+    cyl(f"{n}_tip", e, M["blackplastic"], 42, 0, 5.5, 2.2, 38, n=16, axis="x", r2=0.4)
+
+
+def usb_meter():
+    n = "tool_usbmeter"
+    e = item(n)
+    box(f"{n}_body", e, M["blackplastic"], 0, 0, 0, 62, 24, 11, bevel=1.2, segments=3)
+    box(f"{n}_lcd", e, M["lcd"], 0, 0, 11, 34, 16, 0.4)
+    box(f"{n}_plug", e, M["steel"], -38, 0, 3, 14, 12, 4.5, bevel=0.3)  # USB-A plug end
+    box(f"{n}_socket", e, M["alu_dark"], 35, 0, 1.5, 9, 13, 7.5, bevel=0.4)  # socket end
+    box(f"{n}_tongue", e, M["blackplastic"], 36.5, 0, 3.5, 7, 9.5, 2.2)
+    cyl(f"{n}_btn", e, M["redbright"], 22, -8, 11, 2.2, 1, n=16)
+
+
+def blower():
+    n = "tool_blower"
+    e = item(n)
+    cyl(f"{n}_bulb", e, M["redbright"], -30, 0, 22, 22, 50, n=32, axis="x", r2=14)
+    cyl(f"{n}_bulb2", e, M["redbright"], -55, 0, 22, 12, 25, n=32, axis="x", r2=22)
+    cyl(f"{n}_neck", e, M["rubber"], 20, 0, 22, 8, 18, n=24, axis="x", r2=5)
+    cyl(f"{n}_nozzle", e, M["alu"], 38, 0, 22, 3.2, 50, n=16, axis="x", r2=1.4)
+
+
+def pen_grinder():
+    n = "tool_pengrinder"
+    e = item(n)
+    cyl(f"{n}_body", e, M["greybody"], -45, 0, 6, 6, 95, n=32, axis="x")
+    cyl(f"{n}_grip", e, M["rubber"], 20, 0, 6, 5.2, 26, n=32, axis="x", r2=4)
+    cyl(f"{n}_chuck", e, M["steel"], 46, 0, 6, 2.6, 12, n=16, axis="x", r2=2)
+    cyl(f"{n}_brush", e, M["fibre"], 58, 0, 6, 1.2, 28, n=12, axis="x", r2=0.5)
+    box(f"{n}_switch", e, M["redbright"], -20, 0, 12, 14, 4, 1.6, bevel=0.5)
+
+
+def uv_lamp():
+    n = "tool_uvlamp"
+    e = item(n)
+    cyl(f"{n}_body", e, M["blackplastic"], -50, 0, 14, 14, 85, n=32, axis="x")
+    cyl(f"{n}_head", e, M["greybody"], 35, 0, 14, 14, 24, n=32, axis="x", r2=19)
+    cyl(f"{n}_glass", e, M["uv"], 59, 0, 14, 17.5, 1.6, n=32, axis="x")
+    box(f"{n}_button", e, M["uv"], -20, 0, 28, 12, 7, 1.8, bevel=0.5)
+
+
+def port_tester():
+    n = "tool_porttester"
+    e = item(n)
+    box(f"{n}_pcb", e, M["pcbgreen"], 0, 0, 0, 70, 30, 2.2, bevel=0.4)
+    box(f"{n}_plug", e, M["steel"], -42, 0, 0.4, 14, 9, 3.2, bevel=1.4, segments=3)
+    for i in range(8):
+        box(f"{n}_led{i}", e, M["lens_green"] if i % 3 else M["lens_red"], -10 + i * 6.5, -7, 2.2, 3, 3, 1.2, bevel=0.3)
+    box(f"{n}_switch", e, M["alu_dark"], 25, 8, 2.2, 10, 5, 4, bevel=0.5)
+    box(f"{n}_chip", e, M["black"], 8, 6, 2.2, 12, 8, 1.6)
+
+
+tweezers()
+pick_tool()
+usb_meter()
+blower()
+pen_grinder()
+uv_lamp()
+port_tester()
+
+# ---------------------------------------------------------------------------
 # Export
 # ---------------------------------------------------------------------------
 

@@ -102,6 +102,9 @@ export class BenchScene {
   private hoverMarker!: pc.Entity;
   private lcd = this.makeDisplay(256, 112);
   private psuV = this.makeDisplay(256, 96);
+  private usbLcd = this.makeDisplay(256, 112);
+  /** Small tools that lie on the mat once you own them (Blender models), by tool id. */
+  private props = new Map<string, pc.Entity>();
   private psuA = this.makeDisplay(256, 96);
   private puffs: Puff[] = [];
   private ironTarget: string | null = null;
@@ -269,6 +272,27 @@ export class BenchScene {
       app.root.addChild(p);
       this.probes[c] = p;
     }
+
+    // Bench props: shown while owned. [tool id, model, x, z, yaw]
+    const spots: [string, string, number, number, number][] = [
+      ['tweezers', 'tool_tweezers', -235, 175, 12],
+      ['pick-tool', 'tool_pick', -170, 190, -8],
+      ['usb-meter', 'tool_usbmeter', -75, 185, 6],
+      ['air-blower', 'tool_blower', 25, 180, -10],
+      ['pen-grinder', 'tool_pengrinder', 125, 190, 8],
+      ['uv-lamp', 'tool_uvlamp', 235, 180, -6],
+      ['port-tester', 'tool_porttester', -270, 105, 20],
+    ];
+    for (const [id, model, x, z, yaw] of spots) {
+      const p = this.clone(model);
+      p.setLocalPosition(x, -BOARD_T, z);
+      p.setLocalEulerAngles(0, yaw, 0);
+      p.enabled = false;
+      app.root.addChild(p);
+      this.props.set(id, p);
+    }
+    const um = this.props.get('usb-meter');
+    if (um) this.attachDisplay(um, 'tool_usbmeter_lcd', this.usbLcd, new pc.Color(0.55, 0.6, 0.5));
 
     // Lamp light (driven by LED1 current)
     this.lampLight = new pc.Entity('lamp-light');
@@ -1403,6 +1427,13 @@ export class BenchScene {
     const psuOn = s.powerMode.startsWith('psu') && op;
     this.drawDisplay(this.psuV, psuOn ? Math.max(0, op!.srcV).toFixed(2) : s.psu.v.toFixed(2), psuOn ? '#ff6a3d' : '#7a2c1c', '#120c0a', 'V');
     this.drawDisplay(this.psuA, psuOn ? Math.max(0, op!.srcI).toFixed(3) : s.psu.ilim.toFixed(3), psuOn ? '#ff6a3d' : '#7a2c1c', '#120c0a', 'A');
+
+    // Bench props follow what you own; the USB meter shows the charge current while it is in use
+    for (const [id, e] of this.props) e.enabled = s.owns(id);
+    if (s.owns('usb-meter')) {
+      const live = op && (s.powerMode === 'adapter' || s.powerMode === 'psu-jack');
+      this.drawDisplay(this.usbLcd, live ? s.chargeView(op!.srcI).path.amps.toFixed(3) : '0.000', '#1d2418', '#a9b897', 'A');
+    }
 
     // Soldering iron
     if (this.ironTarget && !this.flipped) {
