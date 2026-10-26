@@ -35,7 +35,7 @@ image to make), `Bench_Tech_Image_Asset_Master_List.md`, `Bench_Tech_Console_Asp
 | SB1, SB2, SB720, SB10, SBS | Sbox 1, 2, 720, 10, S | DVD, DVD, DVD, Blu-ray, Blu-ray | not built |
 | PYRAMID | Bintendo Pyramid | Bintendo Mini-Disc (own format) | not built |
 
-## Artwork (made by Codex, in progress: a few more days)
+## Artwork (made by Codex, being redone: a few more days)
 - **One image set per unique title per console; a game released on several consoles reuses the artwork.**
 - 2,792 files: 1,396 labels (cartridge, disc or SD label, 128 / 256 / 512 px squares; discs are round with a transparent
   hub) and 1,396 loading screens (4:3 at 960 x 720 for retro systems, 16:9 at 960 x 540 for HD systems).
@@ -43,7 +43,10 @@ image to make), `Bench_Tech_Image_Asset_Master_List.md`, `Bench_Tech_Console_Asp
   (about 460 MB so far; **not in git**; the folder is in `.gitignore`). Codex's own status file
   (`ARTWORK_REBUILD_STATUS.md` there) says its first fast pass was derived art and that every title must get genuinely
   unique illustrations (first block done: 20 Bintendo 64 titles).
-- **We do not touch the art until it is finished.**
+- **Correction (2026-10-26, from you):** Codex reused assets a lot, so most of the first pass is not usable. Only about
+  **25-30 titles have the correct stylised typography** on the art. Codex is redoing the art as its usage allows, over
+  the next few days. Treat everything in the raw folder as provisional until you say a title (or the set) is finished.
+- **We do not touch the art until it is finished.** The optimizer stays unused; no art goes into the game before then.
 
 ## What is wired in the game now (committed after this note)
 - `tools/build-games.py` builds `src/data/games.json` from the CSV and the manifest; `src/sim/games.ts` loads it.

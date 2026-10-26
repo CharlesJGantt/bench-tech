@@ -177,7 +177,7 @@ Details in `GAME_LIBRARY.md`.
 |---|---|
 | Game library of **1,396 titles on 28 platforms** (CSV + catalog + manifest in `docs/`), 34 original titles kept | DONE (data) |
 | Library loaded into the game (`tools/build-games.py` to `src/data/games.json`, `src/sim/games.ts`); retro carts and the Funstation 5 / Sbox One X disc jobs draw their titles from it | DONE |
-| Art by **Codex** (labels, discs, SD cards, loading screens; one set per title per console, reused for cross-platform games): 2,792 files, **in progress, a few days left**; raw art is not in git; **we do not touch the art until it is finished** | WAITING |
+| Art by **Codex** (labels, discs, SD cards, loading screens; one set per title per console, reused for cross-platform games): 2,792 files; **Codex reused assets in its first pass, so only about 25-30 titles have correct stylised title typography; it is redoing the art over the next few days**; raw art is not in git; **we do not touch the art until it is finished** | WAITING |
 | Optimiser that makes small in-game copies of the art (`tools/build-game-art.py`) | WRITTEN, NOT RUN |
 | Show each title's loading screen at the cart / disc test station | TODO |
 | Label art on the 3D cartridge, disc and SD meshes (Blender models need a label slot) | TODO |
