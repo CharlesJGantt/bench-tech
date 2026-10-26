@@ -238,6 +238,18 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Customer happiness tracked alongside reputation | TODO |
 | Excellent reputation (with reviews and happiness) required for high-end and exotic repairs | TODO |
 
+## 22. BGA follow-ups (not built)
+| Item | Status |
+|---|---|
+| Lifted pads under a BGA chip and their wire repair | TODO |
+| X-ray / endoscope inspection | TODO |
+| Certified balls and paste | TODO |
+| Kapton masking next to a BGA | TODO |
+| More BGA devices (consoles, phones, tablets, exotics) | TODO |
+| Real ball maps and a ball-by-ball close-up | TODO |
+| Popcorning, preheater, board warp | TODO |
+| Playtest and tuning | TODO |
+
 ## Suggested order (not decided: we are planning)
 0. **Reballing / BGA** (you said: next), then the test lab boot sequence with WiFi / Bluetooth testing
 1. Finish planning: the order of the console wave, the start menu and the shop scenes

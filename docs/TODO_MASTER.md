@@ -208,6 +208,16 @@ Only for what the player buys and sells, not for what customers pay for repairs.
     avionics, military and premium automotive): combine reputation, reviews and happiness for the unlock gates (today only reputation gates jobs).
 117. [ ] Hook reviews into the existing outcomes: fixed well, comeback, refused part, late rush job, fragile repair, price quote, communication on calls.
 
+## N. BGA follow-ups (reballing first version is built; these are not)
+118. [ ] **Lifted pads under a BGA chip**: a BGA fault variant plus repair with fine wire through the exposed pads once the chip is off.
+119. [ ] **X-ray / endoscope inspection** of hidden balls (an inspection tool to buy), so the balls can be checked without lifting the chip.
+120. [ ] **Certified balls and certified solder paste** (certified work currently logs an uncertified-solder violation for any reball).
+121. [ ] **Kapton masking next to a BGA** while heating (neighbours, plastic connectors) with a heat-damage risk.
+122. [ ] **More BGA devices**: new consoles, phones, tablets, exotics and military boards; all 24 chips and 12 stencil types should end up used.
+123. [ ] **Real ball maps** for some chips (today every chip is the simple outer ring plus ground array); ball-by-ball close-up.
+124. [ ] **Popcorned chips and heat-profile faults**, preheater / bottom heater, board warp.
+125. [ ] **Playtest and tune** the reballing station (heat bar, paste 20 % odds, reflow 40 % fix, prices) and view the BGA chip in the 3D board.
+
 ---
 
 ## Decisions I need from you (collected from everything above)
