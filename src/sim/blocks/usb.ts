@@ -67,6 +67,24 @@ export function usbInput(o: UsbInputOpts): BlockDef {
         },
       },
       {
+        id: 'usb-port-ripped',
+        family: 'Ripped-off port',
+        tier: 2,
+        weight: 0.6,
+        apply(b, _rng, ref) {
+          const r = ref('conn');
+          b.comps[r].part = null;
+          b.liftedPads.push(`${r}.VBUS`, `${r}.GND`);
+          addMark(b, r, 'scratch');
+          return {
+            summary: `The ${kind} port ${r} was ripped off by a yanked cable and took its VBUS and GND pads with it. Fit a new port, run copper wire from its legs back to the same connections (scrape the mask off with the pen grinder first) and seal the wire with UV mask.`,
+            refs: [r],
+            hint: 'Two pads are gone. Fit the port, then run wires from its legs to the nearest point on the same connections (the service sheet shows where VBUS and GND go).',
+            flavor: 'Someone tripped over the charging cable and the plug came off with the socket still in it.',
+          };
+        },
+      },
+      {
         id: 'usb-port-joint',
         family: 'Cracked solder joint',
         tier: 1,
