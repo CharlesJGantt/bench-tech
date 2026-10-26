@@ -16,7 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
-import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId } from '../business/economy';
+import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -137,6 +137,7 @@ export class Hud {
       if (t && (t.id !== 'scope' || s.owns('oscilloscope'))) this.setTool(t.id);
       if ((e.key === 't' || e.key === 'T') && s.owns('thermal-cam')) this.action('thermal', {});
       if (e.key === 'b' || e.key === 'B') this.flip();
+      if ((e.key === 'w' || e.key === 'W') && s.tool === 'jumper') this.toast(s.cycleWireGauge());
       if (e.key === 'Escape') {
         s.selected = null;
         s.jumperStart = null;
@@ -398,6 +399,12 @@ export class Hud {
       case 'attach':
         s.toggleAttach(d.id!);
         break;
+      case 'jumper-seal': {
+        const sel = (['green', 'red', 'blue', 'black'] as const).find((c) => s.shop.supplies[`mask-${c}` as SupplyId] >= 0.3);
+        const r = s.sealWire(Number(d.id), sel ?? 'green');
+        this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
       case 'jumper-del':
         s.doRemoveJumper(parseInt(d.id!, 10));
         break;
@@ -1144,6 +1151,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
     for (const b of document.querySelectorAll<HTMLButtonElement>('#toolbar button')) b.classList.toggle('on', b.dataset.tool === s.tool);
     const t = TOOLS.find((x) => x.id === s.tool)!;
     let hint = t.hint;
+    if (s.tool === 'jumper' && !s.jumperStart) hint = `${t.hint} Wire: ${s.wireGauge} gauge (press W to change).`;
     if (s.tool === 'jumper' && s.jumperStart) hint = `Wire tacked to ${pointLabel(s, s.jumperStart)} — click the other end (Esc to cancel).`;
     if (s.tool === 'probe') hint = `Left-click a pad to place the <b class="${s.activeProbe === 'red' ? 'red' : 'blk'}">${s.activeProbe.toUpperCase()}</b> probe · right-click places BLACK · right-drag to orbit`;
     if (s.tool === 'clip') hint = `Left-click places the <b class="${s.activeClip === 'red' ? 'red' : 'blk'}">${s.activeClip.toUpperCase()}</b> PSU probe · right-click places BLACK · then set Power → "PSU probes" to inject`;
@@ -1350,6 +1358,6 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
       </div>`
       }
-      ${jumpers.map((j) => `<div class="kv small"><span>Jumper ${j.id}</span><button data-act="jumper-del" data-id="${j.id}">Remove wire</button></div>`).join('')}`;
+      ${jumpers.map((j) => `<div class="kv small"><span>Jumper ${j.id}${j.gauge ? ` · ${j.gauge} ga${j.sealed ? ' · sealed' : ''}` : ''}</span><span>${j.gauge && !j.sealed ? `<button data-act="jumper-seal" data-id="${j.id}">Seal (UV mask)</button> ` : ''}<button data-act="jumper-del" data-id="${j.id}">Remove wire</button></span></div>`).join('')}`;
   }
 }

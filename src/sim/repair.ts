@@ -80,9 +80,39 @@ export function installPart(b: BoardState, ref: string, partNo: string, reversed
   return q === 'cold' ? `${ref} installed. The joints look dull and lumpy.` : `${ref} installed.`;
 }
 
-export function addJumper(b: BoardState, a: PointRef, z: PointRef, q: SolderQuality): string {
-  b.jumpers.push({ id: b.nextJumperId++, a, b: z, cold: q === 'cold' });
-  return `Jumper wire added from ${a.ref}.${a.pin} to ${z.ref}.${z.pin}${q === 'cold' ? ' (joints look dull)' : ''}.`;
+/** How far apart two points on the board are, in mm (a little extra for the wire's path). */
+export function wireLength(b: BoardState, a: PointRef, z: PointRef): number {
+  const pa = b.comps[a.ref]?.def;
+  const pz = b.comps[z.ref]?.def;
+  if (!pa || !pz) return 30;
+  return Math.max(8, Math.round(Math.hypot(pa.x - pz.x, pa.y - pz.y) * 1.2));
+}
+
+export interface WireOptions {
+  gauge?: 30 | 34 | 38;
+  /** The pads were scraped with the pen grinder first. */
+  scraped?: boolean;
+}
+
+export function addJumper(b: BoardState, a: PointRef, z: PointRef, q: SolderQuality, opts: WireOptions = {}): string {
+  const len = opts.gauge ? wireLength(b, a, z) : undefined;
+  b.jumpers.push({ id: b.nextJumperId++, a, b: z, cold: q === 'cold', ...(opts.gauge ? { gauge: opts.gauge, len, masked: !opts.scraped } : {}) });
+  const how = opts.gauge ? ` with ${opts.gauge}-gauge copper wire` : '';
+  return `Jumper wire added from ${a.ref}.${a.pin} to ${z.ref}.${z.pin}${how}${q === 'cold' ? ' (joints look dull)' : ''}.`;
+}
+
+/** Cover a repair wire with UV-cured mask. */
+export function sealJumper(b: BoardState, id: number): boolean {
+  const j = b.jumpers.find((x) => x.id === id);
+  if (!j || j.bridge || j.sealed) return false;
+  j.sealed = true;
+  return true;
+}
+
+/** Is this net one that carries real current? */
+function powerPoint(b: BoardState, p: PointRef): boolean {
+  const c = b.comps[p.ref];
+  return !!c && !!b.device.nets[c.def.pins[p.pin]]?.power;
 }
 
 export function removeJumper(b: BoardState, id: number): void {
@@ -139,6 +169,12 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
   for (const j of b.jumpers) {
     if (j.bridge) hidden.push(`Solder bridge between ${j.a.ref}.${j.a.pin} and ${j.b.ref}.${j.b.pin}.`);
     else if (j.cold) hidden.push(`Jumper wire ${j.id} has cold joints.`);
+    else if (!j.gauge) notes.push(`Jumper ${j.id} is loose hookup wire — a proper repair uses fine copper wire sealed with UV mask.`);
+    else {
+      if (j.masked) hidden.push(`Repair wire ${j.id} was soldered onto mask-covered copper — the bond is weak and will let go.`);
+      if (!j.sealed) hidden.push(`Repair wire ${j.id} is not sealed with UV solder mask — it can catch and snap.`);
+      if (j.gauge === 38 && (powerPoint(b, j.a) || powerPoint(b, j.b))) hidden.push(`Repair wire ${j.id} is too thin (38 gauge) for a power trace — it will overheat.`);
+    }
   }
   for (const ref of corrodedRefs(b, 0.2)) hidden.push(`Corrosion left on the pads of ${ref} — it keeps spreading and will come back.`);
   for (const ref of corrodedRefs(b, CLEAN_CRUST)) if (!corrodedRefs(b, 0.2).includes(ref)) notes.push(`Traces of corrosion left around ${ref}.`);

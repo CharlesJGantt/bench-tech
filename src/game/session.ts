@@ -25,7 +25,7 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
-import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
+import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
 import {
@@ -963,11 +963,38 @@ export class Session {
     this.emit();
   }
 
+  /** Copper repair wire gauge picked for new jumpers (W cycles it). */
+  wireGauge: 30 | 34 | 38 = 34;
+
+  cycleWireGauge(): string {
+    this.wireGauge = this.wireGauge === 30 ? 34 : this.wireGauge === 34 ? 38 : 30;
+    const have = Math.floor(this.shop.supplies[`wire-${this.wireGauge}` as SupplyId]);
+    this.emit();
+    return `${this.wireGauge}-gauge repair wire (${have} cm on the spool).`;
+  }
+
+  /** Where does the wire for a jumper come from? Proper copper repair wire if there is any, else loose hookup wire. */
   doJumper(a: PointRef, b: PointRef, q: SolderQuality): string {
     useSupply(this.shop, 'solder', 0.4);
-    const msg = addJumper(this.board, a, b, q);
+    const id = `wire-${this.wireGauge}` as SupplyId;
+    const cm = wireLength(this.board, a, b) / 10;
+    const proper = this.shop.supplies[id] >= cm;
+    if (proper) useSupply(this.shop, id, cm);
+    const msg = addJumper(this.board, a, b, q, proper ? { gauge: this.wireGauge, scraped: this.owns('pen-grinder') } : {});
     this.afterRepair(msg);
-    return msg;
+    return msg + (proper && !this.owns('pen-grinder') ? ' The pads still had solder mask on them.' : '');
+  }
+
+  /** Cover a repair wire with UV mask and cure it. */
+  sealWire(id: number, colour: 'green' | 'red' | 'blue' | 'black'): { ok: boolean; text: string } {
+    if (!this.owns('uv-lamp')) return { ok: false, text: 'You need a UV curing lamp (Equipment tab) to set the mask.' };
+    const sid = `mask-${colour}` as SupplyId;
+    if (this.shop.supplies[sid] < 0.3) return { ok: false, text: `Out of ${colour} UV solder mask (Supplies tab).` };
+    if (!sealJumper(this.board, id)) return { ok: false, text: 'That wire is already sealed.' };
+    useSupply(this.shop, sid, 0.3);
+    const text = `Wire ${id} covered with ${colour} UV mask and cured under the lamp.`;
+    this.afterRepair(text);
+    return { ok: true, text };
   }
 
   doRemoveJumper(id: number): void {

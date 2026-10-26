@@ -95,6 +95,14 @@ export interface Jumper {
    * magnification or a ring light) or a solder `ball` under a chip (needs the tilt view).
    */
   hidden?: 'whisker' | 'ball';
+  /** Proper copper repair wire (AWG gauge) rather than loose hookup wire. */
+  gauge?: 30 | 34 | 38;
+  /** Length of repair wire used (mm). */
+  len?: number;
+  /** Soldered onto copper that was not scraped clean of solder mask first (no pen grinder). */
+  masked?: boolean;
+  /** Covered with UV-cured solder mask. */
+  sealed?: boolean;
 }
 
 export interface McuState {
