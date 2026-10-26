@@ -53,6 +53,26 @@ loading the game without console errors.
 
 ## Needs to be created / worked on
 
+### Missed in the first version of this list (found by re-reading every request)
+- **Devices you named early on that do not exist yet:** Grapple Laptop and Venovo Laptop motherboards (with Wi-Fi chip
+  replacement and reflow), Ding security system boards, MyPhone 16 / 17 / 18 / 19 variants (common phone faults),
+  and the SoundHalo mains power supply (a dead start-up resistor killed the switching chip; powered through a dim-bulb
+  tester). Funstation 5 is only the HDMI section and Sbox One X only the power board: still wanted are the Funstation
+  5 power / standby section (diagnosis by current-draw pattern, enable to power-good chain, unfixable lightning
+  damage), the Sbox One X main board and a Pro variant.
+- **Marketplace lots of working games** to buy and sell from the storefront next to repaired devices.
+- **Broken ribbon cable connectors** (latch snapped, connector replaced at the microscope) as a fault; only torn
+  ribbons are built.
+- **Clogged power ports** (barrel / DC jacks); only USB and HDMI ports are built.
+- **Wireless (RFID / Qi) charging coil faults**.
+- **Drive replacement beyond consoles** (laptops, handhelds): the drive service only covers console-class devices.
+- **Board rotation for the port view:** you asked for the board to be rotated to look into the port; it is a 2D window
+  with a tip-up animation, not a real 3D camera move.
+- **Quote breakdown in the ledger:** the ticket shows "Quote (labour)" and the debrief shows labour and parts rows,
+  but the ledger lines are not split the same way.
+- **Wording checks:** a few early items (such as "wireless chip replacement" on every controller, Wi-Fi chip swaps on
+  laptops) depend on the laptops existing.
+
 ### Next-up candidates (already scoped in chat)
 1. **MyPhone-style device with a wireless-charging coil**: adds the coil fault and moves toward the device goal
 2. **BIOS settings service job** (secure boot off gives "please select boot device"), from the S2E71 video
