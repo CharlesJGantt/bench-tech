@@ -138,7 +138,7 @@ Second and third locations run by staff (stretch goal): TODO.
 | Conformal coating: remove around the repair area (pen grinder + remover), put it back (coating + UV lamp), analysis fails if left off | DONE |
 | Flux must not be left on the board; stricter heat limit on the joints; uncertified solder / flux recorded as violations | DONE |
 | Premium quote, rush deadline (late hand-in pays 40 % less; customer leaves after the deadline), certified jobs excluded from the service jobs | DONE |
-| Overnight delivery requirement for rush parts | PARTIAL (the deadline makes express orders the only option; no hard rule) |
+| Overnight delivery requirement for rush parts (`CertSpec.overnight`): certified part orders go express while such a job waits | DONE |
 | `DeviceDef.cert` flag so any new device can be certified work | DONE |
 | The certified devices themselves (Fessna, Eagle, F28, Scamborgeenee, MeHari, D Wagon Flex, Zeeya, NIGHTGLASS, naval, orbital, launch) | TODO (see DEVICE_BACKLOG.md) |
 | Radio / IR tester tool for remotes and key fobs; CAN diagnostics pad for engine modules | TODO |

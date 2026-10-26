@@ -25,61 +25,266 @@ mini, Galaxy Raid arcade, Dream Boy family (6) + carts, BES / B64 / Vega / Palta
 - SoundHalo mains power supply (dead start-up resistor, dim-bulb tester)
 - VoltMax and others; later phases: intermittents, BGA work, mains supplies
 
-## 3. Your new list
-### Bluetooth speakers (reuse the BoomPuck blocks: USB-C, charger, battery, BT chip, MCU, amp, buttons, LEDs)
-| Device | Notes |
-|---|---|
-| Yeets Pill Box | Mid-tier, pill shaped, one speaker, modest battery, small board |
-| Marshawn Carry-Round | Guitar-amp styled, two speakers, SD slot, DC power jack and supply |
-| JayCon Pocket Beatz | Entry level, round, one speaker, SD slot, USB-C charging |
-| Blok-Buster Jamz Box | High end, boom-box style, two speakers + small subwoofer, large Li-ion, LCD, SD slot |
+## 3. Your original list, itemised (every repairable board)
+From `Bench_Tech_Though-Upl_Device_List_Detailed_Variants.md`. Each row is one repairable PCB; products with two or
+more boards (baby monitor, cordless phone, Game Orb) are separate jobs and the player has to find which board is at
+fault. Every Fessna, Eagle 2000 and F28 order is rush with overnight delivery; Scamborgeenee, MeHari and D Wagon
+carry a premium plus a pretentious-customer fee; Zeeya is economy.
 
-### Household electronics
-| Device | Notes |
-|---|---|
-| Cry-Away Baby Monitor | Two boards: parent unit (LCD, speaker, DC + battery, Wi-Fi, antenna) and camera unit (camera module, SD) |
-| Universal TV remote | 3-4 variants: corrosion, impact damage, bad traces, cap / chip faults. Needs an IR / RF tester tool |
-| Garage door opener | 1-2 variants, same failures as remotes |
-| Automotive key fobs | 3-6 variants, more functions with car prestige; dead coin cell, corrosion, broken traces. Needs the RF / IR tester |
-| Alarm clocks | 2-3 variants: large 7-segment or LCD |
-| Irrigation controller | 8 zones, relays, transistors, MCU, many connectors; liquid damage and lightning burn-out |
-| LCD TV power supplies | 2-3 variants: bad caps, failed controllers |
-| PC motherboards | 3-4 variants, dense, test points, regulators, BIOS chip and battery, mounting-hole joints (hard tier) |
-| Oven / dishwasher / washing machine / dryer controllers | 2-4 variants: relays and common electronics faults |
-| DVD players | 2-3 variants: researched common DVD faults (laser, tray, belts) + electronics faults |
+### A. Bluetooth Speakers
 
-### Gaming devices and games
-| Device | Notes |
-|---|---|
-| Phantic Racing Wheel (controller board) | Worn inputs, microswitches, connectors |
-| Phantic Racing Pedal Box (controller board) | Worn inputs, microswitches, connectors |
-| Bintendo Pocket Joy Advance | Handheld with 2 LCD screens, game pin fingers |
-| Bintendo Pocket Joy cartridges | Common cartridge faults |
-| Homey Sinnusus | Retro colour LCD handheld, controls left and right |
-| Homey Sinnusus carts | Common cart failures |
-| Bintentendo Game Orb | Spherical console, round PCB, takes discs and Pocket Joy carts; needs a disc drive (dirty lens, debris) |
-| Swamarami All-In-One | Cheap retro clone: all carts, SD card, multiple cart connectors, poor soldering, flux left on board |
 
-### Phones and tablets
-| Device | Notes |
-|---|---|
-| Pandroid | Phone variant: same faults as MyPhone plus USB faults |
-| MySlab, Mini, Micro, Mega | Tablet family: larger screens, more RAM, SD slots |
-| Pandroid Slate 7 / 10 / 12 / 14 | Same electronics, larger screens and more RAM |
-| Flipper Pro | Flip phone: USB mini, small LCD, small battery |
-| Boomer49 | 1990s cordless phone: through-hole, basic faults |
+**Bluetooth Speakers**
 
-### Exotic electronics (certified work: see the certification system in STATUS.md)
-| Device | Notes |
-|---|---|
-| Fessna Crytation 12 | 4 avionics boards, JEFFA-certified PCB, conformal coating, certified parts and consumables only, certification before payment, rush + overnight always |
-| Eagle 2000 JetAir | 4 avionics boards, same rules |
-| USN F28 T-Rex 12th-gen Fighter | 6 avionics boards, military-spec PCB, same rules |
-| Scamborgeenee Chadventor ECM / TCM / BCM | Trapezoid and rhombus boards, many MCUs, test points, CAN diagnostic port, conformal coating, gold-plated joints, premium + "pretentious customer" fee |
-| MeHari F69 ECU / TCM / Body control | Odd-shaped boards, same traits |
-| D Wagon Flex | Circular boards, same traits |
-| Zeeya Spirit ECM / TCM unimodule | Simple square board, no coating, cheap, normal turnaround; needs the CAN diagnostics pad |
-| Electric cars | (your list ends here: to be defined) |
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Yeets Pill Box — Main Audio/Charging PCB | T2 | S | Dense | Long pill/oval silhouette with flattened ends | Protect cell; isolate battery for rework. |
+| Marshawn Carry-Round — Main Audio/Control PCB | T3 | M | Moderate | Wide rectangle with large jack cutout and two mounting tabs | Device enclosure resembles miniature guitar amplifier. |
+| JayCon Pocket Beatz — Round Control PCB | T1 | XS | Dense | Circular disc with flattened USB-C notch | Low-cost entry-tier build; some solder joints are deliberately marginal. |
+| Blok-Buster Jamz Box — Stereo/Sub Mainboard | T4 | XL | Dense | Wide boombox-style rectangle with asymmetrical display bay | High battery capacity, high service payout. |
+
+### B. Household Electronics
+
+
+**Cry-Away Baby Monitor**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Cry-Away Camera/Transmitter — Camera PCB | T3 | M | Very Dense | Egg-shaped oval with camera cutout | One half of a paired job; companion receiver may be supplied. |
+| Cry-Away Parent Receiver — LCD/Audio PCB | T3 | M | Dense | Vertical oval with flattened LCD aperture | Separate repairable PCB; player may diagnose camera versus receiver. |
+
+**Universal TV Remotes**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Universal Remote 01 — Basic IR 4-Device | T1 | S | Sparse | Long narrow rounded rectangle | IR only; no wireless RF. |
+| Universal Remote 02 — Learning IR With LCD | T2 | M | Moderate | Elongated rectangle with narrow waist | IR learning feature distinct from basic unit. |
+| Universal Remote 03 — Smart RF/IR Hub Remote | T3 | M | Dense | Stepped elongated outline with RF antenna wing | RF communications differ from IR; use correct test mode. |
+| Universal Remote 04 — Premium Touchscreen Control | T4 | L | Very Dense | Rounded wide rectangle with touchscreen cutout | Premium finish and high component replacement cost. |
+
+**Garage Door Openers**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Garage Clicker 01 — Two-Button RF Transmitter | T1 | XS | Low | Teardrop/keychain rounded rectangle | Simulated protocol; no access-code extraction or bypass. |
+| Garage Clicker 02 — Wall/Visor Multi-Door Remote | T2 | S | Moderate | Rounded rectangular card with three-button edge | Do not implement real rolling-code secrets or pairing bypass. |
+
+**Automotive Key Fobs**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Key Fob 01 — Economy 2-Button Remote | T1 | XS | Low | Small rounded rectangle | Entry vehicle; no passive entry. |
+| Key Fob 02 — Standard 3-Button Remote | T2 | XS | Moderate | Asymmetrical keyhead contour | Lock/unlock/trunk. |
+| Key Fob 03 — Flip-Key Remote | T2 | S | Moderate | L-shaped outline with pivot clearance | Physical key mechanism included in disassembly. |
+| Key Fob 04 — Smart Proximity Fob | T3 | S | Dense | Rounded diamond with antenna shoulders | Fictional secure credentials; no real key cloning. |
+| Key Fob 05 — Luxury Display Key | T4 | M | Very Dense | Wide rounded rectangle with display window | Higher payout due to display and paired diagnostics. |
+| Key Fob 06 — Ultra-Premium Motion/Remote-Start Key | T4 | M | Extreme | Irregular tapered rectangle | RF key with no IR unless this exact asset adds an IR emitter. |
+
+**Alarm Clocks**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Alarm Clock 01 — Classic LED | T1 | M | Sparse | Wide shallow rectangle | Simple board, early-game through-hole friendly. |
+| Alarm Clock 02 — Dual Alarm LCD | T2 | M | Moderate | Trapezoid with front LCD cutout | Includes soft rubber snooze bar. |
+| Alarm Clock 03 — Smart Color Display | T3 | L | Dense | Wide rectangle with speaker reliefs | Some app/network behavior abstracted into test fixture. |
+
+**Irrigation Controller**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| RainWrangler 8-Zone Irrigation — Main Controller | T3 | L | Moderate | Wide rectangle with eight terminal bays | No live outdoor mains in repair minigame. |
+
+**LCD TV Power Supplies**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| LCD TV PSU 01 — Compact LED TV | T3 | L | Sparse | Long rectangle with primary/secondary isolation slot | Hazardous real-world mains: in-game isolated power fixture only. |
+| LCD TV PSU 02 — Midrange With LED Backlight Driver | T4 | XL | Moderate | Broad rectangular board with isolated LED-driver corner | Do not automatically blame PSU for an open LED strip. |
+| LCD TV PSU 03 — Premium Large-Panel PFC Supply | T5 | XXL | Dense | Wide irregular board with multiple isolated sections | Advanced high-energy topology represented safely in simulation. |
+
+**PC Motherboards**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| PC Motherboard 01 — Entry-Level Office Micro-ATX | T4 | XL | Dense | Micro-ATX-like rectangle with rear I/O notch | No actual CPU silicon reballing required for every fault. |
+| PC Motherboard 02 — Midrange Gaming ATX | T4 | XXL | Very Dense | Full ATX rectangular outline | T4 with optional T5 double-root-cause jobs. |
+| PC Motherboard 03 — Creator/Workstation E-ATX | T5 | XXL | Extreme | Extended rectangle with irregular PCIe clearance cutout | Requires fine-pitch proficiency and staged diagnostics. |
+| PC Motherboard 04 — Compact Mini-ITX Enthusiast | T5 | L | Extreme | Square with four mounting holes | Small footprint but very hard due to density. |
+
+**Oven Controllers**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Oven 01 — Basic Electric Range | T2 | M | Low | Rectangle with relay ear | Mains heater loads represented with virtual low-voltage fixture. |
+| Oven 02 — Convection Wall Oven | T3 | L | Moderate | Stepped rectangle with three connector wings | Higher service cost from high-current terminals. |
+| Oven 03 — Premium Induction/Smart Oven | T4 | XL | Dense | Wide irregular rectangle with heat-sink cutout | Actual induction power stage never live in game. |
+
+**Dishwasher Controllers**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Dishwasher 01 — Budget Mechanical/Hybrid | T2 | M | Sparse | Tall rectangle with protruding relay tab | Moisture exposure likely. |
+| Dishwasher 02 — Digital Touch Control | T3 | L | Moderate | Long narrow board with display wing | Can present two interacting symptoms from one moisture path. |
+| Dishwasher 03 — Premium SensorWash | T4 | XL | Dense | Wide U-shaped PCB with connector peninsula | Multi-board fault localization; add separate inverter board only if modeled. |
+
+**Washing Machine Controllers**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Washer 01 — Basic Top-Loader | T2 | L | Moderate | Broad rectangular board with corner mounting ears | Water damage with visible deposits. |
+| Washer 02 — High-Efficiency Front-Loader | T4 | XL | Dense | L-shaped board with deep harness notch | Motor inverter may be separate daughterboard. |
+| Washer 03 — Smart Direct-Drive Controller | T5 | XXL | Very Dense | Large stepped board with twin power cutouts | High-energy areas modeled as safely isolated fixture. |
+
+**Clothes Dryer Controllers**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Dryer 01 — Basic Timer/Heater Control | T2 | M | Sparse | Long rectangle with exposed connector ledge | Represent mains and heater with isolated simulated outputs. |
+| Dryer 02 — Sensor Dry Digital | T3 | L | Moderate | Rectangle with edge notch for moisture sensor | Heating physics handled by game fixture. |
+| Dryer 03 — Heat-Pump Smart Dryer | T4 | XL | Dense | Irregular polygon with compressor connector wing | Complex scheduling and sensor interplay. |
+
+**DVD Players**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| DVD Player 01 — Panicsonnet DVD-120 Budget Tray | T2 | M | Moderate | Flat rectangle with spindle motor connector notch | Optical faults can be mechanical, optical, or electrical. |
+| DVD Player 02 — Panicsonnet DVD-500 Progressive | T3 | L | Dense | Wide rectangle with separate analog-output peninsula | Requires distinguishing bad mechanism from bad mainboard. |
+| DVD Player 03 — Panicsonnet Home Theater DVD/Audio Combo | T4 | XL | Very Dense | Large L-shaped board with amplifier heat-sink edge | High board complexity; mechanical subsystem remains separate asset. |
+
+### C. Gaming Devices, Consoles and Cartridges
+
+
+**Phantic Racing Rig**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Phantic Racing Wheel — Motor/Buttons Mainboard | T4 | L | Dense | Circular-sector/U-shaped PCB to fit wheel hub | Expose motors and mechanics as separate parts if game supports them. |
+| Phantic Racing Pedal Box — Sensor/Interface PCB | T2 | S | Moderate | Long narrow rectangle with three pedal cable notches | Sensor calibration required after repair. |
+
+**Bintendo Pocket Joy**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Bintendo Pocket Joy Advance — Dual-Screen Motherboard | T4 | L | Very Dense | Foldable-console wide rectangle with hinge-side neck | Two LCD modules modeled as replaceable parts, not necessarily two full PCBs. |
+| Bintendo Pocket Joy Game Cartridge — Standard PCB | T1 | XS | Low | Tiny rectangle with gold-finger edge | Different games may use shared board with varying memory populations. |
+
+**Homey Sinnusus**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Homey Sinnusus — Wide Retro Handheld Mainboard | T3 | L | Dense | Long horizontal capsule with stepped grip ends | Horizontal control arrangement differs from dual-screen unit. |
+| Homey Sinnusus Retro Cart — Save Cartridge | T1 | XS | Low | Narrow rectangular PCB with notched edge connector | No disc drive in this device. |
+
+**Bintentendo Game Orb**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Bintentendo Game Orb — Spherical Console Mainboard | T4 | L | Very Dense | Round main PCB with two cutouts and radial mounting points | Round PCB is mandatory; removable optical drive separate asset. |
+| Bintentendo Game Orb — Optical Disc Drive Servo Card | T3 | S | Moderate | Crescent/sector board that follows disc well | Mechanical problems coexist with PCB faults; avoid inappropriate solder repair of broken plastic. |
+
+**Swamarami All-In-One**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Swamarami All-In-One — Multi-Cartridge Motherboard | T3 | XL | Dense | Highly irregular polygon with four connector prongs | Intentionally low-quality manufacture but faults must still be electrically plausible. |
+
+### D. Phones and Tablets
+
+
+**Pandroid**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Pandroid — Modern Smartphone Logic Board | T5 | S | Extreme | Stepped elongated motherboard with stacked shield zones | Use same shared fault behavior as existing MyPhone; preserve special subboard if modeled. |
+
+**MySlab Tablets**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| MySlab Micro — Compact Tablet Mainboard | T3 | S | Very Dense | Short stepped rectangle hugging display corner | Small screen; single RAM package. |
+| MySlab Mini — Standard Compact Tablet | T3 | M | Dense | Long thin rectangular board with corner notch | Increment from Micro: added RAM capacity and microSD. |
+| MySlab — Mainstream Tablet | T4 | L | Very Dense | Wide stepped rectangle with side-mounted port wing | Larger display and battery connector; more RAM than Mini. |
+| MySlab Mega — Large Premium Tablet | T5 | XL | Extreme | Wide irregular rectangle with four display tabs | Largest and densest MySlab model. |
+
+**Pandroid Slate Tablets**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Pandroid Slate 7 — Entry Compact | T3 | S | Dense | Compact rectangular board with antenna peninsula | Smallest Slate; does not inherit nonexistent SD slot. |
+| Pandroid Slate — Standard Model | T3 | M | Very Dense | Stepped rectangle with dual mounting ears | Base model for numbered tablets. |
+| Pandroid Slate 10 — Performance | T4 | L | Very Dense | Long rectangle with offset socket notch | Higher RAM density than base Slate. |
+| Pandroid Slate 12 — Creative | T4 | XL | Extreme | Wide L-shaped PCB for camera clearance | Adds stylus/digitizer to standard features. |
+| Pandroid Slate 14 — Oversized Flagship | T5 | XXL | Extreme | Broad irregular outline with extra ribbon protrusions | Size refers to PCB footprint, not screen inches. |
+
+**Legacy Phones**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Flipper Pro — Classic Clamshell Mobile Phone | T2 | S | Moderate | Narrow hinged rectangle with fold-axis notch | No smartphone-class memory density. |
+| Boomer49 — 1990s Cordless Handset PCB | T2 | M | Sparse | Long rounded rectangle with antenna tongue | Vintage THT repair techniques. |
+| Boomer49 — Cordless Base/Charging Station PCB | T2 | L | Low | Broad rectangle with antenna corner | No direct public telephone network service required. |
+
+### E. Original Exotic Electronics
+
+
+**Fessna Crytation 12 — JEFFA Avionics**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Fessna Crytation 12 — Flight Display Interface Card | T5 | L | Very Dense | Long rectangle with asymmetrical keyed rear edge | JEFFA game certification; approved/traceable parts; remove and restore coating; controlled heat; clean all flux; paid ce |
+| Fessna Crytation 12 — Engine Sensor Interface | T5 | M | Dense | Tapered rectangle with twin connector shoulders | JEFFA game certification; coating removal/reapplication, controlled heat history, traceable parts, flux-free inspection, |
+| Fessna Crytation 12 — Cabin Climate/Pressurization Monitor | T4 | L | Moderate | Wide rounded rectangle with cutout along connector side | JEFFA game certification and fully documented coating/cleaning; high parts cost; paid certification, rush and overnight. |
+| Fessna Crytation 12 — Communications/Audio Integration | T5 | M | Very Dense | Stepped rectangular board with RF shield lip | JEFFA game certification; traceable stock and clean-room-style QA, recoat; paid certification, mandatory rush and overni |
+
+**Eagle 2000 JetAir — JEFFA Avionics**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Eagle 2000 JetAir — Primary Flight Computer I/O | T5 | XL | Extreme | Stepped square with backplane cutaway | JEFFA game certification; controlled rework/cleaning/coating; certified replacement parts; paid cert, rush and overnight |
+| Eagle 2000 JetAir — Power Distribution Controller | T5 | L | Dense | Long stepped polygon with output-connector flange | JEFFA certified process, coat removal/reapplication, part traceability, flux removal; rush and overnight always. |
+| Eagle 2000 JetAir — Navigation Sensor Aggregator | T5 | M | Very Dense | Hexagonal card with three edge key slots | JEFFA certification; thermal process constraints, flux inspection and recoat; rush/overnight. |
+| Eagle 2000 JetAir — Cabin Entertainment/Services Hub | T4 | XL | Dense | Flat U-shaped PCB with daughtercard recess | JEFFA game certification for avionics-grade customer contract; approved parts, recoat and traceable QC; rush/overnight. |
+
+**USN F28 T-Rex — Mil-Spec Avionics**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| USN F28 T-Rex — Mission Power Interface | T5 | XL | Very Dense | Shielded double-width rectangle with scalloped mounting tabs | Fictional mil-spec certification; controlled heat, coating grind/solvent removal and restoration; approved parts, no flu |
+| USN F28 T-Rex — Rugged Flight Display Controller | T5 | XL | Extreme | Wide angular polygon with display notch | Mil-spec game certification; coating and thermal audit; certified parts, rush/overnight; no tactical display functionali |
+| USN F28 T-Rex — Environmental Sensor Acquisition | T5 | L | Dense | Narrow octagonal panel with opposite connector tabs | Mil-spec game certification, special stock/heat limits, complete cleaning and conformal restoration; rush/overnight. |
+| USN F28 T-Rex — Communication Interface Rack Card | T5 | XXL | Very Dense | Long rack-length rectangle with double backplane fingers | No real tactical frequencies, cryptography or operational parameters; mil-spec game service process, rush/overnight. |
+| USN F28 T-Rex — Recorder and Diagnostics Module | T5 | M | Very Dense | Stepped rectangle with removable memory bay | Mil-spec game certification and traceable media; recoat, thermal audit and flux-free inspection; rush/overnight. |
+| USN F28 T-Rex — Cooling and Auxiliary Power Control | T4 | L | Moderate | Irregular five-sided board with fan headers all around | Mil-spec game certification, coat restoration, approved parts and clean inspection; rush/overnight. |
+
+**Scamborgeenee Chadventor — Premium Automotive**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Scamborgeenee Chadventor — ECM | T5 | XL | Extreme | Sharp-edged trapezoid with extended apex connector | Premium parts; gold-finished test pads rather than physically gold-plated solder; coating restoration, Premium + Pretent |
+| Scamborgeenee Chadventor — TCM | T5 | L | Very Dense | Offset rhombus/parallelogram with angled harness side | Costly approved parts; premium gold finish, conformal restoration and Pretentious Customer Fee. |
+| Scamborgeenee Chadventor — BCM | T4 | XL | Dense | Broad trapezoid with one rounded lower corner | Premium payout plus Pretentious Customer Fee; coating/traceability. |
+
+**MeHari F69 — Premium Automotive**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| MeHari F69 — ECU | T5 | XL | Extreme | Asymmetric wedge with sloped port flange | Expensive certified-style parts and gold-finished test pads; coating service and Pretentious Customer Fee. |
+| MeHari F69 — TCM | T5 | L | Very Dense | Irregular boomerang/polygon shape | Premium and Pretentious Customer Fee, coated board, approved expensive parts. |
+| MeHari F69 — Body Control Module | T4 | XL | Dense | Angular diamond with clipped vertices | Premium parts, coating restoration and Pretentious Customer Fee. |
+
+**D Wagon Flex — Premium Automotive**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| D Wagon Flex — Circular ECM | T5 | L | Extreme | True circular board with three mounting notches | Circular form factor required; premium gold pad finish, coating, high-cost parts and Pretentious Customer Fee. |
+| D Wagon Flex — Circular TCM | T5 | M | Very Dense | Compact circular ring with center mechanical opening | Circular annular geometry, coating, premium payout and Pretentious Customer Fee. |
+| D Wagon Flex — Circular BCM | T4 | L | Dense | Circular disc with three rectangular connector cutouts | Circular PCB mandated; gold-finish look and Pretentious Customer Fee. |
+
+**Zeeya Spirit — Economy Automotive**
+
+| Board | Tier | PCB size | Density | Shape | Special constraints |
+|---|---|---|---|---|---|
+| Zeeya Spirit — Combined ECM/TCM Unimodule | T3 | M | Moderate | Simple square with four mounting holes | Cheap parts, routine turnaround, no coating, ordinary customer fee. |
 
 ## 4. GPT catalog (58 entries; suggestions; its tiers T1-T6 are the catalog's own scale)
 ### A. Exotic: naval, orbital, NIGHTGLASS, launch (certified work)
@@ -171,8 +376,7 @@ mini, Galaxy Raid arcade, Dream Boy family (6) + carts, BES / B64 / Vega / Palta
 | F-14 | StormGuard WX-Alert Deluxe | T3 | M | Moderate |
 
 ## 5. How many devices that is
-Built 34. Earlier plans about 25. Your new lists about 60 (counting variants). The GPT catalog 58. Roughly **180
-devices** in all, far past the Steam bar, so the order matters.
+Built 34. Earlier plans about 25. Your original list 90 boards. The GPT catalog 58. Roughly **207 devices** in all, far past the Steam bar, so the order matters.
 
 ## 6. Build waves (suggested)
 1. **Wave 1, reuse existing blocks (quick):** the four Bluetooth speakers, alarm clocks, universal remotes, garage

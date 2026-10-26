@@ -88,3 +88,18 @@ describe('certified work', () => {
     expect(SUPPLIES['conformal-coat']).toBeTruthy();
   });
 });
+
+describe('overnight rule', () => {
+  it('certified parts for a rush job ship express whatever speed is picked', () => {
+    const st = createShop(11);
+    st.cash = 9000;
+    const dev: DeviceDef = { ...DL12, id: 'dl12-rush', cert: { authority: 'JEFFA', premium: 4, fee: 150, coated: true, dueDays: 1, overnight: true } };
+    const job = generateJob(dev, 5, { variant: 'fuse-blown' });
+    expect(job.cert!.overnight).toBe(true);
+    st.queue = [{ id: 99, kind: 'customer', customer: 'x', complaint: 'y', quote: 100, arrived: st.day, job: JSON.parse(JSON.stringify({ ...job, deviceId: 'dl12', board: {} })) }];
+    const o = placeOrder(st, [{ kind: 'part', id: 'F-1A', qty: 1, cert: true }], 'economy');
+    expect(o!.speed).toBe('express');
+    const plain = placeOrder(st, [{ kind: 'part', id: 'F-1A', qty: 1 }], 'economy');
+    expect(plain!.speed).toBe('economy');
+  });
+});

@@ -7,6 +7,7 @@ import {
   harvestable,
   inTransit,
   isSpecialOrder,
+  overnightOnly,
   lowSupplies,
   orderCost,
   profitAndLoss,
@@ -312,6 +313,7 @@ function stock(s: Session, cart: Cart, speed: DeliveryId): string {
              <div class="row"><button class="primary" data-act="place-order">Place order — arrives ${ship.days === 1 ? 'tomorrow' : `day ${s.shop.day + ship.days}`}</button><button data-act="clear-cart">Clear</button></div>`
           : '<p class="muted">Empty. Use + to add packs or parts. One shipping fee per order; pick a delivery speed before ordering.</p>'
       }
+      ${lines.some((l) => l.cert) && overnightOnly(st) ? '<p class="note small">A rush certified job is waiting: certified parts ship overnight only (express), whatever you pick.</p>' : ''}
       <p class="muted small">Need something right now? The rework station's parts tray can rush-buy a single cheap part locally at a markup. Expensive chips, screens and batteries are <b>special order</b> — nobody local stocks them, so order ahead or pull one from a donor in the store-room.</p></div>
     </div>
     <div class="of-card"><h3>Components in stock</h3><table class="bom parts">${parts}</table></div>`;

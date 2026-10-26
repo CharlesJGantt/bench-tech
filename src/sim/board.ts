@@ -145,6 +145,8 @@ export interface CertSpec {
   coated: boolean;
   /** Rush work: a short deadline (days) and overnight delivery of parts expected. */
   dueDays: number;
+  /** Rush work that must ship overnight: certified part orders go express while such a job is waiting. */
+  overnight?: boolean;
   /** Only certified parts may be fitted (default true). */
   certifiedParts?: boolean;
   /** Only certified solder and flux (default true). */

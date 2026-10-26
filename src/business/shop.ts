@@ -500,6 +500,11 @@ export function migrateShop(st: ShopState): ShopState {
   return st;
 }
 
+/** Is a rush certified job waiting? Then certified parts can only be ordered overnight. */
+export function overnightOnly(st: ShopState): boolean {
+  return st.queue.some((q) => q.job.cert?.overnight) || !!st.projects.some((p) => p.status === 'owned' && p.job.cert?.overnight);
+}
+
 /** Price an order (shipping charged once per order, by delivery service). */
 export function orderCost(lines: OrderLine[], speed: DeliveryId = 'standard'): number {
   let cost = 0;
@@ -511,6 +516,8 @@ export function orderCost(lines: OrderLine[], speed: DeliveryId = 'standard'): n
 export function placeOrder(st: ShopState, lines: OrderLine[], speed: DeliveryId = 'standard'): Order | null {
   lines = lines.filter((l) => l.qty > 0 && !(l.kind === 'part' && NOT_SOLD.has(l.id)));
   if (!lines.length) return null;
+  // Certified parts for rush work only ship overnight
+  if (lines.some((l) => l.cert) && overnightOnly(st)) speed = 'express';
   const cost = orderCost(lines, speed);
   const o: Order = { id: st.nextId++, placed: st.day, arrives: st.day + delivery(speed).days, lines, cost, speed };
   st.orders.push(o);

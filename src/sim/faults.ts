@@ -267,6 +267,8 @@ export interface JobCert {
   coated: boolean;
   /** Last day the customer will wait (set when the job arrives). */
   dueDay?: number;
+  /** Certified part orders must go overnight while this job waits. */
+  overnight?: boolean;
   /** Things done that a certified repair does not allow (uncertified solder or flux, ...). */
   violations: string[];
   /** How many analyses have been paid for, and the last report. */
@@ -426,7 +428,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     quote,
     customer,
     kind: opts.kind ?? 'customer',
-    ...(device.cert ? { cert: { authority: device.cert.authority, fee: device.cert.fee, coated: device.cert.coated, violations: [], attempts: 0 } } : {}),
+    ...(device.cert ? { cert: { authority: device.cert.authority, fee: device.cert.fee, coated: device.cert.coated, ...(device.cert.overnight ? { overnight: true } : {}), violations: [], attempts: 0 } } : {}),
     ...(accessory ? { accessory } : {}),
     ...(hung ? { hung } : {}),
     ...(drive ? { drive } : {}),
