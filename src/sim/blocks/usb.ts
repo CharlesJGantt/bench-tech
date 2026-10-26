@@ -2,6 +2,7 @@
  * USB power blocks: the charging port, and a single-cell Li-ion charger with its battery.
  */
 import { addMark, type Rng } from '../faults';
+import { bend, clog } from '../portclean';
 import type { BoardState } from '../circuit';
 import type { BlockDef, BlockPart, BlockVariant } from './core';
 
@@ -105,6 +106,40 @@ export function usbInput(o: UsbInputOpts): BlockDef {
             } as BlockVariant,
           ]
         : []),
+      {
+        id: 'usb-port-clogged',
+        family: 'Clogged port',
+        tier: 1,
+        weight: 1,
+        apply(b, rng, ref) {
+          const r = ref('conn');
+          clog(b, r, () => rng.next());
+          return {
+            summary: `The ${kind} port ${r} is packed with pocket lint and grime, so the cable cannot seat and make contact. Tip the board up, look into the port and clean it out: tweezers for the lint, a pick for the packed grime, then air or a swab. Nothing needs replacing.`,
+            refs: [r],
+            hint: 'The cable never clicks in properly. Take the board out of the case and look straight into the port with the light.',
+            flavor: rng.pick(['The charger only works if I jiggle the cable, and now it does not at all.', 'The cable does not go all the way in any more.', 'It has been charging slower and slower. Now nothing.']),
+          };
+        },
+      },
+      {
+        id: 'usb-pins-bent',
+        family: 'Bent port contacts',
+        tier: 2,
+        weight: 0.6,
+        apply(b, _rng, ref) {
+          const r = ref('conn');
+          b.comps[r].fault = { type: 'pins-open', pins: ['VBUS'] };
+          bend(b, r, 'VBUS');
+          addMark(b, r, 'bent-pin');
+          return {
+            summary: `The power contact inside the ${kind} port ${r} is bent flat from a forced cable. Looking into the port shows it, and it cannot be straightened: the port has to be replaced.`,
+            refs: [r],
+            hint: 'Look into the port with the light: one contact lies flat against the tongue. A bent contact is metal fatigue; replace the port.',
+            flavor: 'I forced the charger in the wrong way round and it stopped charging.',
+          };
+        },
+      },
       {
         id: 'usb-port-joint',
         family: 'Cracked solder joint',

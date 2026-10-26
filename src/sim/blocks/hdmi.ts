@@ -5,6 +5,7 @@
  * "no picture" faults.
  */
 import { addMark } from '../faults';
+import { bend, clog } from '../portclean';
 import type { BlockDef } from './core';
 
 const LANES = ['D0', 'D1', 'D2', 'CK'] as const;
@@ -64,12 +65,29 @@ export function hdmiOut(): BlockDef {
           const pin = rng.pick(LANES);
           const r = ref('port');
           b.comps[r].fault = { type: 'pins-open', pins: [pin] };
+          bend(b, r, pin);
           addMark(b, r, 'bent-pin');
           return {
             summary: `The HDMI port's ${pin} contact is bent flat, so one data line never reaches the TV. Replace the port (it has a plastic body — low-melt alloy and gentle hot air).`,
             refs: [r],
             hint: 'Look inside the HDMI port. Then, power off, compare the data pins in diode mode — they should all read about the same.',
             flavor: 'Someone tripped over the HDMI cable. It powers on but there is no picture any more.',
+          };
+        },
+      },
+      {
+        id: 'hdmi-port-clogged',
+        family: 'Clogged port',
+        tier: 1,
+        weight: 1,
+        apply(b, rng, ref) {
+          const r = ref('port');
+          clog(b, r, () => rng.next(), true);
+          return {
+            summary: `The HDMI port ${r} is clogged with dust and lint, so the cable does not seat and the picture drops out. Tip the board up and look into the port, then clean it out: tweezers for the lint, a pick for the packed grime, then air or a swab.`,
+            refs: [r],
+            hint: 'The HDMI plug never seats fully. Take the board out of the case and look straight into the port with the light.',
+            flavor: 'The picture cuts in and out unless I hold the HDMI cable just right, and now there is no picture at all.',
           };
         },
       },

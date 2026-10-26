@@ -1429,3 +1429,7 @@ body.tut-locked #rw-canvas:not(.tut-ok) { cursor: not-allowed; }
 .pdot span { font-size: 26px; line-height: 1; }
 .pdot.ok span { color: #3fae6a; }
 .pdot.bad span { color: #e0463f; }
+
+.portview { margin: 8px 0; perspective: 600px; }
+.portview svg { transform-origin: 50% 100%; animation: tipup 0.8s ease-out; border-radius: 10px; }
+@keyframes tipup { from { transform: rotateX(70deg) scale(0.9); opacity: 0.2; } to { transform: rotateX(0) scale(1); opacity: 1; } }

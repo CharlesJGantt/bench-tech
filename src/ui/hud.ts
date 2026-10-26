@@ -16,6 +16,8 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, fireStaff, forecastListing, hireStaff, moveShop, raiseStaff, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
+import { portViewHtml } from './portview';
+import { isPort, type PortTool } from '../sim/portclean';
 import { portRef, portTest } from '../sim/porttest';
 import { ACCESSORY_PRICE } from '../sim/accessories';
 import { capacityVerdict, usbMeterNow } from '../game/explain';
@@ -405,6 +407,20 @@ export class Hud {
       case 'boot-prompt': {
         const r = s.promptBoot();
         this.toast(r.text, r.ok ? undefined : 'bad');
+        break;
+      }
+      case 'port-view': {
+        if (!s.reachable) {
+          this.toast('Take the board out of its case first (🔧 Case on the ticket).', 'bad');
+          break;
+        }
+        this.modal(portViewHtml(s, d.ref!), 'wide');
+        break;
+      }
+      case 'port-clean': {
+        const r = s.cleanPortWith(d.ref!, d.how as PortTool);
+        this.modal(portViewHtml(s, d.ref!, r.text), 'wide');
+        if (!r.ok) this.toast(r.text, 'bad');
         break;
       }
       case 'port-tester':
@@ -1439,6 +1455,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
+        ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port with a light">🔦 Look into the port</button>` : ''}
       </div>`
       }
       ${jumpers.map((j) => `<div class="kv small"><span>Jumper ${j.id}${j.gauge ? ` · ${j.gauge} ga${j.sealed ? ' · sealed' : ''}` : ''}</span><span>${j.gauge && !j.sealed ? `<button data-act="jumper-seal" data-id="${j.id}">Seal (UV mask)</button> ` : ''}<button data-act="jumper-del" data-id="${j.id}">Remove wire</button></span></div>`).join('')}`;

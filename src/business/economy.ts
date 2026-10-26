@@ -270,6 +270,8 @@ export const TOOLS: ToolDef[] = [
   { id: 'gamebit', kind: 'instrument', name: 'Game-Bit security drivers', cost: 9, heat: 0, radius: 0, blurb: 'The odd security screws on game cartridges and retro consoles. Without them the shell stays shut.' },
   { id: 'screw-extractor', kind: 'instrument', name: 'Screw extractor bits', cost: 14, heat: 0, radius: 0, blurb: 'Reverse-cut bits that bite into a stripped screw head and back it out. The screw is ruined, but the case opens.' },
   { id: 'screw-mat', kind: 'instrument', name: 'Magnetic screw mat', cost: 12, heat: 0, radius: 0, blurb: 'A whiteboard mat with magnets: every screw stays where it came out, so each one goes back in its own hole — no more long screws in short holes.' },
+  { id: 'tweezers', kind: 'instrument', name: 'Fine tweezers', cost: 6, heat: 0, radius: 0, blurb: 'Pulls lint and fluff out of USB and HDMI ports. Every bench has a pair.' },
+  { id: 'pick-tool', kind: 'instrument', name: 'Plastic pick tool', cost: 7, heat: 0, radius: 0, blurb: 'Scrapes packed grime off the contacts inside a port without scratching them. Look into the port first (tip the board up).' },
   { id: 'port-tester', kind: 'instrument', name: 'USB port diode tester', cost: 38, heat: 0, radius: 0, blurb: 'Clips onto a charging port and checks every pin in diode mode against a healthy board: red dots mark pins that read wrong (a short or an open). Finds a bad port, filter or protection part without probing each one.' },
   { id: 'pen-grinder', kind: 'instrument', name: 'Pen grinder (fibreglass pen)', cost: 18, heat: 0, radius: 0, blurb: 'Scrapes the solder mask off a trace or lifted pad so you can solder repair wire straight to clean copper.' },
   { id: 'uv-lamp', kind: 'instrument', name: 'UV curing lamp', cost: 22, heat: 0, radius: 0, blurb: 'Sets UV solder mask in seconds. Needed for sealing trace repairs.' },
@@ -279,7 +281,7 @@ export const TOOLS: ToolDef[] = [
   { id: 'nozzle-10', kind: 'nozzle', name: '10 mm hot-air nozzle', cost: 12, heat: 0.8, radius: 6, blurb: 'Wide and even — big chips, connectors and shields.' },
 ];
 
-export const STARTING_TOOLS = ['tip-conical', 'nozzle-5'];
+export const STARTING_TOOLS = ['tip-conical', 'nozzle-5', 'tweezers', 'pick-tool'];
 
 export function tool(id: string): ToolDef {
   return TOOLS.find((t) => t.id === id) ?? TOOLS[0];

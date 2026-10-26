@@ -27,6 +27,7 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { cleanPort, isPort, type PortTool } from '../sim/portclean';
 import { ACCESSORY_PRICE, cable, CABLES, charger, CHARGERS, chargePath, devicePd } from '../sim/accessories';
 import { bootCurve, BOOT_SECONDS, type BootKind, capacityVerdict, METER_CHARGE_START, METER_RAMP, usbMeterCurrent } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
@@ -527,6 +528,21 @@ export class Session {
     this.addLog('action', text);
     this.afterRepair(text);
     return { ok: true, text };
+  }
+
+  /** Use a cleaning tool inside a port (board off, taken out of its case). */
+  cleanPortWith(ref: string, how: PortTool): { ok: boolean; text: string } {
+    const c = this.board.comps[ref];
+    if (!c || !isPort(c)) return { ok: false, text: 'That is not a port.' };
+    if (this.powerMode !== 'off') return { ok: false, text: 'Switch the board off and unplug it before putting tools in a port.' };
+    if (!this.reachable) return { ok: false, text: 'Take the board out of its case first (🔧 Case on the ticket).' };
+    const need = { tweezers: 'tweezers', pick: 'pick-tool', blower: 'air-blower', swab: '' }[how];
+    if (need && !this.owns(need)) return { ok: false, text: 'You do not have that tool yet (Equipment tab).' };
+    if (how === 'swab' && this.shop.supplies.swabs < 1) return { ok: false, text: 'Out of cleaning swabs (Supplies tab).' };
+    const r = cleanPort(c, how);
+    if (r.ok && r.swabs) useSupply(this.shop, 'swabs', r.swabs);
+    if (r.ok) this.afterRepair(r.text);
+    return r;
   }
 
   /** Seconds into a "prompt to boot" (null = not running). */

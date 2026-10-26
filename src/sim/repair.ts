@@ -69,6 +69,8 @@ export function installPart(b: BoardState, ref: string, partNo: string, reversed
   c.fault = null;
   c.burnt = false;
   c.replaced = true;
+  delete c.debris;
+  delete c.bent;
   addMark(c.marks, 'rework-residue');
   const pins = PIN_NAMES[p.kind];
   c.joints = {};

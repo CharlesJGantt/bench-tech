@@ -4,6 +4,7 @@ import { part, pinsOf, type Kind, type PartSpec } from './parts';
 import { elementPower, solveDC, type Element } from './solver';
 import { corrosionLeakR, corrosionSeriesR, crustAt, type Corrosion } from './corrosion';
 import { oxideR } from './contacts';
+import { debrisR } from './portclean';
 
 // ---------------------------------------------------------------------------
 // Board state
@@ -74,6 +75,10 @@ export interface CompState {
   corr?: Corrosion;
   /** Connector contacts: oxide film per pin, 0..1 (see contacts.ts). */
   oxide?: Record<string, number>;
+  /** Port packed with lint and grime (see portclean.ts). */
+  debris?: { lint: number; packed: number; loose: number };
+  /** Port contacts bent flat: only a new port fixes them. */
+  bent?: string[];
   /** Contacts finished with Pad-Bright (bright and protected). */
   brightened?: string[];
 }
@@ -323,7 +328,7 @@ export function compile(b: BoardState, power: PowerConfig, meter?: { red: PointR
     const f = conn?.fault;
     const broken = !conn?.part || f?.type === 'open' || f?.type === 'melted' || (f?.type === 'pins-open' && f.pins.includes(pin));
     // Oxide on the contact adds resistance between the plug and the board (or breaks it).
-    const r = oxideR(conn?.oxide?.[pin] ?? 0);
+    const r = oxideR(conn?.oxide?.[pin] ?? 0) + debrisR(conn?.debris);
     if (!broken && Number.isFinite(r)) add(E.resistor(n, getLead(conn, pin), r));
     mateNode.set(key, n);
     return n;
