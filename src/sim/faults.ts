@@ -88,6 +88,14 @@ export function liquidDamage(b: BoardState, rng: Rng, refs: string[], lo = 0.35,
 }
 
 /** The case as it comes in: someone who has been inside may have torn the sticker and lost a screw. */
+/** An overheating service: the case is closed, the fan and heatsink are dusty and the paste is dry. */
+function dustyEnclosure(def: EnclosureDef): EnclosureState {
+  const st = newEnclosure(def);
+  st.dusty = true;
+  st.dried = def.items.filter((i) => i.kind === 'heatsink').map((i) => i.id);
+  return st;
+}
+
 function intakeEnclosure(def: EnclosureDef, previousRepair: Job['previousRepair'], rng: Rng): EnclosureState {
   const st = newEnclosure(def);
   const opened = previousRepair === 'Yes' || (previousRepair === 'Unknown' && rng.next() < 0.4);
@@ -201,26 +209,47 @@ export interface JobOptions {
   /** Carbonised PCB: not repairable, only good for spare parts. */
   unrepairable?: boolean;
   kind?: Job['kind'];
+  /** A cleaning service rather than a fault: an overheating device that needs its dust cleared and fresh paste. */
+  service?: 'overheat';
+}
+
+/** Can this device have its cooling serviced (does it have a heatsink)? */
+export function canServiceCooling(device: DeviceDef): boolean {
+  return !!device.enclosure?.items.some((i) => i.kind === 'heatsink');
 }
 
 export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = {}): Job {
   const rng = new Rng(seed);
   const board = createBoard(device);
   const maxTier = opts.maxTier ?? 2;
-  // Easier tiers stay common even when harder ones unlock.
-  const pool = device.variants.filter((v) => (opts.variant ? v.id === opts.variant : v.tier <= maxTier));
-  if (!pool.length) throw new Error(`No ${device.id} fault variant matches ${opts.variant ?? maxTier}`);
-  const v = rng.weighted(pool.map((x) => [x, x.weight * (x.tier === 1 ? 1.5 : 1)] as [Variant, number]));
-  const fault: AppliedFault = { variant: v.id, family: v.family, tier: v.tier, ...v.apply(board, rng) };
+  const service = opts.service === 'overheat' && canServiceCooling(device);
+  let fault: AppliedFault;
+  if (service) {
+    fault = {
+      variant: 'service-overheat',
+      family: 'Overheating: cleaning service',
+      tier: 1,
+      summary: 'Nothing is broken: the fan and heatsink are choked with dust and the thermal paste has dried out, so it overheats. Clean the dust out (compressed air blower or swabs) and put fresh thermal paste on the chip.',
+      refs: [],
+      hint: 'Open it up, clean the dust out of the fan and heatsink, then lift the heatsink, wipe off the dried paste and apply fresh paste before putting it back together.',
+      flavor: rng.pick(['It gets really hot and the fan screams, then it shuts itself off.', 'It has been getting hotter and slower for months. Can you give it a good clean?', 'It is so hot I cannot touch the case, and it crashes after a few minutes.']),
+    };
+  } else {
+    // Easier tiers stay common even when harder ones unlock.
+    const pool = device.variants.filter((v) => (opts.variant ? v.id === opts.variant : v.tier <= maxTier));
+    if (!pool.length) throw new Error(`No ${device.id} fault variant matches ${opts.variant ?? maxTier}`);
+    const v = rng.weighted(pool.map((x) => [x, x.weight * (x.tier === 1 ? 1.5 : 1)] as [Variant, number]));
+    fault = { variant: v.id, family: v.family, tier: v.tier, ...v.apply(board, rng) };
+  }
 
   const faults = [fault];
-  if (opts.missingParts) {
+  if (opts.missingParts && !service) {
     const m = removeParts(board, rng, opts.missingParts);
     if (m) faults.push(m);
   }
-  if (opts.unrepairable && device.carbonise.length) faults.push(carboniseBoard(board, rng));
+  if (opts.unrepairable && device.carbonise.length && !service) faults.push(carboniseBoard(board, rng));
 
-  if (opts.redHerrings !== false) addRedHerrings(board, rng, rng.int(1, 3), !!fault.previousRepair);
+  if (opts.redHerrings !== false && !service) addRedHerrings(board, rng, rng.int(1, 3), !!fault.previousRepair);
 
   // The owner kept using it — let the fault propagate.
   const report = functionalTest(board);
@@ -252,7 +281,7 @@ export function generateJob(device: DeviceDef, seed: number, opts: JobOptions = 
     quote,
     customer,
     kind: opts.kind ?? 'customer',
-    ...(device.enclosure ? { enclosure: intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
+    ...(device.enclosure ? { enclosure: service ? dustyEnclosure(device.enclosure) : intakeEnclosure(device.enclosure, previousRepair, rng) } : {}),
     ...(device.titles ? { title: rng.pick(device.titles).name } : {}),
   };
 }

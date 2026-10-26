@@ -72,6 +72,10 @@ export interface EnclosureState {
   lmExposed?: string[];
   /** Liquid-metal chips re-done with ordinary paste (they run hot). */
   wrongTim?: string[];
+  /** Dust clogging the fan and heatsink (an overheating service job): cleaned with the air blower or swabs. */
+  dusty?: boolean;
+  /** Heatsinks whose old paste has dried out: lift them and re-paste. */
+  dried?: string[];
 }
 
 export interface EncOptions {
@@ -323,6 +327,7 @@ export function applyPaste(def: EnclosureDef, st: EnclosureState, id: string, co
   const it = item(def, id);
   if (it.kind !== 'heatsink' || !st.removed.includes(id)) return { ok: false, text: 'Lift the heatsink off first.' };
   st.paste[id] = true;
+  if (st.dried) st.dried = st.dried.filter((x) => x !== id);
   st.lmExposed = (st.lmExposed ?? []).filter((x) => x !== id);
   st.wrongTim = (st.wrongTim ?? []).filter((x) => x !== id);
   if (compound === 'lm') return { ok: true, text: `Old metal cleaned off ${it.chip ?? 'the chip'} with IPA swabs; a thin, even film of fresh liquid metal brushed on.` };
@@ -363,6 +368,14 @@ export function spillLiquidMetal(def: EnclosureDef, st: EnclosureState, b: Board
   return hit.length ? `The liquid metal ran off the chip and across ${hit.join(' and ')} — their pins are shorted now. Wick it off under the microscope.` : null;
 }
 
+/** Blow or wipe the dust out of the fan and heatsink fins (the case must be open far enough to reach them). */
+export function cleanDust(def: EnclosureDef, st: EnclosureState, how: 'blower' | 'swabs'): EncResult {
+  if (!st.dusty) return { ok: false, text: 'Nothing to clean: the fan and heatsink are already clear.' };
+  if (!boardReachable(def, st)) return { ok: false, text: 'You cannot reach the fan and heatsink with the case on. Open it up first.' };
+  st.dusty = false;
+  return { ok: true, text: how === 'blower' ? 'A few short blasts of compressed air and a cloud of grey dust comes out of the fan and heatsink fins.' : 'The swabs pull a thick mat of dust off the fan blades and out of the heatsink fins.' };
+}
+
 /**
  * How well each chip under a heatsink is cooled, as a multiplier on its package's thermal
  * resistance: fresh compound 0.25, ordinary paste where liquid metal belongs 0.32, old broken
@@ -379,8 +392,8 @@ export function coolingFor(def: EnclosureDef | undefined, st: EnclosureState | u
       out[it.chip] = 1;
       continue;
     }
-    const k = !st.paste[it.id] ? 0.38 : st.wrongTim?.includes(it.id) ? 0.32 : 0.25;
-    out[it.chip] = k * (fanOff ? 1.3 : 1);
+    const k = !st.paste[it.id] || st.dried?.includes(it.id) ? 0.38 : st.wrongTim?.includes(it.id) ? 0.32 : 0.25;
+    out[it.chip] = k * (fanOff ? 1.3 : 1) * (st.dusty ? 1.8 : 1);
   }
   return out;
 }
@@ -451,6 +464,8 @@ export function enclosureIssues(def: EnclosureDef | undefined, st: EnclosureStat
   const hidden: string[] = [];
   const notes: string[] = [];
   if (!def || !st) return { hidden, notes };
+  if (st.dusty) hidden.push('The fan and heatsink are still full of dust — it will overheat again.');
+  if (st.dried?.length) hidden.push('The old, dried-out thermal paste was never replaced — it still runs hot.');
   if (st.removed.length) hidden.push('The device was handed back with its case not fully reassembled.');
   // Screws: only the ones you lost count (it may have come in with some missing already)
   const empty = def.items.filter((it) => it.screw && !st.removed.includes(it.id) && !st.screws[it.id]);

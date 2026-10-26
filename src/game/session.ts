@@ -24,7 +24,7 @@ import { loadJob, saveJob } from '../sim/persist';
 import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
-import { applyPaste, boardReachable, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
 import { addJumper, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -711,6 +711,18 @@ export class Session {
     if (spare && this.shop.supplies['spare-screws'] < 1) return { ok: false, text: 'The spare screw box is empty — order more from the office.' };
     const r = installItem(def, st, this.board, id, length, spare);
     if (r.ok && spare) useSupply(this.shop, 'spare-screws', 1);
+    return this.encDone(r);
+  }
+
+  /** Clear the dust out of a fan and heatsink: the compressed air blower (no cost), or swabs (they get used up). */
+  encCleanDust(): EncResult {
+    const def = this.encDef;
+    const st = this.enc;
+    if (!def || !st) return { ok: false, text: 'There is no case on this one.' };
+    const blower = this.owns('air-blower');
+    if (!blower && this.shop.supplies.swabs < 4) return { ok: false, text: 'You need a compressed air blower (Equipment tab) or a few cleaning swabs (Supplies) to clean the dust out.' };
+    const r = cleanDust(def, st, blower ? 'blower' : 'swabs');
+    if (r.ok && !blower) useSupply(this.shop, 'swabs', 4);
     return this.encDone(r);
   }
 

@@ -116,6 +116,11 @@ export interface Evaluation {
 
 export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation {
   const report = functionalTest(cloneBoard(b));
+  // A cleaning service is only done when it runs cool again: dust and dried paste both have to go
+  if (job.faults.some((f) => f.variant === 'service-overheat') && (job.enclosure?.dusty || job.enclosure?.dried?.length)) {
+    report.checks.push({ label: 'Runs cool after the service', ok: false });
+    report.passed = false;
+  }
   const hidden: string[] = [];
   const notes: string[] = [];
   for (const c of Object.values(b.comps)) {

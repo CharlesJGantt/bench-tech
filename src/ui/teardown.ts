@@ -80,6 +80,7 @@ export class TeardownStation {
       }
       const p = t.closest<HTMLElement>('[data-td-paste]');
       if (p) this.say([s.encPaste(p.dataset.tdPaste!, p.dataset.tdLm ? 'lm' : 'paste').text]);
+      if (t.closest('[data-td-dust]')) this.say([s.encCleanDust().text]);
       const d = t.closest<HTMLElement>('[data-td-drill]');
       if (d) this.say([s.encDrill(d.dataset.tdDrill!).text]);
     });
@@ -204,6 +205,8 @@ export class TeardownStation {
     const extra: string[] = [];
     if (st.removed.some((id) => def.items.find((i) => i.id === id)?.screw))
       extra.push(`<button data-td-len="-1" class="${this.pick === -1 && this.mode === 'install' ? 'on primary' : ''}" title="A new screw of the right length">📦 Spare screw from the box (${Math.floor(s.shop.supplies['spare-screws'])} left)</button>`);
+    if (st.dusty)
+      extra.push(`<p class="note small">The fan and heatsink fins are clogged with dust.</p><button data-td-dust="1">🌬 Clean the dust out (${s.owns('air-blower') ? 'air blower' : `4 swabs, ${Math.floor(s.shop.supplies.swabs)} left`})</button>`);
     for (const it of def.items)
       if (it.kind === 'heatsink' && st.removed.includes(it.id))
         extra.push(
