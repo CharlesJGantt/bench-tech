@@ -16,7 +16,7 @@ import { Tutorial } from './tutorial';
 import { cartLines, officeHtml, type Cart, type OfficeTab } from './office';
 import { CHANNELS, forecastListing, moveShop, type ListingOptions, type SaleChannel, buyListing, buyoutOffer, buyTool, expressFee, harvestPart, inTransit, placeOrder, searchOnline, stockOf, storeProject, trendMult, type CustomerAsk } from '../business/shop';
 import { loadJob } from '../sim/persist';
-import { usbMeterReading } from '../game/explain';
+import { usbMeterNow } from '../game/explain';
 import { ADS, NOT_SOLD, locationDef, type DeliveryId, type LocationId, type SupplyId } from '../business/economy';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -950,7 +950,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
   private usbMeterHtml(op: { srcV: number; srcI: number }): string {
     const s = this.s;
     if (!s.owns('usb-meter') || (s.powerMode !== 'adapter' && s.powerMode !== 'psu-jack')) return '';
-    const m = usbMeterReading(op.srcV, op.srcI);
+    const m = usbMeterNow(s.meterT, op.srcV, op.srcI);
     return `<div class="usb-meter"><b>🔌 USB meter</b> ${m.volts.toFixed(2)} V · ${m.amps.toFixed(3)} A · ${m.watts.toFixed(2)} W${s.guided ? `<br><span class="small ${m.ok ? 'good' : 'warn'}">${esc(m.verdict)}</span>` : ''}</div>`;
   }
 

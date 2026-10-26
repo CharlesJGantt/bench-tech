@@ -150,3 +150,45 @@ export function usbMeterReading(volts: number, amps: number): UsbMeterReading {
   if (a < 0.1) return { ...base, ok: false, verdict: 'Only a trickle. Charging is stuck at a low current: a deeply discharged or worn battery, a weak charger chip, or a poor contact in the path. A steady low number that does not change is a fingerprint: note it and compare it with the next device that behaves the same way.' };
   return { ...base, ok: true, verdict: 'Charging normally: a healthy current at about 5 V.' };
 }
+
+/** Seconds after plugging in when the boot pull has died away and the charge controller starts up. */
+export const METER_SETTLE = 1.4;
+export const METER_CHARGE_START = 4;
+export const METER_RAMP = 2.5;
+
+export type MeterStage = 'boot' | 'settled' | 'charging';
+
+/**
+ * The current a USB meter shows t seconds after plugging in: a pull while the device boots, a settle to a
+ * low standby draw, then (if the charge controller works) a ramp up to the real charging current.
+ * `finalA` is the steady-state draw the circuit solver gives.
+ */
+export function usbMeterCurrent(t: number, finalA: number): { amps: number; stage: MeterStage } {
+  const final = Math.max(0, finalA);
+  const standby = Math.min(final, 0.035);
+  const jitter = 1 + 0.03 * Math.sin(t * 9.3) * Math.cos(t * 3.1);
+  if (t < METER_CHARGE_START) {
+    const spike = t < METER_SETTLE * 3 ? Math.min(0.32, Math.max(0.1, final * 0.6)) * Math.exp(-t / (METER_SETTLE * 0.5)) : 0;
+    const base = final < 0.003 ? 0.02 * Math.exp(-t / 0.3) : standby;
+    return { amps: (base + (final < 0.003 ? 0 : spike)) * jitter, stage: t < METER_SETTLE ? 'boot' : 'settled' };
+  }
+  const k = Math.min(1, (t - METER_CHARGE_START) / METER_RAMP);
+  const smooth = k * k * (3 - 2 * k);
+  return { amps: (standby + (final - standby) * smooth) * (k >= 1 ? 1 : jitter), stage: 'charging' };
+}
+
+/** The live meter display: the changing current, the stage, and (once the controller has had its chance) the verdict. */
+export function usbMeterNow(t: number, volts: number, finalA: number): UsbMeterReading & { stage: MeterStage; done: boolean; note: string } {
+  const { amps, stage } = usbMeterCurrent(t, finalA);
+  const done = t >= METER_CHARGE_START + METER_RAMP;
+  const end = usbMeterReading(volts, finalA);
+  const note =
+    stage === 'boot'
+      ? 'The device pulls a burst of current as it wakes up…'
+      : stage === 'settled'
+        ? 'It settles to a small standby draw. Wait: the charge controller should kick in and the current should climb.'
+        : done
+          ? ''
+          : 'The charge controller is starting up…';
+  return { volts: Math.max(0, volts), amps, watts: Math.max(0, volts) * amps, ok: done ? end.ok : true, verdict: done ? end.verdict : note, stage, done, note };
+}

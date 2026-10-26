@@ -25,6 +25,7 @@ import { part } from '../sim/parts';
 import { corrodedRefs, treatCorrosion } from '../sim/corrosion';
 import { padBright, SCRUBBERS, scrubPin, syncTarnishMark, type Scrubber } from '../sim/contacts';
 import { applyPaste, boardReachable, cleanDust, closeForMe, coolingFor, drillOut, installItem, openForMe, removeItem, spillLiquidMetal, type EnclosureDef, type EnclosureState, type EncResult, type EncTool } from '../sim/enclosure';
+import { METER_CHARGE_START, METER_RAMP } from './explain';
 import { addJumper, sealJumper, wireLength, cleanBoard, evaluate, removeJumper, type Evaluation, type SolderQuality } from '../sim/repair';
 import { applyRework, type Kit, type ReworkState, type Supplies } from '../rework/model';
 import { delivery, FLUX_GRADES, LIQUIDS, USAGE, WICKS, tool, type SupplyId } from '../business/economy';
@@ -464,9 +465,13 @@ export class Session {
     }
   }
 
+  /** Seconds since the device was plugged in (drives the USB meter's boot / settle / charge curve). */
+  meterT = 0;
+
   setPowerMode(m: PowerMode): void {
     if (m === this.powerMode) return;
     this.powerMode = m;
+    this.meterT = 0;
     if (m === 'off') this.board.mcu.tripped = false;
     const names: Record<PowerMode, string> = { off: 'Power off', adapter: 'Plugged in the 12 V adapter', 'psu-jack': 'Bench PSU connected to the DC jack', 'psu-clips': 'Bench PSU on clip leads' };
     this.addLog('action', names[m]);
@@ -602,6 +607,10 @@ export class Session {
   /** Advance time: thermal lag, thermal damage, IPA evaporation, electricity use. */
   tick(dt: number): void {
     if (this.op) this.shop.usage.powerSeconds += dt;
+    if (this.op && this.owns('usb-meter') && (this.powerMode === 'adapter' || this.powerMode === 'psu-jack') && this.meterT < METER_CHARGE_START + METER_RAMP + 0.5) {
+      this.meterT += dt;
+      this.emit();
+    }
     this.board.cooling = coolingFor(this.encDef, this.enc);
     const target = this.op ? steadyTemps(this.board, this.op) : {};
     const k = 1 - Math.exp(-dt / 1.8);
