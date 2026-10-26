@@ -71,7 +71,7 @@ export function installPart(b: BoardState, ref: string, partNo: string, reversed
   c.replaced = true;
   delete c.debris;
   delete c.bent;
-  c.marks = c.marks.filter((m) => m !== 'thermal-trip');
+  c.marks = c.marks.filter((m) => m !== 'thermal-trip' && m !== 'pptc-high' && m !== 'revived');
   addMark(c.marks, 'rework-residue');
   const pins = PIN_NAMES[p.kind];
   c.joints = {};
@@ -204,6 +204,7 @@ export function evaluate(job: Job, b: BoardState, partsCost: number): Evaluation
       else notes.push(`${c.ref} is a ${c.part.label} part; the board calls for ${part(c.def.partNo).label}.`);
     }
     if (c.marks.includes('rework-residue')) notes.push(`Sticky flux left around ${c.ref}.`);
+    if (c.marks.includes('revived')) notes.push(`${c.ref} (a resettable polyfuse) was revived with heat. It works, but its protection may no longer be to spec: a new one is the reliable repair.`);
   }
   for (const j of b.jumpers) {
     if (j.bridge) hidden.push(`Solder bridge between ${j.a.ref}.${j.a.pin} and ${j.b.ref}.${j.b.pin}.`);

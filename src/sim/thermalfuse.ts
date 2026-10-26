@@ -1,19 +1,35 @@
 /**
- * A tripped thermal fuse: the device was overheated (or a short briefly cooked it), the fuse opened and the device
- * went dead. It resets with a little hot air (~150 °C), but the plastic parts around it melt in the same blast
- * unless you mask them with Kapton tape first. Replacing the fuse also works.
+ * Thermal protection that trips, and what you can do about it. Based on how repairers actually deal with it:
+ *
+ *   one-shot thermal fuse (TCO)   opens for good when overheated: heat cannot reset it, replace it.
+ *   PPTC polyfuse                 a resettable fuse that can go stuck at a high resistance (tens of ohms) after
+ *                                 thermal cycling or a cracked joint. Repairers revive it with heat from a hot-air
+ *                                 station (set around 350 °C: the part itself sees far less) and it drops back to
+ *                                 a fraction of an ohm. Heating is not its designed reset and the protection may
+ *                                 no longer be to spec, so a replacement is the more reliable repair.
+ *   bimetal thermal switch        resets by itself when it cools (not modelled).
+ *
+ * The plastic parts around the fuse melt in the hot air unless masked with Kapton tape first.
  */
 import type { BoardState } from './circuit';
 import type { DeviceDef } from './board';
 import { addMark, type Variant } from './faults';
 import { part } from './parts';
 
-/** Kapton tape used per reset (cm). */
+/** Kapton tape used per hot-air job (cm). */
 export const KAPTON_PER_RESET = 6;
 
-/** Fuses on the board that could trip. */
+const isPolyfuse = (partNo: string) => partNo.includes('POLY');
+
+/** One-shot fuses on the board (ordinary fuses). */
 export function fuseRefs(d: DeviceDef): string[] {
-  return d.components.filter((c) => part(c.partNo).kind === 'fuse' && !part(c.partNo).partNo.includes('POLY')).map((c) => c.ref);
+  return d.components.filter((c) => part(c.partNo).kind === 'fuse' && !isPolyfuse(c.partNo)).map((c) => c.ref);
+}
+
+/** Resettable PPTC polyfuses on the board. */
+export function pptcRefs(d: DeviceDef): string[] {
+  // (Only fuses that feed a real load can be seen failing: the microSD slot's, as on the ROG Ally-style handhelds)
+  return d.components.filter((c) => part(c.partNo).kind === 'fuse' && isPolyfuse(c.partNo) && c.block === 'CARD').map((c) => c.ref);
 }
 
 export const THERMAL_FUSE: Variant = {
@@ -26,10 +42,28 @@ export const THERMAL_FUSE: Variant = {
     b.comps[ref].fault = { type: 'open' };
     addMark(b, ref, 'thermal-trip');
     return {
-      summary: `The thermal fuse ${ref} tripped after the device overheated. A short blast of hot air (about 150 °C) resets it: mask the plastic connectors around it with Kapton tape first or they will melt. Or replace the fuse.`,
+      summary: `The thermal fuse ${ref} opened after the device overheated. A one-shot thermal fuse cannot be reset by heat: replace it (and find out why it got so hot).`,
       refs: [ref],
-      hint: `The device is completely dead and ${ref} reads open. It has a faint heat stain. Heat resets it; protect the parts next to it.`,
+      hint: `The device is completely dead and ${ref} reads open, with a faint heat stain. Heat will not close it again: fit a new one.`,
       flavor: rng.pick(['It got really hot, then died. Nothing at all now.', 'I left it in the car on a hot day and now it will not turn on.', 'It smelled warm, shut off, and has been dead since.']),
+    };
+  },
+};
+
+export const PPTC_DEGRADED: Variant = {
+  id: 'pptc-degraded',
+  family: 'Stuck PPTC fuse',
+  tier: 2,
+  weight: 0.8,
+  apply(b, rng) {
+    const ref = rng.pick(pptcRefs(b.device));
+    b.comps[ref].fault = { type: 'high', r: Math.round(rng.range(60, 140)) };
+    addMark(b, ref, 'pptc-high');
+    return {
+      summary: `The resettable (PPTC) fuse ${ref} is stuck at a high resistance (tens to a hundred ohms instead of a fraction of an ohm), so what it feeds never gets enough power. Heating it with hot air (mask the plastic parts around it with Kapton first) often brings it back; replacing it is the more reliable repair.`,
+      refs: [ref],
+      hint: `Power goes in but the voltage after ${ref} is low. With the board off, measure across it: a healthy polyfuse reads under 1 Ω. Repairers heat these up with hot air to revive them.`,
+      flavor: rng.pick(['It worked, then one day the card reader (or the video port) just stopped. Nothing else is wrong.', 'The port was fine until it got hot while I was playing. Now it does not work at all.', 'Part of it stopped working after a long gaming session and never came back.']),
     };
   },
 };
@@ -50,22 +84,30 @@ function neighbours(b: BoardState, ref: string, radius = 14): string[] {
 }
 
 /**
- * Reset a tripped fuse with the heat of the hot air (the solder is not reflowed: the fuse is reset in place).
- * `masked` = the neighbours are covered with Kapton. `heat`: too little and it stays open; too much and the
- * solder under it flows too, leaving dull joints that will crack later.
+ * Heat a fuse with the hot air. A PPTC stuck high is revived (`heat`: too little leaves it high; too much cooks it
+ * open). A one-shot thermal fuse does nothing at all. `masked` = the neighbours are covered with Kapton.
  */
 export function resetThermalFuse(b: BoardState, ref: string, masked: boolean, heat: 'cold' | 'good' | 'overheated' = 'good'): ResetResult {
   const c = b.comps[ref];
-  if (!c || !c.marks.includes('thermal-trip')) return { ok: false, text: 'This part is not a tripped thermal fuse.' };
-  if (heat === 'cold') return { ok: false, text: `${ref} did not get hot enough: it stays open. Give it a little longer, then let go.` };
-  if (heat === 'overheated')
-    for (const pin of Object.keys(c.joints)) c.joints[pin] = { r: 0.4, cold: true };
+  if (!c) return { ok: false, text: 'Nothing there.' };
+  if (c.marks.includes('thermal-trip')) return { ok: false, text: `${ref} is a one-shot thermal fuse: it opened for good and heat cannot close it. It has to be replaced.` };
+  if (!c.marks.includes('pptc-high')) return { ok: false, text: `${ref} is not stuck: there is nothing for the heat to fix.` };
+  if (heat === 'cold') return { ok: false, text: `${ref} did not get hot enough: it still reads high. Give it a little longer, then let go.` };
+  // Neighbours suffer either way
+  let melted: string | undefined;
+  if (!masked) {
+    melted = neighbours(b, ref)[0];
+    if (melted) b.comps[melted].fault = { type: 'melted' };
+  }
+  const meltText = melted ? ` The hot air also softened the plastic connector ${melted} next to it: it has melted. Kapton tape would have protected it.` : '';
+  if (heat === 'overheated') {
+    c.fault = { type: 'open' };
+    c.burnt = true;
+    c.marks = c.marks.filter((m) => m !== 'pptc-high');
+    return { ok: true, melted, text: `You held the heat on too long and cooked ${ref}: it is open now and will have to be replaced.${meltText}` };
+  }
   c.fault = null;
-  c.marks = c.marks.filter((m) => m !== 'thermal-trip');
-  const warm = heat === 'overheated' ? ' But you held the heat on too long: the solder under it flowed and the joints look dull.' : '';
-  if (masked) return { ok: true, text: `Kapton over the connectors, a short blast of hot air on ${ref}: it clicks closed again.${warm}` };
-  const hit = neighbours(b, ref);
-  if (!hit.length) return { ok: true, text: `A short blast of hot air on ${ref} and it clicks closed again. There was nothing plastic close by to melt.${warm}` };
-  b.comps[hit[0]].fault = { type: 'melted' };
-  return { ok: true, melted: hit[0], text: `${ref} clicked closed again, but the hot air also softened the plastic connector ${hit[0]} next to it: it has melted. Kapton tape would have protected it.${warm}` };
+  c.marks = c.marks.filter((m) => m !== 'pptc-high');
+  if (!c.marks.includes('revived')) c.marks.push('revived');
+  return { ok: true, melted, text: `${masked ? 'Kapton over the connectors, a measured' : 'A'} blast of hot air on ${ref}: it cools back down reading well under an ohm. It works again, but heating is not its proper reset.${meltText}` };
 }

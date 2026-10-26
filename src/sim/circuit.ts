@@ -54,6 +54,8 @@ export type Mark =
   | 'corrosion'
   | 'cracked-screen'
   | 'thermal-trip'
+  | 'pptc-high'
+  | 'revived'
   | 'swollen'
   | 'tarnish';
 
@@ -447,7 +449,7 @@ function buildComponent(b: BoardState, c: CompState, lead: (pin: string) => numb
       return;
     }
     case 'fuse': {
-      add(E.resistor(...two(), p.value >= 5 ? 0.01 : 0.05, ref));
+      add(E.resistor(...two(), f?.type === 'high' ? f.r : p.value >= 5 ? 0.01 : 0.05, ref));
       return;
     }
     case 'inductor': {

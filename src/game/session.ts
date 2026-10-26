@@ -587,10 +587,11 @@ export class Session {
     return { ok: true, text };
   }
 
-  /** Reset a tripped thermal fuse with hot air; Kapton tape (6 cm) protects the plastic parts beside it. */
+  /** Heat a stuck polyfuse with hot air to revive it; Kapton tape (6 cm) protects the plastic parts beside it. */
   resetFuse(ref: string, tape: boolean, heat: 'cold' | 'good' | 'overheated' = 'good'): { ok: boolean; text: string } {
     if (this.powerMode !== 'off') return { ok: false, text: 'Switch the board off and unplug it first.' };
     if (!this.reachable) return { ok: false, text: 'Take the board out of its case first (🔧 Case on the ticket).' };
+    if (!this.board.comps[ref]?.marks.includes('pptc-high')) return resetThermalFuse(this.board, ref, tape, heat);
     if (tape && this.shop.supplies.kapton < KAPTON_PER_RESET) return { ok: false, text: 'Not enough Kapton tape (Supplies tab).' };
     if (tape) useSupply(this.shop, 'kapton', KAPTON_PER_RESET);
     this.shop.usage.heatSeconds += 4;

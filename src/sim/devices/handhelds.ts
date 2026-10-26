@@ -63,7 +63,7 @@ const VERTICAL: Form = {
   screenPart: 'M-HHLCD35',
   layout: {
     LCD1: [45, 34], J3: [45, 68], R10: [30, 50, 90],
-    U2: [20, 16], C2: [34, 12, 90], TP2: [34, 22], TP1: [8, 104], J2: [9, 72, 90],
+    U2: [20, 16], C2: [34, 12, 90], TP2: [34, 22], TP1: [8, 104], J2: [9, 72, 90], F4: [9, 58, 90],
     U3: [50, 30], R1: [70, 14, 90], R2: [70, 24, 90], R3: [70, 34, 90], R15: [20, 40, 90], R16: [40, 48, 90],
     U4: [60, 50], R8: [72, 50, 90],
     SW11: [22, 78], SW12: [22, 94], SW13: [13, 86], SW14: [31, 86],
@@ -205,8 +205,9 @@ function handheld(sp: HandheldSpec): DeviceDef {
     );
   if (sp.cardSlot)
     parts.push(
-      c('J2', sp.microSD ? 'J-TFSLOT' : 'J-SLOT6', 'CARD', 100, 8, 0, { '5V': '3V3', GND: 'GND', CE: 'CE', D0: 'DIN', LKI: 'CARD_LKI', LKO: 'CARD_LKO' }, sp.microSD ? 'microSD games slot' : 'Game card slot'),
+      c('J2', sp.microSD ? 'J-TFSLOT' : 'J-SLOT6', 'CARD', 100, 8, 0, { '5V': sp.microSD ? 'CARD_V' : '3V3', GND: 'GND', CE: 'CE', D0: 'DIN', LKI: 'CARD_LKI', LKO: 'CARD_LKO' }, sp.microSD ? 'microSD games slot' : 'Game card slot'),
       c('R3', 'R-10K', 'CARD', 82, 24, 90, { '1': 'DIN', '2': 'GND' }, 'Card data pull-down'),
+      ...(sp.microSD ? [c('F4', 'F-POLY05', 'CARD', 0, 0, 0, { '1': '3V3', '2': 'CARD_V' }, 'microSD slot resettable fuse (PPTC)')] : []),
     );
   else parts.push(c('R3', 'R-10K', 'CARD', 82, 24, 90, { '1': '3V3', '2': 'DIN' }, 'Data tie-high (no card slot)'));
   if (sp.sticks)
@@ -403,6 +404,7 @@ function handheld(sp: HandheldSpec): DeviceDef {
     nets: {
       GND: { desc: 'Ground', expected: 0 },
       '3V3': { desc: '3.3 V logic rail', expected: 3.3, power: true },
+      ...(sp.microSD ? { CARD_V: { desc: 'microSD slot supply: 3.3 V through its resettable fuse (PPTC)', expected: 3.3, power: true } } : {}),
       PWR: { desc: 'Power button (low when pressed)' },
       BA: { desc: 'A button (low when pressed)' },
       BB: { desc: 'B / X / Y buttons (low when pressed)' },

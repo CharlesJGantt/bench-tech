@@ -47,7 +47,9 @@ const MARK_TEXT: Record<string, string> = {
   scratch: 'Light scratches in the green solder mask nearby.',
   bulged: 'The top of the can is bulging.',
   loose: 'The connector wobbles when you push it.',
-  'thermal-trip': 'The thermal fuse has a faint heat stain and reads open: it tripped. Hot air resets it (mask the plastic around it with Kapton tape first).',
+  'thermal-trip': 'The thermal fuse has a faint heat stain and reads open: it tripped. A one-shot thermal fuse cannot be reset by heat: it has to be replaced.',
+  'pptc-high': 'A resettable polyfuse. If it reads tens of ohms instead of under one, it is stuck: heat from hot air often revives it (mask the plastic around it with Kapton first).',
+  revived: 'A polyfuse that has been revived with heat.',
   'cracked-screen': 'The glass is cracked: a spider web of cracks spreads out from one corner.',
   'bent-pin': 'Looking into the socket, the centre pin looks bent and cracked.',
   tarnish: 'The contacts are dull, dark and blotchy — oxidised. Scrub them clean (eraser), then Pad-Bright.',
@@ -1516,7 +1518,7 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
           : `<div class="row small">
         <button class="primary" data-act="rework">🔬 Rework at the microscope</button>
         ${scrubbable(c) ? '<button data-act="contacts">🧽 Clean the contacts</button>' : ''}
-        ${c.marks.includes('thermal-trip') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Reset it with a short blast of hot air, nothing masked">🔥 Reset with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then reset (${KAPTON_PER_RESET} cm)</button>` : ''}
+        ${c.marks.includes('pptc-high') ? `<button data-act="fuse-reset" data-ref="${ref}" data-tape="0" title="Heat it with the hot air, nothing masked">🔥 Heat it with hot air</button><button data-act="fuse-reset" data-ref="${ref}" data-tape="1" title="Cover the plastic parts around it with Kapton tape first">🟨 Mask with Kapton, then heat (${KAPTON_PER_RESET} cm)</button>` : ''}
         ${isPort(c) ? `<button data-act="port-view" data-ref="${ref}" title="Tip the board up and look into the port with a light">🔦 Look into the port</button>` : ''}
       </div>`
       }
