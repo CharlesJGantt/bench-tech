@@ -210,6 +210,15 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
 | Reballing (BGA): define, build and test | TODO (not built) |
 
+## 19. Documentation (new, 2026-10-26; plan in `DOCUMENTATION_PLAN.md`)
+| Item | Status |
+|---|---|
+| Internal documentation for you and AI agents (architecture, system guides, generated references, how-to-add, pipelines, decisions) | TODO (planned) |
+| Player guide: office, supplies, certified items, marketplace, equipment, locations, staff, selling, prices, repairs, tools, component guide, reference lists | TODO (planned) |
+| Logic analyzer tool (named in the guide request) | TODO (not built) |
+| Condition grades and price effects of damage, scratches and labels | TODO |
+| Generators for the reference lists | TODO |
+
 ## Suggested order (not decided: we are planning)
 1. Finish planning: the order of the console wave, the start menu and the shop scenes
 2. The new consoles with their disc drives, media and controllers (backlog section 2b), once the art is done enough to use

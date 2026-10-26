@@ -165,6 +165,24 @@ Each task has where it came from in brackets.
     gamepad / touch, Steam readiness (achievements, cloud saves, controller support), credits screen.
 91. [ ] Act on every FAIL and REWORK in `TEST_LOG.md` as you report it; keep the tracker CSV and the log in step.
 
+## K. Documentation (new: see `DOCUMENTATION_PLAN.md`)
+92. [ ] **Internal documentation** for you and for AI agents: start-here index, architecture, one guide per system, generated data references,
+    how to add a device / fault / part / tool / supply / game / console / model / art, pipelines, testing, decisions log, known issues, glossary.
+93. [ ] **Player guide** (end-user facing; no code or back-end), a complete and thorough play guide.
+94. [ ] Guide: the **office, tab by tab**, bills, ledger; **buying supplies and components**, what **each supply** does, **certified parts and certified
+    consumables and when they are used**, delivery speeds, rush buys, special orders, used parts.
+95. [ ] Guide: **the marketplace**, equipment and equipment upgrades, how **moving to a new location** works, **hiring and managing employees**.
+96. [ ] Guide: **selling what you bought and repaired in every buy / sell scenario** (auction, buy-it-now, storefront, fees, refunds, games and media).
+97. [ ] Guide: **lists of all devices, all electrical faults, all consoles, media and games with rarity and base prices**.
+98. [ ] Guide: **how damage, repairs, damaged labels, scratches and condition affect the price** (needs the condition-grade / appraisal system, task 20).
+99. [ ] Guide: **every repair step and every repair process**.
+100. [ ] Guide: **every way to find faults and trace signals with the tools**: how to use the USB meter, multimeter, oscilloscope, **logic analyzer**, etc.
+101. [ ] **Logic analyzer tool** (named in your request; it does not exist in the game yet): build it before documenting it.
+102. [ ] **Component identification guide** (every part type: package, markings, how it looks, what it does, how it fails).
+103. [ ] Generators that produce the reference lists (devices, parts, faults, supplies, tools, games and prices) from the code and data so the docs cannot drift.
+104. [ ] Decide the guide's format (Markdown, site, PDF, in-game viewer), and where the agent entry file lives (`AGENTS.md`).
+105. [ ] Add "document it" to the checklist for every new feature; keep both documentation sets current as features ship.
+
 ---
 
 ## Decisions I need from you (collected from everything above)
