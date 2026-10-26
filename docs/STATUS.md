@@ -4,6 +4,8 @@ Built from re-reading all 141 of your messages in the chat and checking the code
 marked Done is committed and pushed (the game library wiring from 2026-10-26 is committed with this note). Not verified by eye: the preview pane is hidden, so 3D never redraws there. All
 3D (props, crack decals) was checked by tests, typecheck and loading the game without console errors only.
 
+**The task-by-task list of everything not yet built is `docs/TODO_MASTER.md`.**
+
 Legend: DONE, PARTIAL (part of what you asked), TODO (not started), NEXT (agreed, about to build).
 
 ---
