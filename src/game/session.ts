@@ -276,13 +276,21 @@ export class Session {
    * Phone the customer whose device is on the bench: ask them to pay for next-day parts,
    * to wait for a part or a donor board, or offer to buy the dead device for parts.
    */
-  callCustomer(ask: CustomerAsk, opts: { partNo?: string; pct?: number } = {}): { yes: boolean; text: string } {
+  callCustomer(ask: CustomerAsk, opts: { partNo?: string; pct?: number } = {}): { yes: boolean; text: string; stopped?: boolean } {
     const a = this.shop.active;
     if (!a || a.kind === 'project') return { yes: false, text: 'This is your own project — there is nobody to call.' };
-    let res: { yes: boolean; text: string };
-    if (ask === 'express' || ask === 'wait-parts') {
+    let res: { yes: boolean; text: string; stopped?: boolean };
+    if (ask === 'express' || ask === 'wait-parts' || ask === 'quote-part') {
       if (!opts.partNo) return { yes: false, text: 'Pick the part you need first.' };
       const speed = ask === 'express' ? 'express' : 'standard';
+      // Quoting the part price comes first: a pricey part can end the repair.
+      const quote = askCustomer(this.shop, a.id, this.job, 'quote-part', { partNo: opts.partNo, speed });
+      if (quote.stopped || ask === 'quote-part') {
+        this.addLog('note', `📞 ${quote.text}`);
+        this.save();
+        this.emit();
+        return quote;
+      }
       res = askCustomer(this.shop, a.id, this.job, ask, { until: this.shop.day + delivery(speed).days });
       if (res.yes) {
         const o = placeOrder(this.shop, [{ kind: 'part', id: opts.partNo, qty: 1 }], speed);
@@ -411,6 +419,18 @@ export class Session {
   }
 
   /** Give a customer job back unrepaired. */
+  /** The customer stopped the repair over a part price: they take the device back as it is (no pay, no reputation loss). */
+  returnRefused(): WorkResult {
+    const job = this.job;
+    this.setPowerMode('off');
+    const a = this.shop.active;
+    this.shop.queue = this.shop.queue.filter((q) => q.id !== a?.id);
+    this.noteReturned(a?.id, job, 'gave-up', 0);
+    this.lastResult = { kind: 'gave-up', job };
+    this.clearBench();
+    return this.lastResult;
+  }
+
   giveUp(): WorkResult {
     const job = this.job;
     this.setPowerMode('off');

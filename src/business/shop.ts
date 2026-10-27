@@ -161,6 +161,8 @@ export interface QueuedJob {
   hold?: { reason: 'parts' | 'donor'; until: number; note: string };
   /** Extra charges the customer agreed to (next-day shipping), already in `quote`. */
   extraFee?: number;
+  /** The customer called the repair off over a pricey part: hand it back or buy it as spares. */
+  refused?: boolean;
   /** The walkthrough's scripted job. */
   tutorial?: boolean;
   job: SavedJob;
@@ -767,7 +769,20 @@ export function buyoutOffer(dev: DeviceDef, pct: number): number {
   return Math.max(3, Math.round(dev.marketValue * pct));
 }
 
-export type CustomerAsk = 'express' | 'wait-parts' | 'wait-donor' | 'buyout';
+export type CustomerAsk = 'express' | 'wait-parts' | 'wait-donor' | 'buyout' | 'quote-part';
+
+/** What the customer would be told a part costs: chip price, shipping, shop markup, and a premium for scarce or certified parts. */
+export function partQuote(partNo: string, speed: 'standard' | 'express' = 'standard', certified = false): number {
+  const p = part(partNo);
+  const rare = p.cost >= 25 ? 1.2 : 1;
+  const price = p.cost * 1.25 * rare * (certified ? 1.6 : 1) + delivery(speed).cost;
+  return Math.round(price * 100) / 100;
+}
+
+/** The most a customer will pay for parts on this repair: tied to the quote and what the device is worth. */
+export function partBudget(quote: number, dev: DeviceDef): number {
+  return Math.max(quote * 0.9, dev.marketValue * 0.3);
+}
 
 /**
  * Ask the customer something. They may say no. On yes:
@@ -780,8 +795,8 @@ export function askCustomer(
   queueId: number,
   job: Job,
   ask: CustomerAsk,
-  opts: { pct?: number; until?: number } = {},
-): { yes: boolean; text: string } {
+  opts: { pct?: number; until?: number; partNo?: string; speed?: 'standard' | 'express' } = {},
+): { yes: boolean; text: string; stopped?: boolean } {
   const q = st.queue.find((x) => x.id === queueId);
   if (!q) return { yes: false, text: 'That customer is not in your queue.' };
   const r = rng(st);
@@ -810,10 +825,24 @@ export function askCustomer(
       q.hold = { reason: 'donor', until, note: 'Waiting for a donor board' };
       return { yes: true, text: `${who}: "Sure, I'm in no hurry. Let me know — I'll check back by day ${until}."` };
     }
+    case 'quote-part': {
+      if (!opts.partNo) return { yes: false, text: 'Pick the part you need first.' };
+      const price = partQuote(opts.partNo, opts.speed ?? 'standard', !!job.cert);
+      const budget = partBudget(q.quote, job.device);
+      const label = part(opts.partNo).label;
+      if (price <= budget * 0.6) return { yes: true, text: `${who}: "$${price.toFixed(2)} for the ${label}? That's fair, go ahead."` };
+      // Past the budget the repair stops being worth it to them; in between they hesitate.
+      const p = price >= budget * 1.4 ? 0.95 : Math.max(0, (price / budget - 0.6) / 0.8);
+      if (r.next() < p) {
+        q.refused = true;
+        return { yes: false, stopped: true, text: `${who}: "$${price.toFixed(2)} for the ${label}? That's not worth it for this ${job.device.name}. Stop the repair."` };
+      }
+      return { yes: true, text: `${who}: "$${price.toFixed(2)} for the ${label}... ugh, fine. Do it."` };
+    }
     case 'buyout': {
       const pct = opts.pct ?? 0.15;
       const offer = buyoutOffer(job.device, pct);
-      const p = Math.min(0.92, 0.2 + pct * 3);
+      const p = Math.min(0.92, 0.2 + pct * 3 + (q.refused ? 0.25 : 0));
       if (r.next() > p) return { yes: false, text: `${who}: "Only $${offer}? I'll keep it, thanks."` };
       book(st, 'purchase', -offer, `Bought ${q.customer}'s dead ${job.device.name} for parts`);
       st.queue = st.queue.filter((x) => x !== q);

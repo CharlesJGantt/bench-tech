@@ -3,6 +3,8 @@ import { BES_CART } from '../src/sim/devices';
 import { delivery, ELECTRICITY, RENT, SUPPLIES } from '../src/business/economy';
 import {
   applicants,
+  askCustomer,
+  partQuote,
   availableDevices,
   fireStaff,
   hireStaff,
@@ -160,6 +162,20 @@ describe('shop economy', () => {
     expect(rushBuy(st, 'U-LX9201')).toBe(false);
     expect(rushBuy(st, 'U-APU-F5')).toBe(false);
     expect(stockOf(st, 'U-LX9201').new).toBe(start);
+  });
+
+  it('a pricey part makes the customer stop the repair; cheap ones do not', () => {
+    const st = createShop(40);
+    const job = generateJob(DL12, 40, { variant: 'fuse-blown' });
+    job.quote = 20;
+    st.queue.push({ id: 900, kind: 'customer', customer: 'Sam P.', complaint: '', quote: 20, arrived: st.day, job: saveJob(job) });
+    expect(partQuote('U-APU-F5')).toBeGreaterThan(partQuote('F-1A'));
+    const cheap = askCustomer(st, 900, job, 'quote-part', { partNo: 'F-1A' });
+    expect(cheap.yes).toBe(true);
+    const dear = askCustomer(st, 900, job, 'quote-part', { partNo: 'U-APU-F5' });
+    expect(dear.yes).toBe(false);
+    expect(dear.stopped).toBe(true);
+    expect(st.queue.find((q) => q.id === 900)!.refused).toBe(true);
   });
 
   it('better devices come in as reputation grows', () => {

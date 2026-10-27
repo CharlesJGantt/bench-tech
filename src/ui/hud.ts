@@ -562,10 +562,23 @@ export class Hud {
       case 'ask': {
         const sel = document.querySelector<HTMLSelectElement>('#call-part');
         const res = s.callCustomer(d.ask as CustomerAsk, { partNo: sel?.value, pct: d.pct ? parseFloat(d.pct) : undefined });
+        if (res.stopped) {
+          const job = s.job;
+          const o = (pct: number) => `<button data-act="ask" data-ask="buyout" data-pct="${pct}">Offer $${buyoutOffer(job.device, pct)} (${Math.round(pct * 100)}%) as spares</button>`;
+          this.modal(`<h2>📞 They stopped the repair</h2><p class="quote">${esc(res.text)}</p>
+            <p>You can offer to buy it for spare parts (they are more willing now), or give it back as it is — no pay, no reputation loss.</p>
+            <div class="row">${o(0.1)}${o(0.15)}${o(0.25)}</div>
+            <div class="row"><button class="big" data-act="return-refused">Give it back to ${esc(job.customer)}</button></div>`);
+          break;
+        }
         this.modal(`<h2>📞 ${res.yes ? 'They said yes' : 'They said no'}</h2><p class="quote">${esc(res.text)}</p>
           <div class="row">${res.yes && d.ask === 'buyout' ? '<button class="big primary" data-act="office-storeroom">To the store-room →</button>' : '<button class="big" data-act="close">Back to the bench</button>'}</div>`);
         break;
       }
+      case 'return-refused':
+        s.returnRefused();
+        this.showDebrief();
+        break;
       case 'office-storeroom':
         this.openOffice('storeroom');
         break;
@@ -1065,7 +1078,8 @@ Your shop, cash ($${s.shop.cash.toFixed(0)}), reputation, stock, tools, projects
         <button data-act="ask" data-ask="express" title="Express courier, paid by the customer">⚡ Ask to pay for next-day delivery (+$${fee} on their bill)</button>
         <button data-act="ask" data-ask="wait-parts">📦 Order standard delivery (free) and ask them to wait</button>
       </div>
-      <p class="muted small">The customer decides. Pricey extras on a cheap repair are a hard sell.</p>
+      <div class="row"><button data-act="ask" data-ask="quote-part" title="Tell them what the part will cost; a pricey one may end the repair">💬 Quote the part price</button></div>
+      <p class="muted small">The customer decides. Pricey extras on a cheap repair are a hard sell, and they may stop the repair.</p>
       <h3>Expensive chip nobody sells new?</h3>
       <div class="row"><button data-act="ask" data-ask="wait-donor">🔎 Ask them to wait while you find a donor board</button></div>
       <p class="muted small">Then search online for a donor in the Marketplace (it ships in a few days), or check your store-room.</p>

@@ -159,7 +159,7 @@ Each task has where it came from in brackets.
     remove cases, replace broken parts), the **customer call scenarios**, the **locations, bench upgrades, storefronts and employees**.
 88. [x] **Reballing / BGA work: first version built, needs your playtest** (follow-ups: BGA lifted-pad repair, X-ray inspection, certified balls / paste, more BGA devices) (you confirmed: devices are about to include BGA chips). Design proposal in `REBALLING_DESIGN.md`
     (reflow in place, remove, clean pads, stencil and balls, fit, test; BGA parts, tools and consumables; new faults). Needs your answers to its 5 questions.
-89. [ ] **Customer says no to a pricey part (replaces "Stop repair / Finish repair")**: when you call and quote a part ("this chip will cost $48", more depending on
+89. [x] **Built first version, needs playtest.** **Customer says no to a pricey part (replaces "Stop repair / Finish repair")**: when you call and quote a part ("this chip will cost $48", more depending on
     chip, shipping method, markup, rarity and certification), the customer may say **"that's too much, the repair is not worth it"** and **stop the
     repair themselves**; then you can **offer to buy the item for spare parts**, or the customer **asks for it back**. (Today the calls are: express delivery,
     standard delivery and wait, wait for a donor, buy as spares at 10 / 15 / 25 %, expensive parts.)

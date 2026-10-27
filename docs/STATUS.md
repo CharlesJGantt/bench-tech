@@ -210,7 +210,7 @@ REWORK, BLOCKED, NOT BUILT, N/A.
 | Test buying / selling, every repair process, store-room and donor boards, customer calls, locations / bench / storefront / staff | TODO (you test) |
 | Reballing / BGA: **first version built** (12 stencils, 3 ball sizes, 24 chips; vise, balls or paste, heat bar, reflow in place under 50 %; station, faults, tools; Rogue Pal APU is the first BGA). Needs playtest; more BGA devices will come with the new consoles / phones | BUILT, NEEDS TEST |
 | Test lab: immersive boot sequence plus WiFi and Bluetooth testing on the test screen | TODO |
-| Call flow: the customer refuses a pricey part and stops the repair; you buy it for spares or return it | TODO |
+| Call flow: the customer refuses a pricey part and stops the repair; you buy it for spares or return it | Built, needs playtest (`partQuote` / `partBudget` in shop.ts; "Quote the part price" on the call; express / standard orders quote first) |
 
 ## 19. Documentation (new, 2026-10-26; plan in `DOCUMENTATION_PLAN.md`)
 | Item | Status |
